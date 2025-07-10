@@ -10,6 +10,8 @@ class Game {
         this.score = 0;
         this.gameOver = false;
         this.paused = false;
+        this.showFPS = false;
+        this.difficulty = 'Normal';
         
         // Game objects
         this.player = null;
@@ -23,6 +25,13 @@ class Game {
         this.lastTime = 0;
         this.enemySpawnTimer = 0;
         this.powerupSpawnTimer = 0;
+        this.fps = 0;
+        this.frameCount = 0;
+        this.fpsTimer = 0;
+        
+        // Audio and Options
+        this.audio = new AudioManager();
+        this.options = new OptionsMenu(this);
         
         // Input handling
         this.keys = {};
@@ -32,6 +41,9 @@ class Game {
     }
     
     init() {
+        // Load settings
+        this.options.loadSettings();
+        
         // Initialize game objects
         this.player = new Player(this, 100, this.height / 2);
         this.background = new Background(this);
@@ -42,20 +54,37 @@ class Game {
     
     setupInput() {
         document.addEventListener('keydown', (e) => {
+            // Handle options menu input first
+            if (this.options.handleInput(e.code)) {
+                e.preventDefault();
+                return;
+            }
+            
             this.keys[e.code] = true;
             
             // Handle special keys
             switch(e.code) {
                 case 'Space':
                     e.preventDefault();
-                    this.player.shoot();
+                    if (!this.paused && this.player) {
+                        this.player.shoot();
+                        // Resume audio context on first interaction
+                        this.audio.resume();
+                    }
                     break;
                 case 'KeyQ':
-                    this.player.transform();
+                    if (!this.paused && this.player) {
+                        this.player.transform();
+                    }
                     break;
                 case 'KeyR':
                     if (this.gameOver) {
                         this.restart();
+                    }
+                    break;
+                case 'Escape':
+                    if (!this.options.isOpen) {
+                        this.options.open();
                     }
                     break;
             }
@@ -64,11 +93,25 @@ class Game {
         document.addEventListener('keyup', (e) => {
             this.keys[e.code] = false;
         });
+        
+        // Handle click to resume audio (Chrome autoplay policy)
+        document.addEventListener('click', () => {
+            this.audio.resume();
+        }, { once: true });
     }
     
     gameLoop(currentTime = 0) {
         const deltaTime = currentTime - this.lastTime;
         this.lastTime = currentTime;
+        
+        // Calculate FPS
+        this.frameCount++;
+        this.fpsTimer += deltaTime;
+        if (this.fpsTimer >= 1000) {
+            this.fps = Math.round(this.frameCount * 1000 / this.fpsTimer);
+            this.frameCount = 0;
+            this.fpsTimer = 0;
+        }
         
         if (!this.paused && !this.gameOver) {
             this.update(deltaTime);
@@ -87,7 +130,10 @@ class Game {
         
         // Spawn enemies
         this.enemySpawnTimer += deltaTime;
-        if (this.enemySpawnTimer > 1000 + Math.random() * 2000) {
+        const difficultyMultiplier = this.getDifficultyMultiplier();
+        const spawnRate = (1000 + Math.random() * 2000) / difficultyMultiplier;
+        
+        if (this.enemySpawnTimer > spawnRate) {
             this.spawnEnemy();
             this.enemySpawnTimer = 0;
         }
@@ -151,6 +197,16 @@ class Game {
         
         this.powerups.push(powerup);
     }
+
+    getDifficultyMultiplier() {
+        switch(this.difficulty) {
+            case 'Easy': return 0.7;
+            case 'Normal': return 1.0;
+            case 'Hard': return 1.5;
+            case 'Insane': return 2.5;
+            default: return 1.0;
+        }
+    }
     
     checkCollisions() {
         // Player bullets vs enemies
@@ -165,6 +221,9 @@ class Game {
                         if (enemy.health <= 0) {
                             this.score += enemy.points;
                             this.addEffect(new Explosion(this, enemy.x, enemy.y, 'large'));
+                            this.audio.playSound('explosion', 0.8);
+                        } else {
+                            this.audio.playSound('enemyHit', 0.5);
                         }
                     }
                 });
@@ -197,6 +256,7 @@ class Game {
                 powerup.markedForDeletion = true;
                 this.player.collectPowerup(powerup);
                 this.addEffect(new PowerupEffect(this, powerup.x, powerup.y));
+                this.audio.playSound('powerup', 0.8);
             }
         });
     }
@@ -248,6 +308,14 @@ class Game {
         // Render game over screen
         if (this.gameOver) {
             this.renderGameOver();
+        }
+        
+        // Render FPS if enabled
+        if (this.showFPS) {
+            this.ctx.fillStyle = '#ffff00';
+            this.ctx.font = '16px Courier New';
+            this.ctx.textAlign = 'left';
+            this.ctx.fillText(`FPS: ${this.fps}`, 10, this.height - 20);
         }
     }
     

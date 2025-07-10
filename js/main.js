@@ -37,8 +37,7 @@ function handleSpecialKeys(event) {
             break;
             
         case 'Escape':
-            // Show help
-            showHelp();
+            // ESC key is now handled by the options menu in game.js
             break;
     }
 }

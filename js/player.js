@@ -112,6 +112,9 @@ class Player {
         if (this.shootCooldown <= 0) {
             const props = this.modeProperties[this.mode];
             
+            // Play shoot sound
+            this.game.audio.playSound('shoot', 0.6);
+            
             // Create bullets based on current mode and power-ups
             const bullets = this.createBullets();
             bullets.forEach(bullet => this.game.addBullet(bullet));
@@ -156,6 +159,9 @@ class Player {
     
     transform() {
         if (this.transformCooldown <= 0) {
+            // Play transform sound
+            this.game.audio.playSound('transform', 0.8);
+            
             this.currentModeIndex = (this.currentModeIndex + 1) % this.modes.length;
             this.mode = this.modes[this.currentModeIndex];
             this.updateModeProperties();
@@ -228,6 +234,9 @@ class Player {
     }
     
     takeDamage(damage) {
+        // Play hit sound
+        this.game.audio.playSound('playerHit', 0.7);
+        
         if (this.shield > 0) {
             this.shield = Math.max(0, this.shield - damage);
         } else {
