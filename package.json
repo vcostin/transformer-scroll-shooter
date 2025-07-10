@@ -1,0 +1,38 @@
+{
+  "name": "transformer-scroll-shooter",
+  "version": "1.0.0",
+  "description": "A retro-style side-scrolling shooter game featuring a transforming vehicle with old-school parallax backgrounds",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx http-server . -p 8080 -o",
+    "dev": "npx live-server --port=8080 --open=/",
+    "build": "echo 'No build process needed - pure HTML/JS/CSS game'",
+    "test": "echo 'No tests configured yet'"
+  },
+  "keywords": [
+    "game",
+    "javascript",
+    "html5",
+    "canvas",
+    "shooter",
+    "retro",
+    "arcade",
+    "transformer",
+    "parallax"
+  ],
+  "author": "vcostin",
+  "license": "MIT",
+  "devDependencies": {},
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vcostin/transformer-scroll-shooter.git"
+  },
+  "homepage": "https://vcostin.github.io/transformer-scroll-shooter/",
+  "bugs": {
+    "url": "https://github.com/vcostin/transformer-scroll-shooter/issues"
+  },
+  "engines": {
+    "node": ">=12.0.0"
+  }
+}
