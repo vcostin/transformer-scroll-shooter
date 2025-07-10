@@ -2,57 +2,39 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+    branches: [ master ]
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
   deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout code
+    - name: Checkout
       uses: actions/checkout@v4
       
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+      
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v2
       with:
-        node-version: '18'
-        
-    - name: Install dependencies (if any)
-      run: |
-        if [ -f package.json ]; then
-          npm ci || npm install
-        fi
-        
-    - name: Run tests (if configured)
-      run: |
-        if [ -f package.json ] && npm run test --if-present; then
-          echo "Tests passed"
-        else
-          echo "No tests configured"
-        fi
+        path: '.'
         
     - name: Deploy to GitHub Pages
-      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./
-        exclude_assets: '.github,node_modules,.gitignore'
-        
-    - name: Create deployment summary
-      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-      run: |
-        echo "## 🎮 Game Deployed Successfully! 🚀" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "Your Transformer Scroll Shooter is now live at:" >> $GITHUB_STEP_SUMMARY
-        echo "**https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}**" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### 🎯 Game Features:" >> $GITHUB_STEP_SUMMARY
-        echo "- 4 transformation modes (Car, Scuba, Boat, Plane)" >> $GITHUB_STEP_SUMMARY
-        echo "- Power-up system with synergies" >> $GITHUB_STEP_SUMMARY
-        echo "- Parallax scrolling backgrounds" >> $GITHUB_STEP_SUMMARY
-        echo "- Mobile touch support" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "Ready to play! 🎮✨" >> $GITHUB_STEP_SUMMARY
+      id: deployment
+      uses: actions/deploy-pages@v3
