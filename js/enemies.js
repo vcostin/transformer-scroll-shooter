@@ -345,6 +345,22 @@ class Bullet {
 }
 
 // Boss Enemy Class - Epic encounters every 5 levels
+/**
+ * Boss Enemy Class
+ * 
+ * Extends the base Enemy class to create challenging boss encounters.
+ * Features:
+ * - Multi-phase combat system (3 phases per boss)
+ * - Unique attack patterns and abilities per boss type
+ * - Visual health bars and status indicators
+ * - Special effects and enhanced AI
+ * - Reward system integration
+ * 
+ * Boss Types:
+ * - fortress: Heavy armor, multiple turrets, missile attacks
+ * - speeddemon: Fast movement, teleportation, rapid-fire
+ * - shieldmaster: Rotating shields, energy waves, damage reduction
+ */
 class Boss extends Enemy {
     constructor(game, x, y, bossType) {
         super(game, x, y, 'boss');
@@ -636,7 +652,14 @@ class Boss extends Enemy {
         // Rapid-fire burst
         for (let i = 0; i < 3; i++) {
             setTimeout(() => {
+                // Check if boss is still alive and game is still running
+                if (this.markedForDeletion || !this.game || this.game.gameOver) {
+                    return;
+                }
+                
                 const player = this.game.player;
+                if (!player) return;
+                
                 const dx = player.x - this.x;
                 const dy = player.y - this.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
@@ -705,6 +728,11 @@ class Boss extends Enemy {
         // Launch tracking missiles
         for (let i = 0; i < this.phase; i++) {
             setTimeout(() => {
+                // Check if boss is still alive and game is still running
+                if (this.markedForDeletion || !this.game || this.game.gameOver) {
+                    return;
+                }
+                
                 const bullet = new Bullet(
                     this.game,
                     this.x,
@@ -806,7 +834,8 @@ class Boss extends Enemy {
         this.game.score += this.points * this.phase; // Bonus for completing higher phases
         
         // Give player rewards (health, power-ups)
-        this.game.player.health = Math.min(100, this.game.player.health + 25);
+        const healthRestore = 25; // Could be made configurable
+        this.game.player.health = Math.min(100, this.game.player.health + healthRestore);
         
         // Spawn power-up reward
         const powerupTypes = ['rapidfire', 'multishot', 'shield'];

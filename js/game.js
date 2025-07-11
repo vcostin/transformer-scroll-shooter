@@ -1,4 +1,19 @@
 // Main Game Engine
+
+// Game Constants
+const GAME_CONSTANTS = {
+    BOSS_LEVEL_INTERVAL: 5,  // Boss every 5 levels
+    ENEMIES_PER_LEVEL: 10,   // Regular enemies per level
+    BOSS_BONUS_SCORE: 1000,  // Bonus score for boss defeat
+    BOSS_HEALTH_RESTORE: 25, // Health restored on boss defeat
+    MESSAGE_DURATION: {
+        BOSS: 3000,
+        VICTORY: 2000,
+        INFO: 2000
+    },
+    MAX_MESSAGES: 3
+};
+
 class Game {
     constructor() {
         this.canvas = document.getElementById('gameCanvas');
@@ -14,7 +29,7 @@ class Game {
         this.difficulty = 'Normal';
         this.level = 1;
         this.enemiesKilled = 0;
-        this.enemiesPerLevel = 10;
+        this.enemiesPerLevel = GAME_CONSTANTS.ENEMIES_PER_LEVEL;
         this.bossActive = false;
         
         // Game objects
@@ -139,7 +154,7 @@ class Game {
         const spawnRate = (1000 + Math.random() * 2000) / difficultyMultiplier;
         
         // Check for boss spawn (every 5 levels)
-        if (this.level % 5 === 0 && !this.bossActive && this.enemiesKilled === 0) {
+        if (this.level % GAME_CONSTANTS.BOSS_LEVEL_INTERVAL === 0 && !this.bossActive && this.enemiesKilled === 0) {
             this.spawnBoss();
         }
         // Regular enemy spawning
@@ -169,6 +184,11 @@ class Game {
         
         // Clean up off-screen objects
         this.cleanup();
+        
+        // Check for game over condition
+        if (this.player.health <= 0) {
+            this.gameOver = true;
+        }
         
         // Update UI
         this.updateUI();
@@ -259,7 +279,7 @@ class Game {
                                 this.bossActive = false;
                                 this.addMessage(`Level ${this.level} Boss Defeated!`, 'victory');
                                 // Reward player with extra points and powerup
-                                this.score += 1000;
+                                this.score += GAME_CONSTANTS.BOSS_BONUS_SCORE;
                                 this.spawnPowerup();
                                 // Advance to next level after boss defeat
                                 this.level++;
@@ -268,7 +288,7 @@ class Game {
                             } else {
                                 this.enemiesKilled++;
                                 // Check if enough enemies killed to advance level (for non-boss levels)
-                                if (this.enemiesKilled >= this.enemiesPerLevel && this.level % 5 !== 0) {
+                                if (this.enemiesKilled >= this.enemiesPerLevel) {
                                     this.level++;
                                     this.enemiesKilled = 0;
                                     this.addMessage(`Level ${this.level} - Fight!`, 'info');
@@ -346,13 +366,13 @@ class Game {
             text: text,
             type: type,
             timestamp: Date.now(),
-            duration: type === 'boss' ? 3000 : 2000,
+            duration: GAME_CONSTANTS.MESSAGE_DURATION[type.toUpperCase()] || GAME_CONSTANTS.MESSAGE_DURATION.INFO,
             alpha: 1.0
         };
         this.messages.push(message);
         
-        // Limit to 3 messages max
-        if (this.messages.length > 3) {
+        // Limit to max messages
+        if (this.messages.length > GAME_CONSTANTS.MAX_MESSAGES) {
             this.messages.shift();
         }
     }
@@ -472,10 +492,14 @@ class Game {
     restart() {
         this.score = 0;
         this.gameOver = false;
+        this.level = 1;
+        this.enemiesKilled = 0;
+        this.bossActive = false;
         this.enemies = [];
         this.bullets = [];
         this.powerups = [];
         this.effects = [];
+        this.messages = [];
         this.player = new Player(this, 100, this.height / 2);
         this.enemySpawnTimer = 0;
         this.powerupSpawnTimer = 0;
