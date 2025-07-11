@@ -2,6 +2,7 @@
  * Main Entry Point - Phase 5 Complete ES Module System
  * 
  * This file imports all ES modules and initializes the game
+ * Last build: 2025-07-11T23:40:00Z
  */
 
 // Import all ES modules
@@ -20,7 +21,7 @@ import { Powerup, PowerupSpawner } from './systems/powerups.js';
 
 // Import rendering systems
 import { Background } from './rendering/background.js';
-import { Explosion, PowerupEffect, MuzzleFlash } from './rendering/effects.js';
+import { Explosion, PowerupEffect, MuzzleFlash, TransformEffect } from './rendering/effects.js';
 
 // Import UI systems
 import { OptionsMenu } from './ui/options.js';
@@ -43,6 +44,7 @@ window.Background = Background;
 window.Explosion = Explosion;
 window.PowerupEffect = PowerupEffect;
 window.MuzzleFlash = MuzzleFlash;
+window.TransformEffect = TransformEffect;
 window.OptionsMenu = OptionsMenu;
 window.Game = Game;
 
@@ -62,6 +64,7 @@ window.ModuleSystem = {
     Explosion,
     PowerupEffect,
     MuzzleFlash,
+    TransformEffect,
     OptionsMenu,
     Game
 };
@@ -169,6 +172,7 @@ export {
     Explosion,
     PowerupEffect,
     MuzzleFlash,
+    TransformEffect,
     OptionsMenu,
     Game
 };
