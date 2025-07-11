@@ -6,6 +6,7 @@
  */
 
 import Bullet from './bullet.js';
+import { TransformEffect } from '../rendering/effects.js';
 
 export default class Player {
     constructor(game, x, y) {
@@ -180,10 +181,8 @@ export default class Player {
             this.updateModeProperties();
             this.transformCooldown = 1000; // 1 second cooldown
             
-            // Add transform effect if available
-            if (typeof TransformEffect !== 'undefined') {
-                this.game.addEffect(new TransformEffect(this.game, this.x, this.y));
-            }
+            // Add transform effect
+            this.game.addEffect(new TransformEffect(this.game, this.x, this.y));
         }
     }
     

@@ -213,11 +213,113 @@ export class TrailEffect extends Effect {
     }
 }
 
+export class TransformEffect extends Effect {
+    constructor(game, x, y) {
+        super(game, x, y);
+        this.maxAge = 1000;
+        this.particles = [];
+        this.rings = [];
+        this.createEffect();
+    }
+    
+    createEffect() {
+        // Create energy particles
+        for (let i = 0; i < 15; i++) {
+            const angle = (Math.PI * 2 * i) / 15;
+            const radius = Math.random() * 30 + 20;
+            const speed = Math.random() * 50 + 25;
+            
+            this.particles.push({
+                x: this.x + Math.cos(angle) * radius,
+                y: this.y + Math.sin(angle) * radius,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                life: 1,
+                size: Math.random() * 3 + 2,
+                color: Math.random() > 0.5 ? '#00ffff' : '#0088ff'
+            });
+        }
+        
+        // Create expanding rings
+        for (let i = 0; i < 3; i++) {
+            this.rings.push({
+                radius: 0,
+                maxRadius: 60 + i * 20,
+                life: 1,
+                speed: 100 + i * 30,
+                color: '#00aaff'
+            });
+        }
+    }
+    
+    update(deltaTime) {
+        super.update(deltaTime);
+        
+        const timeMultiplier = deltaTime / 1000;
+        
+        // Update particles
+        this.particles.forEach(particle => {
+            particle.x += particle.vx * timeMultiplier;
+            particle.y += particle.vy * timeMultiplier;
+            particle.life -= timeMultiplier;
+            
+            // Slow down particles
+            particle.vx *= 0.95;
+            particle.vy *= 0.95;
+        });
+        
+        // Update rings
+        this.rings.forEach(ring => {
+            ring.radius += ring.speed * timeMultiplier;
+            ring.life -= timeMultiplier;
+        });
+        
+        // Remove dead particles and rings
+        this.particles = this.particles.filter(p => p.life > 0);
+        this.rings = this.rings.filter(r => r.life > 0);
+        
+        if (this.particles.length === 0 && this.rings.length === 0) {
+            this.markedForDeletion = true;
+        }
+    }
+    
+    render(ctx) {
+        ctx.save();
+        
+        // Render rings
+        this.rings.forEach(ring => {
+            const alpha = ring.life;
+            ctx.globalAlpha = alpha * 0.7;
+            ctx.strokeStyle = ring.color;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, ring.radius, 0, Math.PI * 2);
+            ctx.stroke();
+        });
+        
+        // Render particles
+        this.particles.forEach(particle => {
+            const alpha = particle.life;
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = particle.color;
+            ctx.fillRect(
+                particle.x - particle.size / 2,
+                particle.y - particle.size / 2,
+                particle.size,
+                particle.size
+            );
+        });
+        
+        ctx.restore();
+    }
+}
+
 // Default export
 export default {
     Effect,
     Explosion,
     PowerupEffect,
     MuzzleFlash,
-    TrailEffect
+    TrailEffect,
+    TransformEffect
 };
