@@ -3,8 +3,7 @@ name: Test Suite
 on:
   push:
     branches: [ main, develop, feature/* ]
-    # Don't run on master - deploy.yml handles that
-    branches-ignore: [ master ]
+    # Note: master is excluded (not listed above) - deploy.yml handles master
   pull_request:
     branches: [ main, develop ]
 
