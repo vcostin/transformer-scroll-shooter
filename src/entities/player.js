@@ -1,5 +1,14 @@
-// Player class with transformer capabilities
-class Player {
+/**
+ * Player Class - Phase 3 Game Object Module
+ * 
+ * Represents the player character with transformer capabilities.
+ * Supports multiple vehicle modes with different properties.
+ */
+
+import Bullet from './bullet.js';
+import { TransformEffect } from '../rendering/effects.js';
+
+export default class Player {
     constructor(game, x, y) {
         this.game = game;
         this.x = x;
@@ -103,9 +112,14 @@ class Player {
         this.x += dx * moveSpeed;
         this.y += dy * moveSpeed;
         
-        // Keep player on screen
-        this.x = Math.max(0, Math.min(this.game.width - this.width, this.x));
-        this.y = Math.max(0, Math.min(this.game.height - this.height, this.y));
+        // Keep player on screen - use utility function when available
+        if (typeof window !== 'undefined' && typeof window.MathUtils !== 'undefined') {
+            this.x = window.MathUtils.clamp(this.x, 0, this.game.width - this.width);
+            this.y = window.MathUtils.clamp(this.y, 0, this.game.height - this.height);
+        } else {
+            this.x = Math.max(0, Math.min(this.game.width - this.width, this.x));
+            this.y = Math.max(0, Math.min(this.game.height - this.height, this.y));
+        }
     }
     
     shoot() {

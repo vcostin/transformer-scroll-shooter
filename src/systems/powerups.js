@@ -1,5 +1,9 @@
-// Power-up system
-class Powerup {
+/**
+ * Power-up System - ES Module Version
+ * Handles collectible power-ups and their effects
+ */
+
+export class Powerup {
     constructor(game, x, y, type) {
         this.game = game;
         this.x = x;
@@ -49,6 +53,11 @@ class Powerup {
                 this.symbol = '⟲';
                 this.description = 'Transform';
                 break;
+                
+            default:
+                this.color = '#00ff00';
+                this.symbol = '?';
+                this.description = 'Unknown';
         }
     }
     
@@ -98,70 +107,83 @@ class Powerup {
         
         // Draw symbol
         ctx.fillStyle = this.color;
-        ctx.font = '14px Courier New';
+        ctx.font = '16px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(this.symbol, 0, 0);
         
-        // Reset shadow
-        ctx.shadowBlur = 0;
-        
         ctx.restore();
-        
-        // Draw description when close to player
-        const player = this.game.player;
-        const distance = Math.sqrt(
-            Math.pow(player.x - this.x, 2) + 
-            Math.pow(player.y - this.y, 2)
-        );
-        
-        if (distance < 80) {
-            ctx.fillStyle = this.color;
-            ctx.font = '10px Courier New';
-            ctx.textAlign = 'center';
-            ctx.fillText(this.description, centerX, centerY - this.height);
+    }
+    
+    // Apply effect to player
+    applyEffect(player) {
+        switch (this.type) {
+            case 'health':
+                player.health = Math.min(player.maxHealth, player.health + 25);
+                break;
+                
+            case 'shield':
+                player.shield = Math.min(100, player.shield + 50);
+                break;
+                
+            case 'rapidfire':
+                player.addPowerup('rapidfire', 10000); // 10 seconds
+                break;
+                
+            case 'multishot':
+                player.addPowerup('multishot', 8000); // 8 seconds
+                break;
+                
+            case 'transform':
+                if (player.transformCooldown <= 0) {
+                    player.transform();
+                }
+                break;
         }
     }
 }
 
-// Synergy system for powerups
-class PowerupSynergy {
-    static checkSynergies(player) {
-        const activePowerups = player.activePowerups.map(p => p.type);
-        const synergies = [];
-        
-        // Rapid Fire + Multi-Shot = Bullet Storm
-        if (activePowerups.includes('rapidfire') && activePowerups.includes('multishot')) {
-            synergies.push({
-                name: 'Bullet Storm',
-                effect: 'Even faster firing rate with spread shots',
-                bonus: () => {
-                    player.currentShootRate *= 0.5; // Even faster
-                }
-            });
-        }
-        
-        // Shield + Transform = Adaptive Defense
-        if (player.shield > 0 && activePowerups.includes('transform')) {
-            synergies.push({
-                name: 'Adaptive Defense',
-                effect: 'Transform grants temporary invulnerability',
-                bonus: () => {
-                    // Implemented in transform method
-                }
-            });
-        }
-        
-        return synergies;
-    }
+// Powerup spawning utilities
+export const PowerupTypes = {
+    HEALTH: 'health',
+    SHIELD: 'shield',
+    RAPIDFIRE: 'rapidfire',
+    MULTISHOT: 'multishot',
+    TRANSFORM: 'transform'
+};
+
+export const PowerupSpawner = {
+    getRandomType() {
+        const types = Object.values(PowerupTypes);
+        return types[Math.floor(Math.random() * types.length)];
+    },
     
-    static applySynergies(player) {
-        const synergies = this.checkSynergies(player);
-        synergies.forEach(synergy => {
-            if (synergy.bonus) {
-                synergy.bonus();
+    getWeightedType() {
+        const weights = {
+            health: 30,
+            shield: 20,
+            rapidfire: 25,
+            multishot: 20,
+            transform: 5
+        };
+        
+        const totalWeight = Object.values(weights).reduce((sum, weight) => sum + weight, 0);
+        let random = Math.random() * totalWeight;
+        
+        for (const [type, weight] of Object.entries(weights)) {
+            random -= weight;
+            if (random <= 0) {
+                return type;
             }
-        });
-        return synergies;
+        }
+        
+        return PowerupTypes.HEALTH;
     }
-}
+};
+
+// Default export
+export default {
+    Powerup,
+    PowerupTypes,
+    PowerupSpawner
+};

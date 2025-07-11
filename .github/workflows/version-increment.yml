@@ -3,7 +3,7 @@ name: Auto Version Increment
 on:
   pull_request:
     types: [closed]
-    branches: [master]
+    branches: [main, master]
 
 jobs:
   increment-version:
@@ -20,7 +20,11 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version: 'lts/*'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
     
     - name: Configure Git
       run: |
@@ -47,7 +51,7 @@ jobs:
     - name: Get current version
       id: current-version
       run: |
-        CURRENT_VERSION=$(node -p "require('./js/version.js').VERSION")
+        CURRENT_VERSION=$(node -p "JSON.parse(require('fs').readFileSync('./package.json', 'utf8')).version")
         echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
     
     - name: Increment version
@@ -81,44 +85,44 @@ jobs:
       run: |
         NEW_VERSION="${{ steps.new-version.outputs.version }}"
         
-        # Update js/version.js
-        cat > js/version.js << EOF
-        // Application Version Information
-        const VERSION_INFO = {
-            VERSION: '$NEW_VERSION',
-            BUILD_DATE: '$(date -u +"%Y-%m-%dT%H:%M:%SZ")',
-            RELEASE_NOTES: {
-                '$NEW_VERSION': 'Boss Enemy System Implementation - Added comprehensive boss battle system with 3 unique boss types, multi-phase combat, and enhanced gameplay progression.'
-            }
-        };
+        # Update package.json
+        node -e "
+          const pkg = require('./package.json');
+          pkg.version = '$NEW_VERSION';
+          require('fs').writeFileSync('./package.json', JSON.stringify(pkg, null, 2) + '\n');
+        "
         
-        // Export for use in other modules
-        if (typeof module !== 'undefined' && module.exports) {
-            module.exports = VERSION_INFO;
-        }
+        # Update src/constants/game-constants.js
+        # Read the current file and update the version
+        node -e "
+          const fs = require('fs');
+          const filePath = './src/constants/game-constants.js';
+          let content = fs.readFileSync(filePath, 'utf8');
+          
+          // Update the version in GAME_INFO
+          content = content.replace(
+            /version: '[^']*'/,
+            \"version: '$NEW_VERSION'\"
+          );
+          
+          // Update the build date
+          content = content.replace(
+            /buildDate: '[^']*'/,
+            \"buildDate: '$(date -u +\"%Y-%m-%dT%H:%M:%SZ\")'\"
+          );
+          
+          fs.writeFileSync(filePath, content);
+        "
         
-        // Global access for browser
-        if (typeof window !== 'undefined') {
-            window.VERSION_INFO = VERSION_INFO;
-        }
-        EOF
-        
-        # Update package.json if it exists
-        if [ -f package.json ]; then
-          node -e "
-            const pkg = require('./package.json');
-            pkg.version = '$NEW_VERSION';
-            require('fs').writeFileSync('./package.json', JSON.stringify(pkg, null, 2) + '\n');
-          "
-        fi
+        # Run the sync-version script to update js/version.js
+        npm run sync-version
     
     - name: Commit version update
       run: |
         NEW_VERSION="${{ steps.new-version.outputs.version }}"
         INCREMENT_TYPE="${{ steps.increment-type.outputs.type }}"
         
-        git add js/version.js
-        [ -f package.json ] && git add package.json
+        git add package.json src/constants/game-constants.js js/version.js
         
         git commit -m "chore: bump version to $NEW_VERSION
         
@@ -126,32 +130,34 @@ jobs:
         - Updated from PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}
         - Build date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
         
-        git push origin master
+        git push origin ${{ github.head_ref || github.ref_name }}
     
     - name: Create GitHub Release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: v${{ steps.new-version.outputs.version }}
-        release_name: Release v${{ steps.new-version.outputs.version }}
-        body: |
-          ## 🚀 Release v${{ steps.new-version.outputs.version }}
+      run: |
+        NEW_VERSION="${{ steps.new-version.outputs.version }}"
+        INCREMENT_TYPE="${{ steps.increment-type.outputs.type }}"
+        
+        # Create release using GitHub CLI
+        gh release create "v$NEW_VERSION" \
+          --title "Release v$NEW_VERSION" \
+          --notes "## 🚀 Release v$NEW_VERSION
           
-          **Type:** ${{ steps.increment-type.outputs.type }} release
+          **Type:** $INCREMENT_TYPE release
           **Merged PR:** #${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}
           
           ### Changes
           ${{ github.event.pull_request.body }}
           
           ### Installation
-          ```bash
+          \`\`\`bash
           git clone https://github.com/vcostin/transformer-scroll-shooter.git
           cd transformer-scroll-shooter
-          git checkout v${{ steps.new-version.outputs.version }}
-          ```
+          git checkout v$NEW_VERSION
+          npm install
+          npm run dev
+          \`\`\`
           
           ### Play the Game
-          Open `index.html` in your browser or visit the [live demo](https://vcostin.github.io/transformer-scroll-shooter/).
-        draft: false
-        prerelease: false
+          Visit the [live demo](https://vcostin.github.io/transformer-scroll-shooter/) or run locally with \`npm run dev\`."
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
