@@ -9,7 +9,8 @@ export default defineConfig({
   define: {
     // Inject version info at build time
     __APP_VERSION__: JSON.stringify(packageJson.version),
-    __APP_NAME__: JSON.stringify(packageJson.name),
+    __APP_NAME__: JSON.stringify('Transformer Scroll Shooter'), // Display name
+    __APP_PACKAGE_NAME__: JSON.stringify(packageJson.name), // Package name
     __APP_DESCRIPTION__: JSON.stringify(packageJson.description),
     __BUILD_DATE__: JSON.stringify(new Date().toISOString()),
   },
