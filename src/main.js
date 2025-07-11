@@ -78,18 +78,8 @@ console.log('🎮 Starting game initialization...');
 let game;
 
 try {
-    console.log('🎮 Starting game initialization...');
-    console.log('Canvas element:', document.getElementById('gameCanvas'));
-    console.log('Game class:', Game);
-    console.log('Player class:', Player);
-    console.log('Bullet class:', Bullet);
-    
     // Initialize the game
     game = new Game();
-    
-    console.log('✅ Game object created:', game);
-    console.log('Game canvas:', game.canvas);
-    console.log('Game context:', game.ctx);
     
     // Add welcome messages from centralized version info
     GAME_INFO.welcomeMessage.forEach(msg => console.log(msg));
