@@ -12,10 +12,12 @@ permissions:
 
 concurrency:
   group: "pages"
-  cancel-in-progress: false
+  cancel-in-progress: true  # Cancel previous runs if new one starts
 
 jobs:
   deploy:
+    # Only run on branch pushes, not tag pushes
+    if: github.ref_type == 'branch'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
