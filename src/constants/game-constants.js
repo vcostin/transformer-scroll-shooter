@@ -36,7 +36,7 @@ export const GAME_INFO = {
     version: '1.1.0',
     description: 'A retro-style side-scrolling shooter game featuring a transforming vehicle with comprehensive audio system and options menu',
     author: 'Game Developer',
-    buildDate: new Date().toISOString().split('T')[0], // Auto-generated build date
+    buildDate: '2025-07-11T19:50:51.641Z', // Auto-generated build date
     
     // Version components for semantic versioning
     get versionMajor() { return parseInt(this.version.split('.')[0]); },

@@ -29,7 +29,7 @@ if (fs.existsSync(constantsPath)) {
     // Update the build date
     const buildDate = new Date().toISOString();
     content = content.replace(
-        /buildDate: '[^']*'/,
+        /buildDate:\s*(?:'[^']*'|new Date\(\)\.toISOString\(\)\.split\('T'\)\[0\])/,
         `buildDate: '${buildDate}'`
     );
     
@@ -37,9 +37,10 @@ if (fs.existsSync(constantsPath)) {
     console.log(`✅ Updated src/constants/game-constants.js`);
 }
 
-// Update js/version.js (legacy compatibility)
+// Update js/version.js (legacy compatibility - only if it exists)
 const versionPath = path.join(__dirname, 'js', 'version.js');
-const versionContent = `// Application Version Information
+if (fs.existsSync(path.dirname(versionPath))) {
+    const versionContent = `// Application Version Information
 const VERSION_INFO = {
     VERSION: '${version}',
     BUILD_DATE: '${new Date().toISOString()}',
@@ -59,8 +60,11 @@ if (typeof window !== 'undefined') {
 }
 `;
 
-fs.writeFileSync(versionPath, versionContent);
-console.log(`✅ Updated js/version.js`);
+    fs.writeFileSync(versionPath, versionContent);
+    console.log(`✅ Updated js/version.js`);
+} else {
+    console.log(`ℹ️  Skipping js/version.js (legacy file, not present in Vite migration)`);
+}
 
 console.log(`🎉 Version sync complete!`);
 console.log(`   Version: ${version}`);

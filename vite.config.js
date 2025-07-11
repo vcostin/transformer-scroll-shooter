@@ -19,7 +19,5 @@ export default defineConfig({
   optimizeDeps: {
     include: []
   },
-  assetsInclude: ['**/*.mp3', '**/*.wav', '**/*.ogg', '**/*.png', '**/*.jpg', '**/*.gif'],
-  define: {
-  }
+  assetsInclude: ['**/*.mp3', '**/*.wav', '**/*.ogg', '**/*.png', '**/*.jpg', '**/*.gif']
 })
