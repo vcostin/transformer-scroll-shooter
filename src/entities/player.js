@@ -112,7 +112,7 @@ export default class Player {
         this.y += dy * moveSpeed;
         
         // Keep player on screen - use utility function when available
-        if (typeof window.MathUtils !== 'undefined') {
+        if (typeof window !== 'undefined' && typeof window.MathUtils !== 'undefined') {
             this.x = window.MathUtils.clamp(this.x, 0, this.game.width - this.width);
             this.y = window.MathUtils.clamp(this.y, 0, this.game.height - this.height);
         } else {

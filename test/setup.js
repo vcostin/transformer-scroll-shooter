@@ -6,6 +6,18 @@
 
 import { beforeEach, vi } from 'vitest'
 
+// Suppress only Web Audio API warnings during tests
+const originalWarn = console.warn
+vi.spyOn(console, 'warn').mockImplementation((...args) => {
+  const message = args.join(' ')
+  if (message.includes('Web Audio API not supported')) {
+    // Suppress only Web Audio API warnings
+    return
+  }
+  // Allow all other warnings to pass through
+  originalWarn(...args)
+})
+
 // Mock canvas and 2D context for testing
 global.HTMLCanvasElement.prototype.getContext = vi.fn(() => ({
   fillRect: vi.fn(),

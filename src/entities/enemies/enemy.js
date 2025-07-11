@@ -122,9 +122,11 @@ export default class Enemy {
                 this.x -= moveSpeed;
                 
                 // Slight vertical movement towards player
-                const dy = player.y - this.y;
-                if (Math.abs(dy) > 5) {
-                    this.y += Math.sign(dy) * moveSpeed * 0.3;
+                if (player) {
+                    const dy = player.y - this.y;
+                    if (Math.abs(dy) > 5) {
+                        this.y += Math.sign(dy) * moveSpeed * 0.3;
+                    }
                 }
                 break;
                 
@@ -154,13 +156,15 @@ export default class Enemy {
                 this.x -= moveSpeed * 0.5; // Move slower than other enemies
                 
                 // Track player vertically but with limits
-                const bossTargetY = player.y - this.height / 2;
-                const maxY = this.game.height - this.height;
-                const clampedTargetY = Math.max(0, Math.min(maxY, bossTargetY));
-                
-                const bossDy = clampedTargetY - this.y;
-                if (Math.abs(bossDy) > 5) {
-                    this.y += Math.sign(bossDy) * moveSpeed * 0.4;
+                if (player) {
+                    const bossTargetY = player.y - this.height / 2;
+                    const maxY = this.game.height - this.height;
+                    const clampedTargetY = Math.max(0, Math.min(maxY, bossTargetY));
+                    
+                    const bossDy = clampedTargetY - this.y;
+                    if (Math.abs(bossDy) > 5) {
+                        this.y += Math.sign(bossDy) * moveSpeed * 0.4;
+                    }
                 }
                 break;
         }
@@ -168,6 +172,9 @@ export default class Enemy {
     
     shoot() {
         const player = this.game.player;
+        
+        // Only shoot if player exists
+        if (!player) return;
         
         // Calculate direction to player
         const dx = player.x - this.x;

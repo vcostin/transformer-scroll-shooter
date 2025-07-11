@@ -46,6 +46,7 @@ export class Game {
         this.fps = 0;
         this.frameCount = 0;
         this.fpsTimer = 0;
+        this.animationFrameId = null;
         
         // Systems
         this.audio = new AudioManager();
@@ -122,6 +123,11 @@ export class Game {
     }
     
     gameLoop(currentTime = 0) {
+        // Don't run game loop if in test environment
+        if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
+            return;
+        }
+        
         const deltaTime = currentTime - this.lastTime;
         this.lastTime = currentTime;
         
@@ -139,15 +145,19 @@ export class Game {
         }
         
         this.render();
-        requestAnimationFrame((time) => this.gameLoop(time));
+        this.animationFrameId = requestAnimationFrame((time) => this.gameLoop(time));
     }
     
     update(deltaTime) {
         // Update background
-        this.background.update(deltaTime);
+        if (this.background && typeof this.background.update === 'function') {
+            this.background.update(deltaTime);
+        }
         
         // Update player
-        this.player.update(deltaTime, this.keys);
+        if (this.player && typeof this.player.update === 'function') {
+            this.player.update(deltaTime, this.keys);
+        }
         
         // Spawn enemies and check for level progression
         this.enemySpawnTimer += deltaTime;
@@ -197,8 +207,10 @@ export class Game {
     
     updateArray(array, deltaTime) {
         for (let i = array.length - 1; i >= 0; i--) {
-            array[i].update(deltaTime);
-            if (array[i].markedForDeletion) {
+            if (array[i] && typeof array[i].update === 'function') {
+                array[i].update(deltaTime);
+            }
+            if (array[i] && array[i].markedForDeletion) {
                 array.splice(i, 1);
             }
         }
@@ -328,6 +340,7 @@ export class Game {
                             // Check for level progression
                             if (this.enemiesKilled % this.enemiesPerLevel === 0) {
                                 this.level++;
+                                this.enemiesKilled = 0; // Reset counter for next level
                                 this.addMessage(`LEVEL ${this.level}!`, '#00ff00', GAME_CONSTANTS.MESSAGE_DURATION.LEVEL_UP);
                             }
                             
@@ -389,17 +402,20 @@ export class Game {
     }
     
     cleanup() {
-        // Remove off-screen objects
+        // Remove off-screen objects and marked for deletion
         this.bullets = this.bullets.filter(bullet => 
+            !bullet.markedForDeletion && 
             bullet.x > -50 && bullet.x < this.width + 50 && 
             bullet.y > -50 && bullet.y < this.height + 50
         );
         
         this.enemies = this.enemies.filter(enemy => 
+            !enemy.markedForDeletion && 
             enemy.x > -100 && enemy.x < this.width + 100
         );
         
         this.powerups = this.powerups.filter(powerup => 
+            !powerup.markedForDeletion && 
             powerup.x > -100 && powerup.x < this.width + 100
         );
     }
@@ -440,6 +456,17 @@ export class Game {
     
     addBullet(bullet) {
         this.bullets.push(bullet);
+    }
+    
+    addEffect(effect) {
+        this.effects.push(effect);
+    }
+    
+    stop() {
+        if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
+        }
     }
 }
 
