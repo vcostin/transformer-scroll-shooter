@@ -32,11 +32,11 @@ export const GAME_CONSTANTS = {
 };
 
 export const GAME_INFO = {
-    name: 'Transformer Scroll Shooter',
-    version: '1.2.2',
-    description: 'A retro-style side-scrolling shooter game featuring a transforming vehicle with comprehensive audio system and options menu',
+    name: __APP_NAME__,
+    version: __APP_VERSION__,
+    description: __APP_DESCRIPTION__,
     author: 'Game Developer',
-    buildDate: '2025-07-11T21:05:05Z', // Auto-generated build date
+    buildDate: __BUILD_DATE__,
     
     // Version components for semantic versioning
     get versionMajor() { return parseInt(this.version.split('.')[0]); },
