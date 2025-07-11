@@ -1,0 +1,157 @@
+name: Auto Version Increment
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [master]
+
+jobs:
+  increment-version:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    - name: Configure Git
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+    
+    - name: Determine version increment type
+      id: increment-type
+      run: |
+        PR_TITLE="${{ github.event.pull_request.title }}"
+        PR_BODY="${{ github.event.pull_request.body }}"
+        
+        # Check for breaking changes
+        if [[ "$PR_TITLE" =~ ^(feat|fix|docs|style|refactor|test|chore)!: ]] || [[ "$PR_BODY" =~ "BREAKING CHANGE" ]]; then
+          echo "type=major" >> $GITHUB_OUTPUT
+        # Check for new features
+        elif [[ "$PR_TITLE" =~ ^feat: ]]; then
+          echo "type=minor" >> $GITHUB_OUTPUT
+        # Everything else is a patch
+        else
+          echo "type=patch" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Get current version
+      id: current-version
+      run: |
+        CURRENT_VERSION=$(node -p "require('./js/version.js').VERSION")
+        echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+    
+    - name: Increment version
+      id: new-version
+      run: |
+        CURRENT_VERSION="${{ steps.current-version.outputs.version }}"
+        INCREMENT_TYPE="${{ steps.increment-type.outputs.type }}"
+        
+        IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
+        
+        case $INCREMENT_TYPE in
+          major)
+            major=$((major + 1))
+            minor=0
+            patch=0
+            ;;
+          minor)
+            minor=$((minor + 1))
+            patch=0
+            ;;
+          patch)
+            patch=$((patch + 1))
+            ;;
+        esac
+        
+        NEW_VERSION="$major.$minor.$patch"
+        echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+        echo "increment_type=$INCREMENT_TYPE" >> $GITHUB_OUTPUT
+    
+    - name: Update version files
+      run: |
+        NEW_VERSION="${{ steps.new-version.outputs.version }}"
+        
+        # Update js/version.js
+        cat > js/version.js << EOF
+        // Application Version Information
+        const VERSION_INFO = {
+            VERSION: '$NEW_VERSION',
+            BUILD_DATE: '$(date -u +"%Y-%m-%dT%H:%M:%SZ")',
+            RELEASE_NOTES: {
+                '$NEW_VERSION': 'Boss Enemy System Implementation - Added comprehensive boss battle system with 3 unique boss types, multi-phase combat, and enhanced gameplay progression.'
+            }
+        };
+        
+        // Export for use in other modules
+        if (typeof module !== 'undefined' && module.exports) {
+            module.exports = VERSION_INFO;
+        }
+        
+        // Global access for browser
+        if (typeof window !== 'undefined') {
+            window.VERSION_INFO = VERSION_INFO;
+        }
+        EOF
+        
+        # Update package.json if it exists
+        if [ -f package.json ]; then
+          node -e "
+            const pkg = require('./package.json');
+            pkg.version = '$NEW_VERSION';
+            require('fs').writeFileSync('./package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+        fi
+    
+    - name: Commit version update
+      run: |
+        NEW_VERSION="${{ steps.new-version.outputs.version }}"
+        INCREMENT_TYPE="${{ steps.increment-type.outputs.type }}"
+        
+        git add js/version.js
+        [ -f package.json ] && git add package.json
+        
+        git commit -m "chore: bump version to $NEW_VERSION
+        
+        - $INCREMENT_TYPE version increment
+        - Updated from PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}
+        - Build date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+        
+        git push origin master
+    
+    - name: Create GitHub Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ steps.new-version.outputs.version }}
+        release_name: Release v${{ steps.new-version.outputs.version }}
+        body: |
+          ## 🚀 Release v${{ steps.new-version.outputs.version }}
+          
+          **Type:** ${{ steps.increment-type.outputs.type }} release
+          **Merged PR:** #${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}
+          
+          ### Changes
+          ${{ github.event.pull_request.body }}
+          
+          ### Installation
+          ```bash
+          git clone https://github.com/vcostin/transformer-scroll-shooter.git
+          cd transformer-scroll-shooter
+          git checkout v${{ steps.new-version.outputs.version }}
+          ```
+          
+          ### Play the Game
+          Open `index.html` in your browser or visit the [live demo](https://vcostin.github.io/transformer-scroll-shooter/).
+        draft: false
+        prerelease: false

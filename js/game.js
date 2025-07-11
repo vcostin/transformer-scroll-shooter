@@ -1,4 +1,19 @@
 // Main Game Engine
+
+// Game Constants
+const GAME_CONSTANTS = {
+    BOSS_LEVEL_INTERVAL: 5,  // Boss every 5 levels
+    ENEMIES_PER_LEVEL: 10,   // Regular enemies per level
+    BOSS_BONUS_SCORE: 1000,  // Bonus score for boss defeat
+    BOSS_HEALTH_RESTORE: 25, // Health restored on boss defeat
+    MESSAGE_DURATION: {
+        BOSS: 3000,
+        VICTORY: 2000,
+        INFO: 2000
+    },
+    MAX_MESSAGES: 3
+};
+
 class Game {
     constructor() {
         this.canvas = document.getElementById('gameCanvas');
@@ -12,6 +27,10 @@ class Game {
         this.paused = false;
         this.showFPS = false;
         this.difficulty = 'Normal';
+        this.level = 1;
+        this.enemiesKilled = 0;
+        this.enemiesPerLevel = GAME_CONSTANTS.ENEMIES_PER_LEVEL;
+        this.bossActive = false;
         
         // Game objects
         this.player = null;
@@ -20,6 +39,7 @@ class Game {
         this.powerups = [];
         this.effects = [];
         this.background = null;
+        this.messages = [];
         
         // Timing
         this.lastTime = 0;
@@ -128,12 +148,17 @@ class Game {
         // Update player
         this.player.update(deltaTime, this.keys);
         
-        // Spawn enemies
+        // Spawn enemies and check for level progression
         this.enemySpawnTimer += deltaTime;
         const difficultyMultiplier = this.getDifficultyMultiplier();
         const spawnRate = (1000 + Math.random() * 2000) / difficultyMultiplier;
         
-        if (this.enemySpawnTimer > spawnRate) {
+        // Check for boss spawn (every BOSS_LEVEL_INTERVAL levels)
+        if (this.level % GAME_CONSTANTS.BOSS_LEVEL_INTERVAL === 0 && !this.bossActive && this.enemiesKilled === 0) {
+            this.spawnBoss();
+        }
+        // Regular enemy spawning
+        else if (!this.bossActive && this.enemySpawnTimer > spawnRate) {
             this.spawnEnemy();
             this.enemySpawnTimer = 0;
         }
@@ -151,11 +176,19 @@ class Game {
         this.updateArray(this.powerups, deltaTime);
         this.updateArray(this.effects, deltaTime);
         
+        // Update messages
+        this.updateMessages();
+        
         // Check collisions
         this.checkCollisions();
         
         // Clean up off-screen objects
         this.cleanup();
+        
+        // Check for game over condition
+        if (this.player.health <= 0) {
+            this.gameOver = true;
+        }
         
         // Update UI
         this.updateUI();
@@ -182,6 +215,37 @@ class Game {
         );
         
         this.enemies.push(enemy);
+    }
+    
+    /**
+     * Spawns a boss enemy at the current level.
+     * Bosses are triggered every BOSS_LEVEL_INTERVAL levels and are significantly
+     * more challenging than regular enemies with unique abilities and higher health.
+     * 
+     * @description Creates a random boss type from available boss types:
+     * - fortress: Heavy armor, multiple turrets, missile attacks
+     * - speeddemon: Fast movement, teleportation, rapid-fire
+     * - shieldmaster: Rotating shields, energy waves, damage reduction
+     * 
+     * The boss is spawned off-screen and moves into view with a warning message.
+     * Sets the bossActive flag to prevent regular enemy spawning during boss battles.
+     */
+    spawnBoss() {
+        const bossTypes = ['fortress', 'speeddemon', 'shieldmaster'];
+        const bossType = bossTypes[Math.floor(Math.random() * bossTypes.length)];
+        
+        const boss = new Boss(
+            this,
+            this.width + 100,
+            this.height / 2,
+            bossType
+        );
+        
+        this.enemies.push(boss);
+        this.bossActive = true;
+        
+        // Show boss warning message
+        this.addMessage(`WARNING: Level ${this.level} Boss Approaching!`, 'boss');
     }
     
     spawnPowerup() {
@@ -222,6 +286,27 @@ class Game {
                             this.score += enemy.points;
                             this.addEffect(new Explosion(this, enemy.x, enemy.y, 'large'));
                             this.audio.playSound('explosion', 0.8);
+                            
+                            // Check if defeated enemy was a boss
+                            if (enemy.isBoss) {
+                                this.bossActive = false;
+                                this.addMessage(`Level ${this.level} Boss Defeated!`, 'victory');
+                                // Reward player with extra points and powerup
+                                this.score += GAME_CONSTANTS.BOSS_BONUS_SCORE;
+                                this.spawnPowerup();
+                                // Advance to next level after boss defeat
+                                this.level++;
+                                this.enemiesKilled = 0;
+                                this.addMessage(`Level ${this.level} - Fight!`, 'info');
+                            } else {
+                                this.enemiesKilled++;
+                                // Check if enough enemies killed to advance level (for non-boss levels)
+                                if (this.enemiesKilled >= this.enemiesPerLevel) {
+                                    this.level++;
+                                    this.enemiesKilled = 0;
+                                    this.addMessage(`Level ${this.level} - Fight!`, 'info');
+                                }
+                            }
                         } else {
                             this.audio.playSound('enemyHit', 0.5);
                         }
@@ -289,6 +374,71 @@ class Game {
         this.effects.push(effect);
     }
     
+    addMessage(text, type = 'info') {
+        const message = {
+            text: text,
+            type: type,
+            timestamp: Date.now(),
+            duration: GAME_CONSTANTS.MESSAGE_DURATION[type.toUpperCase()] || GAME_CONSTANTS.MESSAGE_DURATION.INFO,
+            alpha: 1.0
+        };
+        this.messages.push(message);
+        
+        // Limit to max messages
+        if (this.messages.length > GAME_CONSTANTS.MAX_MESSAGES) {
+            this.messages.shift();
+        }
+    }
+    
+    updateMessages() {
+        const currentTime = Date.now();
+        this.messages.forEach(message => {
+            const elapsed = currentTime - message.timestamp;
+            if (elapsed > message.duration - 500) {
+                // Fade out in last 500ms
+                message.alpha = Math.max(0, 1 - (elapsed - (message.duration - 500)) / 500);
+            }
+        });
+        
+        // Remove expired messages
+        this.messages = this.messages.filter(message => 
+            currentTime - message.timestamp < message.duration
+        );
+    }
+    
+    renderMessages() {
+        this.ctx.save();
+        this.ctx.textAlign = 'center';
+        this.ctx.font = 'bold 24px Arial';
+        
+        this.messages.forEach((message, index) => {
+            const y = 100 + index * 30;
+            this.ctx.globalAlpha = message.alpha;
+            
+            // Set color based on message type
+            switch (message.type) {
+                case 'boss':
+                    this.ctx.fillStyle = '#ff4444';
+                    this.ctx.shadowColor = '#000000';
+                    this.ctx.shadowBlur = 3;
+                    break;
+                case 'victory':
+                    this.ctx.fillStyle = '#44ff44';
+                    this.ctx.shadowColor = '#000000';
+                    this.ctx.shadowBlur = 3;
+                    break;
+                default:
+                    this.ctx.fillStyle = '#ffffff';
+                    this.ctx.shadowColor = '#000000';
+                    this.ctx.shadowBlur = 2;
+            }
+            
+            this.ctx.fillText(message.text, this.width / 2, y);
+        });
+        
+        this.ctx.restore();
+    }
+    
     render() {
         // Clear canvas
         this.ctx.clearRect(0, 0, this.width, this.height);
@@ -317,6 +467,9 @@ class Game {
             this.ctx.textAlign = 'left';
             this.ctx.fillText(`FPS: ${this.fps}`, 10, this.height - 20);
         }
+        
+        // Render messages
+        this.renderMessages();
     }
     
     renderGameOver() {
@@ -340,6 +493,7 @@ class Game {
         document.getElementById('score').textContent = this.score;
         document.getElementById('health').textContent = this.player.health;
         document.getElementById('mode').textContent = this.player.mode.toUpperCase();
+        document.getElementById('level').textContent = this.level;
         
         // Update powerup indicators
         const powerupDiv = document.getElementById('powerups');
@@ -351,10 +505,14 @@ class Game {
     restart() {
         this.score = 0;
         this.gameOver = false;
+        this.level = 1;
+        this.enemiesKilled = 0;
+        this.bossActive = false;
         this.enemies = [];
         this.bullets = [];
         this.powerups = [];
         this.effects = [];
+        this.messages = [];
         this.player = new Player(this, 100, this.height / 2);
         this.enemySpawnTimer = 0;
         this.powerupSpawnTimer = 0;
