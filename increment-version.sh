@@ -6,8 +6,7 @@
 # Single Source of Truth: package.json
 # This script updates:
 # 1. package.json (primary source)
-# 2. src/constants/game-constants.js (ES module source)
-# 3. js/version.js (legacy compatibility)
+# 2. src/constants/game-constants.js (ES module GAME_INFO)
 
 set -e
 
@@ -87,35 +86,13 @@ if [ -f "src/constants/game-constants.js" ]; then
 fi
 
 # Update js/version.js (legacy compatibility)
-if [ ! -d "js" ]; then
-    mkdir -p js
-fi
-
-cat > js/version.js << EOF
-// Application Version Information
-const VERSION_INFO = {
-    VERSION: '$NEW_VERSION',
-    BUILD_DATE: '$(date -u +"%Y-%m-%dT%H:%M:%SZ")',
-    RELEASE_NOTES: {
-        '$NEW_VERSION': 'Manual version increment - $INCREMENT_TYPE update'
-    }
-};
-
-// Export for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = VERSION_INFO;
-}
-
-// Global access for browser
-if (typeof window !== 'undefined') {
-    window.VERSION_INFO = VERSION_INFO;
-}
-EOF
-echo "Updated js/version.js"
+# Note: Removed - We use modern ES6 modules only
+# Legacy js/ directory removed during Vite migration
 
 echo "Version updated successfully!"
+echo "Modern ES6 module structure - no legacy files needed"
 echo "Don't forget to:"
-echo "1. git add package.json src/constants/game-constants.js js/version.js"
+echo "1. git add package.json src/constants/game-constants.js"
 echo "2. git commit -m 'chore: bump version to $NEW_VERSION'"
 echo "3. git tag v$NEW_VERSION"
-echo "4. git push origin --tags"
+echo "4. git push origin master --tags"
