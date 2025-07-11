@@ -5,10 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Transformer Scroll Shooter</title>
     <script>
-        // Update title with version after page loads
+        // Update title and version info after page loads
         document.addEventListener('DOMContentLoaded', () => {
             if (typeof GAME_INFO !== 'undefined') {
                 document.title = GAME_INFO.fullTitle;
+                
+                // Update version info in UI
+                const versionElement = document.getElementById('game-version');
+                const buildTimeElement = document.getElementById('build-time');
+                
+                if (versionElement) {
+                    versionElement.textContent = `v${GAME_INFO.version}`;
+                }
+                
+                if (buildTimeElement) {
+                    const buildDate = new Date(GAME_INFO.buildDate);
+                    buildTimeElement.textContent = `Built: ${buildDate.toLocaleDateString()} ${buildDate.toLocaleTimeString()}`;
+                }
             }
         });
     </script>
@@ -73,6 +86,16 @@
             font-size: 12px;
             text-shadow: 0 0 5px #ff00ff;
         }
+        
+        #version-info {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            color: #888;
+            font-size: 10px;
+            text-align: right;
+            line-height: 1.2;
+        }
     </style>
 </head>
 <body>
@@ -88,6 +111,10 @@
             WASD: Move | SPACE: Shoot | Q: Transform | R: Restart | ESC: Options
         </div>
         <div class="powerup-indicator" id="powerups"></div>
+        <div id="version-info">
+            <div id="game-version">v0.0.0</div>
+            <div id="build-time">Built: Loading...</div>
+        </div>
     </div>
     
     <script type="module" src="/src/main.js"></script>
