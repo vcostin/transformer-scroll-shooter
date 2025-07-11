@@ -275,7 +275,7 @@ export class Game {
     }
     
     spawnBoss() {
-        const boss = new Enemy(this, this.width + 50, this.height / 2, 'boss');
+        const boss = new Enemy(this, this.width - 100, this.height / 2 - 30, 'boss');
         this.enemies.push(boss);
         this.bossActive = true;
         this.addMessage('BOSS APPROACHING!', '#ff0000', GAME_CONSTANTS.MESSAGE_DURATION.BOSS);

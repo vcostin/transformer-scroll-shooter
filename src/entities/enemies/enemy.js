@@ -148,6 +148,21 @@ export default class Enemy {
                     this.y += Math.sign(targetDy) * moveSpeed * 0.8;
                 }
                 break;
+                
+            case 'boss':
+                // Boss movement - slower horizontal movement with vertical tracking
+                this.x -= moveSpeed * 0.5; // Move slower than other enemies
+                
+                // Track player vertically but with limits
+                const bossTargetY = player.y - this.height / 2;
+                const maxY = this.game.height - this.height;
+                const clampedTargetY = Math.max(0, Math.min(maxY, bossTargetY));
+                
+                const bossDy = clampedTargetY - this.y;
+                if (Math.abs(bossDy) > 5) {
+                    this.y += Math.sign(bossDy) * moveSpeed * 0.4;
+                }
+                break;
         }
     }
     
@@ -202,6 +217,9 @@ export default class Enemy {
                 break;
             case 'scout':
                 this.drawScout(ctx);
+                break;
+            case 'boss':
+                this.drawBoss(ctx);
                 break;
         }
         
@@ -264,6 +282,32 @@ export default class Enemy {
         ctx.moveTo(this.x, this.y + this.height / 2);
         ctx.lineTo(this.x - 6, this.y + this.height / 2 - 3);
         ctx.lineTo(this.x - 6, this.y + this.height / 2 + 3);
+        ctx.closePath();
+        ctx.fill();
+    }
+    
+    drawBoss(ctx) {
+        // Main body - large and imposing
+        ctx.fillRect(this.x, this.y + 15, this.width - 15, 30);
+        
+        // Upper and lower sections
+        ctx.fillRect(this.x + 5, this.y + 5, this.width - 25, 15);
+        ctx.fillRect(this.x + 5, this.y + 40, this.width - 25, 15);
+        
+        // Central core
+        ctx.fillStyle = '#ff6666';
+        ctx.fillRect(this.x + 10, this.y + 20, this.width - 35, 20);
+        
+        // Weapon pods
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x + this.width - 20, this.y + 10, 8, 12);
+        ctx.fillRect(this.x + this.width - 20, this.y + 38, 8, 12);
+        
+        // Nose/front section
+        ctx.beginPath();
+        ctx.moveTo(this.x, this.y + this.height / 2);
+        ctx.lineTo(this.x - 15, this.y + this.height / 2 - 8);
+        ctx.lineTo(this.x - 15, this.y + this.height / 2 + 8);
         ctx.closePath();
         ctx.fill();
     }
