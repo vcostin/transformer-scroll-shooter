@@ -133,31 +133,31 @@ jobs:
         git push origin ${{ github.head_ref || github.ref_name }}
     
     - name: Create GitHub Release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: v${{ steps.new-version.outputs.version }}
-        release_name: Release v${{ steps.new-version.outputs.version }}
-        body: |
-          ## 🚀 Release v${{ steps.new-version.outputs.version }}
+      run: |
+        NEW_VERSION="${{ steps.new-version.outputs.version }}"
+        INCREMENT_TYPE="${{ steps.increment-type.outputs.type }}"
+        
+        # Create release using GitHub CLI
+        gh release create "v$NEW_VERSION" \
+          --title "Release v$NEW_VERSION" \
+          --notes "## 🚀 Release v$NEW_VERSION
           
-          **Type:** ${{ steps.increment-type.outputs.type }} release
+          **Type:** $INCREMENT_TYPE release
           **Merged PR:** #${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}
           
           ### Changes
           ${{ github.event.pull_request.body }}
           
           ### Installation
-          ```bash
+          \`\`\`bash
           git clone https://github.com/vcostin/transformer-scroll-shooter.git
           cd transformer-scroll-shooter
-          git checkout v${{ steps.new-version.outputs.version }}
+          git checkout v$NEW_VERSION
           npm install
           npm run dev
-          ```
+          \`\`\`
           
           ### Play the Game
-          Visit the [live demo](https://vcostin.github.io/transformer-scroll-shooter/) or run locally with `npm run dev`.
-        draft: false
-        prerelease: false
+          Visit the [live demo](https://vcostin.github.io/transformer-scroll-shooter/) or run locally with \`npm run dev\`."
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
