@@ -72,6 +72,13 @@ node_modules/
 # Vite build output
 dist/
 
+# Vite cache
+.vite/
+
+# Build artifacts
+build/
+*.tsbuildinfo
+
 # Serverless directories
 .serverless
 
