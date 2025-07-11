@@ -1,6 +1,6 @@
 {
   "name": "transformer-scroll-shooter",
-  "version": "1.2.0",
+  "version": "1.2.2",
   "description": "A retro-style side-scrolling shooter game featuring a transforming vehicle with comprehensive audio system and options menu",
   "main": "index.html",
   "scripts": {

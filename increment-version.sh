@@ -63,6 +63,7 @@ echo "Updated package.json"
 
 # Update src/constants/game-constants.js (ES module source)
 if [ -f "src/constants/game-constants.js" ]; then
+    BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
     node -e "
         const fs = require('fs');
         const filePath = './src/constants/game-constants.js';
@@ -77,7 +78,7 @@ if [ -f "src/constants/game-constants.js" ]; then
         // Update the build date
         content = content.replace(
             /buildDate: '[^']*'/,
-            \"buildDate: '$(date -u +\"%Y-%m-%dT%H:%M:%SZ\")'\"
+            \"buildDate: '$BUILD_DATE'\"
         );
         
         fs.writeFileSync(filePath, content);
@@ -86,6 +87,10 @@ if [ -f "src/constants/game-constants.js" ]; then
 fi
 
 # Update js/version.js (legacy compatibility)
+if [ ! -d "js" ]; then
+    mkdir -p js
+fi
+
 cat > js/version.js << EOF
 // Application Version Information
 const VERSION_INFO = {
