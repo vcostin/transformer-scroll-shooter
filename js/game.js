@@ -153,7 +153,7 @@ class Game {
         const difficultyMultiplier = this.getDifficultyMultiplier();
         const spawnRate = (1000 + Math.random() * 2000) / difficultyMultiplier;
         
-        // Check for boss spawn (every 5 levels)
+        // Check for boss spawn (every BOSS_LEVEL_INTERVAL levels)
         if (this.level % GAME_CONSTANTS.BOSS_LEVEL_INTERVAL === 0 && !this.bossActive && this.enemiesKilled === 0) {
             this.spawnBoss();
         }

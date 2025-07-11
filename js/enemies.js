@@ -143,6 +143,14 @@ class Enemy {
     
     takeDamage(damage) {
         this.health -= damage;
+        if (this.health <= 0) {
+            this.cleanup();
+        }
+    }
+    
+    cleanup() {
+        // Base cleanup - can be overridden by subclasses
+        // This is a placeholder for any timers or intervals to clean up
     }
     
     render(ctx) {
@@ -378,6 +386,10 @@ class Boss extends Enemy {
         this.isInvulnerable = false;
         this.invulnerabilityTimer = 0;
         
+        // Timer management for cleanup
+        this.activeTimers = [];
+        this.activeIntervals = [];
+        
         // Setup boss type
         this.setupBossType();
         this.setupPhases();
@@ -415,7 +427,7 @@ class Boss extends Enemy {
                 this.shootRate = 400;
                 this.bulletSpeed = 300;
                 this.name = 'SPEED DEMON';
-                this.canTeleport = true;
+                this.hasTeleportAbility = true;
                 this.teleportTimer = 0;
                 break;
                 
@@ -528,7 +540,7 @@ class Boss extends Enemy {
                 // Erratic, fast movement
                 this.movementTimer += deltaTime;
                 
-                if (this.canTeleport && this.teleportTimer <= 0) {
+                if (this.hasTeleportAbility && this.teleportTimer <= 0) {
                     // Teleport ability
                     if (Math.random() < 0.3) {
                         this.teleport();
@@ -649,41 +661,47 @@ class Boss extends Enemy {
     }
     
     speedDemonAttack() {
-        // Rapid-fire burst
-        for (let i = 0; i < 3; i++) {
-            setTimeout(() => {
-                // Check if boss is still alive and game is still running
-                if (this.markedForDeletion || !this.game || this.game.gameOver) {
-                    return;
-                }
+        // Rapid-fire burst using a single timer
+        let burstCount = 0;
+        const rapidFireInterval = setInterval(() => {
+            if (burstCount >= 3 || this.markedForDeletion || !this.game || this.game.gameOver) {
+                clearInterval(rapidFireInterval);
+                return;
+            }
+            
+            const player = this.game.player;
+            if (!player) {
+                clearInterval(rapidFireInterval);
+                return;
+            }
+            
+            const dx = player.x - this.x;
+            const dy = player.y - this.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance > 0) {
+                const velocityX = (dx / distance) * this.bulletSpeed;
+                const velocityY = (dy / distance) * this.bulletSpeed;
                 
-                const player = this.game.player;
-                if (!player) return;
+                const bullet = new Bullet(
+                    this.game,
+                    this.x,
+                    this.y + this.height / 2,
+                    velocityX,
+                    velocityY,
+                    'boss',
+                    false
+                );
                 
-                const dx = player.x - this.x;
-                const dy = player.y - this.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                
-                if (distance > 0) {
-                    const velocityX = (dx / distance) * this.bulletSpeed;
-                    const velocityY = (dy / distance) * this.bulletSpeed;
-                    
-                    const bullet = new Bullet(
-                        this.game,
-                        this.x,
-                        this.y + this.height / 2,
-                        velocityX,
-                        velocityY,
-                        'boss',
-                        false
-                    );
-                    
-                    this.game.addBullet(bullet);
-                }
-                
-                this.game.audio.playSound('enemyShoot', 0.6);
-            }, i * 100);
-        }
+                this.game.addBullet(bullet);
+            }
+            
+            this.game.audio.playSound('enemyShoot', 0.6);
+            burstCount++;
+        }, 100);
+        
+        // Store interval reference for cleanup
+        this.activeIntervals.push(rapidFireInterval);
     }
     
     shieldMasterAttack() {
@@ -725,26 +743,29 @@ class Boss extends Enemy {
     }
     
     missileBarrage() {
-        // Launch tracking missiles
-        for (let i = 0; i < this.phase; i++) {
-            setTimeout(() => {
-                // Check if boss is still alive and game is still running
-                if (this.markedForDeletion || !this.game || this.game.gameOver) {
-                    return;
-                }
-                
-                const bullet = new Bullet(
-                    this.game,
-                    this.x,
-                    this.y + (i * 20),
-                    -150,
-                    0,
-                    'missile',
-                    false
-                );
-                this.game.addBullet(bullet);
-            }, i * 300);
-        }
+        // Launch tracking missiles using a single timer
+        let missileCount = 0;
+        const missileInterval = setInterval(() => {
+            if (missileCount >= this.phase || this.markedForDeletion || !this.game || this.game.gameOver) {
+                clearInterval(missileInterval);
+                return;
+            }
+            
+            const bullet = new Bullet(
+                this.game,
+                this.x,
+                this.y + (missileCount * 20),
+                -150,
+                0,
+                'missile',
+                false
+            );
+            this.game.addBullet(bullet);
+            missileCount++;
+        }, 300);
+        
+        // Store interval reference for cleanup
+        this.activeIntervals.push(missileInterval);
         
         this.game.audio.playSound('explosion', 0.5);
     }
@@ -800,6 +821,22 @@ class Boss extends Enemy {
         
         // Boss hit effect
         this.game.addEffect(new Explosion(this.game, this.x + this.width/2, this.y + this.height/2, 'small'));
+        
+        // Check if boss is defeated
+        if (this.health <= 0) {
+            this.cleanup();
+        }
+    }
+    
+    cleanup() {
+        // Clean up any active timers/intervals
+        this.activeTimers.forEach(timer => clearTimeout(timer));
+        this.activeIntervals.forEach(interval => clearInterval(interval));
+        this.activeTimers = [];
+        this.activeIntervals = [];
+        
+        // Call onDestroy for additional cleanup
+        this.onDestroy();
     }
     
     updateVisualEffects(deltaTime) {
@@ -818,14 +855,18 @@ class Boss extends Enemy {
         // Boss death effects
         this.game.addEffect(new Explosion(this.game, this.x + this.width/2, this.y + this.height/2, 'large'));
         
-        // Multiple explosion effects
-        for (let i = 0; i < 5; i++) {
-            setTimeout(() => {
-                const x = this.x + Math.random() * this.width;
-                const y = this.y + Math.random() * this.height;
-                this.game.addEffect(new Explosion(this.game, x, y, 'medium'));
-            }, i * 200);
-        }
+        // Multiple explosion effects using a single timer
+        let explosionCount = 0;
+        const explosionInterval = setInterval(() => {
+            if (explosionCount >= 5) {
+                clearInterval(explosionInterval);
+                return;
+            }
+            const x = this.x + Math.random() * this.width;
+            const y = this.y + Math.random() * this.height;
+            this.game.addEffect(new Explosion(this.game, x, y, 'medium'));
+            explosionCount++;
+        }, 200);
         
         // Epic explosion sound
         this.game.audio.playSound('explosion', 1.0);
