@@ -108,6 +108,17 @@ class OptionsMenu {
         
         this.menuContainer.appendChild(title);
         
+        // Create version display
+        const version = document.createElement('div');
+        version.textContent = `v${typeof GAME_VERSION !== 'undefined' ? GAME_VERSION : '1.1.0'}`;
+        version.style.cssText = `
+            color: #666;
+            text-align: center;
+            margin: -10px 0 20px 0;
+            font-size: 12px;
+        `;
+        this.menuContainer.appendChild(version);
+        
         // Create options list
         this.optionsList = document.createElement('div');
         this.renderOptions();

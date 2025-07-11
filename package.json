@@ -1,7 +1,7 @@
 {
   "name": "transformer-scroll-shooter",
-  "version": "1.0.0",
-  "description": "A retro-style side-scrolling shooter game featuring a transforming vehicle with old-school parallax backgrounds",
+  "version": "1.1.0",
+  "description": "A retro-style side-scrolling shooter game featuring a transforming vehicle with comprehensive audio system and options menu",
   "main": "index.html",
   "scripts": {
     "start": "npx http-server . -p 8080 -o",

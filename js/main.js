@@ -1,15 +1,19 @@
 // Main game initialization
 let game;
 
+// Game version
+const GAME_VERSION = '1.1.0';
+
 // Wait for DOM to be ready
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize the game
     game = new Game();
     
     // Add some flavor text and welcome message
-    console.log('🚗 Transformer Scroll Shooter Initialized! 🚁');
+    console.log(`🚗 Transformer Scroll Shooter v${GAME_VERSION} Initialized! 🚁`);
     console.log('Transform between Car, Scuba, Boat, and Plane modes!');
     console.log('Collect powerups and discover synergies!');
+    console.log('🔊 Audio system enabled - Press ESC for options menu!');
     
     // Add event listeners for additional controls
     document.addEventListener('keydown', handleSpecialKeys);
