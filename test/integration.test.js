@@ -8,7 +8,7 @@ import { describe, it, expect } from 'vitest'
 import { GAME_CONSTANTS, GAME_INFO } from '../src/constants/game-constants.js'
 import * as CollisionUtils from '../src/utils/collision.js'
 import * as MathUtils from '../src/utils/math.js'
-import { Player } from '../src/entities/player.js'
+import Player from '../src/entities/player.js'
 
 describe('Module Integration', () => {
   describe('Constants Integration', () => {

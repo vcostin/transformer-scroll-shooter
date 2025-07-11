@@ -5,9 +5,9 @@
  * Supports multiple vehicle modes with different properties.
  */
 
-import { Bullet } from './bullet.js';
+import Bullet from './bullet.js';
 
-export class Player {
+export default class Player {
     constructor(game, x, y) {
         this.game = game;
         this.x = x;
@@ -400,5 +400,3 @@ export class Player {
         ctx.fillRect(x, y, barWidth * healthPercent, barHeight);
     }
 }
-
-export default Player;

@@ -5,7 +5,7 @@
  * Supports multiple bullet types with different properties.
  */
 
-export class Bullet {
+export default class Bullet {
     constructor(game, x, y, velocityX, velocityY, type, friendly) {
         this.game = game;
         this.x = x;
@@ -106,5 +106,3 @@ export class Bullet {
         }
     }
 }
-
-export default Bullet;

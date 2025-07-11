@@ -9,7 +9,7 @@ import { OptionsMenu } from '../ui/options.js';
 import { Background } from '../rendering/background.js';
 import { Explosion, PowerupEffect, MuzzleFlash } from '../rendering/effects.js';
 import { Powerup, PowerupSpawner } from '../systems/powerups.js';
-import { Player } from '../entities/player.js';
+import Player from '../entities/player.js';
 import Enemy from '../entities/enemies/enemy.js';
 
 export class Game {
@@ -428,6 +428,10 @@ export class Game {
         this.messages = [];
         
         this.player = new Player(this, 100, this.height / 2);
+    }
+    
+    addBullet(bullet) {
+        this.bullets.push(bullet);
     }
 }
 

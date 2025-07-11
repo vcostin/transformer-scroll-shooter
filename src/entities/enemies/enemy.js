@@ -5,9 +5,9 @@
  * Provides common functionality for movement, shooting, and rendering.
  */
 
-import { Bullet } from '../bullet.js';
+import Bullet from '../bullet.js';
 
-export class Enemy {
+export default class Enemy {
     constructor(game, x, y, type) {
         this.game = game;
         this.x = x;
@@ -257,5 +257,3 @@ export class Enemy {
         ctx.fillRect(x, y, barWidth * healthPercent, barHeight);
     }
 }
-
-export default Enemy;
