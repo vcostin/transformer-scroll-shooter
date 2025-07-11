@@ -12,9 +12,7 @@
     "test": "echo 'q' | vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage",
-    "sync-version": "node sync-version.js",
-    "version": "npm run sync-version && git add package.json"
+    "test:coverage": "vitest run --coverage"
   },
   "keywords": [
     "game",
