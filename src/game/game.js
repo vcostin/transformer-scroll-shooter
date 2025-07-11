@@ -152,10 +152,10 @@ export class Game {
         // Spawn enemies and check for level progression
         this.enemySpawnTimer += deltaTime;
         const difficultyMultiplier = this.getDifficultyMultiplier();
-        const spawnRate = (1000 + Math.random() * 2000) / difficultyMultiplier;
+        const spawnRate = (500 + Math.random() * 1000) / difficultyMultiplier; // Reduced from 1000-3000 to 500-1500
         
         // Check for boss spawn (every BOSS_LEVEL_INTERVAL levels)
-        if (this.level % GAME_CONSTANTS.BOSS_LEVEL_INTERVAL === 0 && !this.bossActive && this.enemiesKilled === 0) {
+        if (this.level > 1 && this.level % GAME_CONSTANTS.BOSS_LEVEL_INTERVAL === 0 && !this.bossActive && this.enemiesKilled % this.enemiesPerLevel === 0 && this.enemiesKilled > 0) {
             this.spawnBoss();
         }
         // Regular enemy spawning
@@ -268,7 +268,9 @@ export class Game {
     }
     
     spawnEnemy() {
-        const enemy = new Enemy(this, this.width + 50, Math.random() * (this.height - 100) + 50);
+        const enemyTypes = ['fighter', 'bomber', 'scout'];
+        const randomType = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+        const enemy = new Enemy(this, this.width + 50, Math.random() * (this.height - 100) + 50, randomType);
         this.enemies.push(enemy);
     }
     

@@ -64,6 +64,34 @@ export default class Enemy {
                 this.shootRate = 1500;
                 this.bulletSpeed = 250;
                 break;
+                
+            case 'boss':
+                this.width = 80;
+                this.height = 60;
+                this.maxHealth = 200;
+                this.health = this.maxHealth;
+                this.speed = 50;
+                this.damage = 50;
+                this.points = 500;
+                this.color = '#ff0000';
+                this.shootRate = 1000;
+                this.bulletSpeed = 300;
+                break;
+                
+            default:
+                // Default to fighter type
+                this.width = 30;
+                this.height = 20;
+                this.maxHealth = 20;
+                this.health = this.maxHealth;
+                this.speed = 100;
+                this.damage = 15;
+                this.points = 10;
+                this.color = '#ff4444';
+                this.shootRate = 2000;
+                this.bulletSpeed = 200;
+                this.type = 'fighter';
+                break;
         }
     }
     
