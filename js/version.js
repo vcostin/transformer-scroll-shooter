@@ -1,38 +1,18 @@
-// Single source of truth for game version and metadata
-const GAME_INFO = {
-    name: 'Transformer Scroll Shooter',
-    version: '1.1.0',
-    description: 'A retro-style side-scrolling shooter game featuring a transforming vehicle with comprehensive audio system and options menu',
-    author: 'Game Developer',
-    buildDate: new Date().toISOString().split('T')[0], // Auto-generated build date
-    
-    // Version components for semantic versioning
-    get versionMajor() { return parseInt(this.version.split('.')[0]); },
-    get versionMinor() { return parseInt(this.version.split('.')[1]); },
-    get versionPatch() { return parseInt(this.version.split('.')[2]); },
-    
-    // Display formats
-    get fullTitle() { return `${this.name} v${this.version}`; },
-    get shortVersion() { return `v${this.version}`; },
-    get buildInfo() { return `${this.version} (${this.buildDate})`; },
-    
-    // Console welcome message
-    get welcomeMessage() {
-        return [
-            `🚗 ${this.fullTitle} Initialized! 🚁`,
-            'Transform between Car, Scuba, Boat, and Plane modes!',
-            'Collect powerups and discover synergies!',
-            '🔊 Audio system enabled - Press ESC for options menu!'
-        ];
+// Application Version Information
+const VERSION_INFO = {
+    VERSION: '1.1.0',
+    BUILD_DATE: '2025-07-11T18:04:34.373Z',
+    RELEASE_NOTES: {
+        '1.1.0': 'Version synchronized from package.json'
     }
 };
 
-// Export for use in other files
+// Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = GAME_INFO;
+    module.exports = VERSION_INFO;
 }
 
-// Make available globally for browser
+// Global access for browser
 if (typeof window !== 'undefined') {
-    window.GAME_INFO = GAME_INFO;
+    window.VERSION_INFO = VERSION_INFO;
 }
