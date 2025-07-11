@@ -1,5 +1,9 @@
-// Audio Manager for sound effects and music
-class AudioManager {
+/**
+ * Audio Manager - ES Module Version
+ * Handles sound effects and music using Web Audio API
+ */
+
+export class AudioManager {
     constructor() {
         this.sounds = {};
         this.musicVolume = 0.5;
@@ -111,3 +115,6 @@ class AudioManager {
         }
     }
 }
+
+// Default export
+export default AudioManager;

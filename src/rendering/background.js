@@ -1,5 +1,9 @@
-// Parallax background system for old-school feel
-class Background {
+/**
+ * Background Rendering System - ES Module Version
+ * Handles parallax scrolling backgrounds with multiple layers
+ */
+
+export class Background {
     constructor(game) {
         this.game = game;
         this.layers = [];
@@ -100,10 +104,9 @@ class Background {
         for (let i = 0; i < count; i++) {
             structures.push({
                 x: i * segmentWidth + Math.random() * 30,
-                width: Math.random() * 60 + 40,
-                height: Math.random() * 80 + 100,
+                width: Math.random() * 50 + 40,
+                height: Math.random() * 150 + 100,
                 opacity: opacity,
-                type: Math.random() > 0.5 ? 'tower' : 'factory',
                 details: this.generateStructureDetails()
             });
         }
@@ -113,15 +116,15 @@ class Background {
     
     generateClouds(count) {
         const clouds = [];
+        const segmentWidth = this.game.width * 2 / count;
         
         for (let i = 0; i < count; i++) {
             clouds.push({
-                x: Math.random() * this.game.width * 2,
-                y: Math.random() * this.game.height * 0.4 + 50,
+                x: i * segmentWidth + Math.random() * 100,
+                y: Math.random() * this.game.height * 0.3,
                 width: Math.random() * 80 + 60,
                 height: Math.random() * 30 + 20,
-                opacity: Math.random() * 0.3 + 0.1,
-                puffs: Math.floor(Math.random() * 3) + 3
+                opacity: Math.random() * 0.3 + 0.1
             });
         }
         
@@ -136,7 +139,9 @@ class Background {
             windows.push({
                 x: Math.random() * 0.8 + 0.1,
                 y: Math.random() * 0.8 + 0.1,
-                lit: Math.random() > 0.6
+                width: 0.05,
+                height: 0.08,
+                lit: Math.random() > 0.3
             });
         }
         
@@ -145,8 +150,7 @@ class Background {
     
     generateStructureDetails() {
         return {
-            antennas: Math.floor(Math.random() * 3),
-            pipes: Math.floor(Math.random() * 4) + 1,
+            antennas: Math.random() > 0.5,
             lights: Math.random() > 0.5
         };
     }
@@ -198,145 +202,96 @@ class Background {
     }
     
     renderStars(ctx) {
-        ctx.fillStyle = '#ffffff';
-        
+        ctx.save();
         this.stars.forEach(star => {
-            const alpha = (Math.sin(star.twinkle) + 1) * 0.5;
+            const alpha = Math.sin(star.twinkle) * 0.5 + 0.5;
             ctx.globalAlpha = alpha;
-            
-            ctx.beginPath();
-            ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(star.x, star.y, star.size, star.size);
         });
-        
-        ctx.globalAlpha = 1;
+        ctx.restore();
     }
     
     renderLayer(ctx, layer) {
-        ctx.globalAlpha = 1;
+        ctx.save();
         
         layer.elements.forEach(element => {
-            ctx.globalAlpha = element.opacity;
-            
-            switch (layer.name) {
-                case 'farBackground':
-                    this.renderMountain(ctx, element, layer);
-                    break;
-                case 'midBackground':
-                    this.renderBuilding(ctx, element, layer);
-                    break;
-                case 'nearBackground':
-                    this.renderStructure(ctx, element, layer);
-                    break;
-                case 'clouds':
-                    this.renderCloud(ctx, element, layer);
-                    break;
+            if (layer.name === 'farBackground') {
+                this.renderMountain(ctx, element, layer);
+            } else if (layer.name === 'midBackground') {
+                this.renderBuilding(ctx, element, layer);
+            } else if (layer.name === 'nearBackground') {
+                this.renderStructure(ctx, element, layer);
+            } else if (layer.name === 'clouds') {
+                this.renderCloud(ctx, element, layer);
             }
         });
         
-        ctx.globalAlpha = 1;
+        ctx.restore();
     }
     
     renderMountain(ctx, mountain, layer) {
+        ctx.globalAlpha = mountain.opacity;
         ctx.fillStyle = layer.color;
-        ctx.beginPath();
-        ctx.moveTo(mountain.x, layer.y);
-        ctx.lineTo(mountain.x + mountain.width / 2, layer.y - mountain.height);
-        ctx.lineTo(mountain.x + mountain.width, layer.y);
-        ctx.lineTo(mountain.x + mountain.width, this.game.height);
-        ctx.lineTo(mountain.x, this.game.height);
-        ctx.closePath();
-        ctx.fill();
+        ctx.fillRect(mountain.x, layer.y, mountain.width, mountain.height);
     }
     
     renderBuilding(ctx, building, layer) {
-        const x = building.x;
-        const y = layer.y - building.height;
-        
-        // Main building
+        ctx.globalAlpha = building.opacity;
         ctx.fillStyle = layer.color;
-        ctx.fillRect(x, y, building.width, building.height);
+        ctx.fillRect(building.x, layer.y, building.width, building.height);
         
-        // Windows
-        if (building.windows) {
-            building.windows.forEach(window => {
-                ctx.fillStyle = window.lit ? '#ffff88' : '#333355';
-                const winX = x + window.x * building.width;
-                const winY = y + window.y * building.height;
-                ctx.fillRect(winX, winY, 4, 6);
-            });
-        }
-        
-        // Building outline
-        ctx.strokeStyle = '#555577';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(x, y, building.width, building.height);
+        // Render windows
+        building.windows.forEach(window => {
+            if (window.lit) {
+                ctx.fillStyle = '#ffff88';
+                ctx.fillRect(
+                    building.x + window.x * building.width,
+                    layer.y + window.y * building.height,
+                    window.width * building.width,
+                    window.height * building.height
+                );
+            }
+        });
     }
     
     renderStructure(ctx, structure, layer) {
-        const x = structure.x;
-        const y = layer.y - structure.height;
-        
+        ctx.globalAlpha = structure.opacity;
         ctx.fillStyle = layer.color;
+        ctx.fillRect(structure.x, layer.y, structure.width, structure.height);
         
-        if (structure.type === 'tower') {
-            // Tower structure
-            ctx.fillRect(x, y, structure.width, structure.height);
-            
-            // Tower top
-            ctx.fillRect(x - 5, y - 10, structure.width + 10, 10);
-            
-            // Antennas
-            if (structure.details.antennas > 0) {
-                ctx.strokeStyle = '#666688';
-                ctx.lineWidth = 2;
-                for (let i = 0; i < structure.details.antennas; i++) {
-                    const antennaX = x + (i + 1) * structure.width / (structure.details.antennas + 1);
-                    ctx.beginPath();
-                    ctx.moveTo(antennaX, y - 10);
-                    ctx.lineTo(antennaX, y - 30);
-                    ctx.stroke();
-                }
-            }
-        } else {
-            // Factory structure
-            ctx.fillRect(x, y, structure.width, structure.height);
-            
-            // Smokestacks
-            for (let i = 0; i < structure.details.pipes; i++) {
-                const pipeX = x + (i + 1) * structure.width / (structure.details.pipes + 1);
-                ctx.fillRect(pipeX - 3, y - 20, 6, 20);
-                
-                // Smoke effect
-                ctx.fillStyle = '#666677';
-                ctx.globalAlpha = 0.3;
-                ctx.fillRect(pipeX - 2, y - 40, 4, 20);
-                ctx.globalAlpha = structure.opacity;
-                ctx.fillStyle = layer.color;
-            }
+        // Add details
+        if (structure.details.antennas) {
+            ctx.strokeStyle = '#666';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(structure.x + structure.width / 2, layer.y);
+            ctx.lineTo(structure.x + structure.width / 2, layer.y - 20);
+            ctx.stroke();
         }
         
-        // Warning lights
         if (structure.details.lights) {
             ctx.fillStyle = '#ff4444';
-            ctx.beginPath();
-            ctx.arc(x + structure.width / 2, y - 5, 2, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.fillRect(
+                structure.x + structure.width / 2 - 2,
+                layer.y - 18,
+                4, 4
+            );
         }
     }
     
     renderCloud(ctx, cloud, layer) {
+        ctx.globalAlpha = cloud.opacity;
         ctx.fillStyle = layer.color;
         
-        // Draw cloud as multiple overlapping circles
-        for (let i = 0; i < cloud.puffs; i++) {
-            const puffX = cloud.x + (i * cloud.width / cloud.puffs);
-            const puffY = cloud.y + Math.sin(i) * 5;
-            const puffSize = cloud.height / 2 + Math.sin(i * 2) * 5;
-            
-            ctx.beginPath();
-            ctx.arc(puffX, puffY, puffSize, 0, Math.PI * 2);
-            ctx.fill();
-        }
+        // Simple cloud shape
+        ctx.beginPath();
+        ctx.arc(cloud.x, cloud.y, cloud.width / 3, 0, Math.PI * 2);
+        ctx.arc(cloud.x + cloud.width / 3, cloud.y, cloud.width / 3, 0, Math.PI * 2);
+        ctx.arc(cloud.x + cloud.width * 2/3, cloud.y, cloud.width / 3, 0, Math.PI * 2);
+        ctx.fill();
     }
 }
+
+// Default export
+export default Background;
