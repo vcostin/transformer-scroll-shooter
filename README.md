@@ -1,11 +1,11 @@
 # Transformer Scroll Shooter
 
 [![Deploy to GitHub Pages](https://github.com/vcostin/transformer-scroll-shooter/actions/workflows/deploy.yml/badge.svg)](https://github.com/vcostin/transformer-scroll-shooter/actions/workflows/deploy.yml)
+[![Test Suite](https://github.com/vcostin/transformer-scroll-shooter/actions/workflows/test.yml/badge.svg)](https://github.com/vcostin/transformer-scroll-shooter/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub release](https://img.shields.io/github/release/vcostin/transformer-scroll-shooter.svg)](https://github.com/vcostin/transformer-scroll-shooter/releases)
-[![GitHub stars](https://img.shields.io/github/stars/vcostin/transformer-scroll-shooter.svg)](https://github.com/vcostin/transformer-scroll-shooter/stargazers)
 
-A retro-style side-scrolling shooter game featuring a transforming vehicle with old-school parallax backgrounds.
+A retro-style side-scrolling shooter game featuring a transforming vehicle with comprehensive testing and modern build system.
 
 🎮 **[▶️ PLAY NOW](https://vcostin.github.io/transformer-scroll-shooter/)** 🎮
 
@@ -69,25 +69,36 @@ Power-ups can combine for enhanced effects:
 
 ## 🛠️ Technical Details
 
-### File Structure
+### Modern Architecture
+- **🏗️ Vite Build System**: Modern build tooling with ES modules
+- **📦 ES Modules**: Clean, maintainable code structure
+- **🧪 Comprehensive Testing**: 190+ tests with Vitest
+- **🚀 CI/CD Pipeline**: Automated testing and deployment
+- **📊 Coverage Reports**: Built-in coverage tracking
+- **🔄 Version Management**: Automated with build-time constants
+
+### Project Structure
 ```
 /
-├── index.html          # Main HTML file
-└── js/
-    ├── main.js          # Game initialization and controls
-    ├── game.js          # Core game engine
-    ├── player.js        # Player/transformer vehicle logic
-    ├── enemies.js       # Enemy AI and bullet system
-    ├── powerups.js      # Power-up system with synergies
-    ├── background.js    # Parallax background system
-    └── effects.js       # Visual effects and animations
+├── index.html              # Main HTML entry point
+├── src/                    # Modern ES module source
+│   ├── main.js            # Game initialization and setup
+│   ├── constants/         # Game configuration and constants
+│   ├── entities/          # Game entities (player, enemies, bullets)
+│   ├── utils/             # Utility functions (collision, math)
+│   └── ui/                # User interface components
+├── test/                   # Comprehensive test suite
+├── dist/                   # Built production files
+└── .github/workflows/      # CI/CD automation
 ```
 
 ### Technologies Used
-- **HTML5 Canvas** for rendering
-- **Vanilla JavaScript** for game logic
-- **CSS3** for styling and UI
-- **Responsive design** for mobile support
+- **⚡ Vite**: Modern build tool and dev server
+- **🧪 Vitest**: Unit testing framework
+- **🎨 HTML5 Canvas**: High-performance rendering
+- **📱 Responsive Design**: Mobile-first approach
+- **🔧 ES2022**: Modern JavaScript features
+- **🚀 GitHub Actions**: Automated CI/CD
 
 ## 🚀 Getting Started
 
@@ -95,34 +106,49 @@ Power-ups can combine for enhanced effects:
 🎮 **[Play the game live on GitHub Pages!](https://vcostin.github.io/transformer-scroll-shooter/)**
 
 ### Local Development
-1. Clone the repository:
+1. **Clone the repository:**
    ```bash
    git clone https://github.com/vcostin/transformer-scroll-shooter.git
    cd transformer-scroll-shooter
    ```
 
-2. Open `index.html` in a modern web browser, or use a local server:
+2. **Install dependencies:**
    ```bash
-   # Option 1: Simple HTTP server
-   npx http-server . -p 8080 -o
-   
-   # Option 2: Live reload server
-   npx live-server --port=8080 --open=/
+   npm install
    ```
 
-3. Start playing immediately - no build process required!
+3. **Start development server:**
+   ```bash
+   npm run dev
+   ```
+
+4. **Build for production:**
+   ```bash
+   npm run build
+   ```
+
+5. **Run tests:**
+   ```bash
+   npm test              # Interactive mode
+   npm run test:run      # Single run
+   npm run test:coverage # With coverage report
+   ```
 
 ### Version Management
-The game uses a centralized version system to avoid discrepancies:
+The game uses modern build-time version injection:
 
-- **Single source of truth**: `js/version.js` contains all version information
-- **Automatic sync**: Run `npm run sync-version` to update package.json
-- **Consistent versioning**: All UI elements, console logs, and metadata use the same version
+- **📦 Single source**: `package.json` contains version information
+- **🔄 Build-time injection**: Version constants injected during build
+- **🏷️ npm version**: Use `npm version patch|minor|major` for releases
+- **🚀 Auto-deployment**: GitHub Actions handles CI/CD
 
-To update the game version:
-1. Edit version in `js/version.js`
-2. Run `npm run sync-version` to update package.json
-3. Commit and tag the release
+To release a new version:
+```bash
+npm version patch    # Bug fixes (1.0.0 → 1.0.1)
+npm version minor    # New features (1.0.0 → 1.1.0)
+npm version major    # Breaking changes (1.0.0 → 2.0.0)
+git push --tags      # Push version tag
+```
 
 ## 🎨 Background Art System
 
@@ -138,14 +164,31 @@ Each layer scrolls at different speeds to create depth and the classic retro gam
 ## 🔮 Future Enhancements
 
 Potential features for future development:
-- **Sound effects and music**
-- **Boss enemies**
-- **Multiple levels with different environments**
-- **Local high score system**
-- **Additional vehicle modes**
-- **More complex synergy combinations**
-- **Particle effects optimization**
-- **Power-up upgrade trees**
+- **🎵 Audio System**: Sound effects and background music
+- **👾 Boss Enemies**: Epic boss battles with unique patterns
+- **🌍 Multiple Levels**: Different environments and challenges
+- **🏆 Scoring System**: Leaderboards and achievements
+- **🚁 Additional Modes**: More transformation modes
+- **⚡ Advanced Power-ups**: Complex synergy combinations
+- **🌟 Particle Effects**: Enhanced visual effects
+- **📱 Mobile UX**: Refined touch controls
+
+## 🧪 Testing & Quality
+
+This project maintains high code quality with comprehensive testing:
+
+- **🧪 190+ Unit Tests**: Extensive test coverage
+- **📊 Coverage Reports**: Built-in coverage tracking
+- **🔍 GitHub Actions**: Automated testing on every commit
+- **🛡️ Quality Gates**: Tests must pass before deployment
+- **📋 Test Categories**: Game logic, collision detection, UI, integration
+
+Run tests locally:
+```bash
+npm test              # Interactive test runner
+npm run test:run      # Single test run
+npm run test:coverage # Generate coverage report
+```
 
 ## 🎯 Game Design Philosophy
 
@@ -160,7 +203,7 @@ This game captures the essence of classic arcade shooters while adding modern to
 
 - Canvas performance may vary on older devices
 - Touch controls could use refinement
-- No audio system implemented yet
+- Audio system not yet implemented
 
 ## 🤝 Contributing
 
@@ -168,16 +211,25 @@ Contributions are welcome! Here's how you can help:
 
 1. **Fork** the repository
 2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
-3. **Commit** your changes (`git commit -m 'Add amazing feature'`)
-4. **Push** to the branch (`git push origin feature/amazing-feature`)
-5. **Open** a Pull Request
+3. **Make** your changes with tests
+4. **Run** the test suite (`npm test`)
+5. **Commit** your changes (`git commit -m 'Add amazing feature'`)
+6. **Push** to the branch (`git push origin feature/amazing-feature`)
+7. **Open** a Pull Request
+
+### Development Guidelines
+- 🧪 **Write tests** for new features
+- 📝 **Follow ES2022** standards
+- 🎨 **Maintain code style** consistency
+- 📊 **Keep test coverage** above 90%
+- 🔄 **Use npm version** for releases
 
 ### Ideas for Contributions
-- 🎵 Add sound effects and background music
-- 🎨 Create new visual effects and animations
-- 🤖 Implement boss enemies
-- 📱 Improve mobile touch controls
-- 🏆 Add local high score system
+- 🎵 Add comprehensive audio system
+- 🎨 Create advanced visual effects
+- 🤖 Implement boss enemy patterns
+- 📱 Enhance mobile touch controls
+- 🏆 Add persistent high score system
 - 🌍 Create new background environments
 
 ## 📝 License
