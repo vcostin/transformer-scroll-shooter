@@ -354,7 +354,7 @@ export class Game {
         // Player vs powerups
         this.powerups.forEach(powerup => {
             if (this.checkCollision(this.player, powerup)) {
-                powerup.applyEffect(this.player);
+                this.player.collectPowerup(powerup);
                 this.effects.push(new PowerupEffect(this, powerup.x, powerup.y, powerup.color));
                 this.audio.playSound('powerup');
                 powerup.markedForDeletion = true;

@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "start": "npm run dev",
     "serve": "vite preview",
-    "test": "vitest",
+    "test": "echo 'q' | vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
