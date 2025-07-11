@@ -19,6 +19,6 @@ export default defineConfig({
   optimizeDeps: {
     include: []
   },
-  base: '/transformer-scroll-shooter/',
+  base: './',
   assetsInclude: ['**/*.mp3', '**/*.wav', '**/*.ogg', '**/*.png', '**/*.jpg', '**/*.gif']
 })
