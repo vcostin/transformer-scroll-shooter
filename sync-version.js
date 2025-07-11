@@ -1,39 +1,68 @@
 #!/usr/bin/env node
 
-// Script to sync package.json with version.js
+// Script to sync version from package.json to other files
+// Single Source of Truth: package.json
 const fs = require('fs');
 const path = require('path');
 
-// Read version.js content
-const versionPath = path.join(__dirname, 'js', 'version.js');
-const versionContent = fs.readFileSync(versionPath, 'utf8');
-
-// Extract version using regex
-const versionMatch = versionContent.match(/version:\s*['"]([^'"]+)['"]/);
-const nameMatch = versionContent.match(/name:\s*['"]([^'"]+)['"]/);
-const descMatch = versionContent.match(/description:\s*['"]([^'"]+)['"]/);
-
-if (!versionMatch || !nameMatch || !descMatch) {
-    console.error('Could not extract version info from version.js');
-    process.exit(1);
-}
-
-const version = versionMatch[1];
-const name = nameMatch[1].toLowerCase().replace(/\s+/g, '-');
-const description = descMatch[1];
-
-// Read package.json
+// Read package.json (single source of truth)
 const packagePath = path.join(__dirname, 'package.json');
 const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
 
-// Update package.json
-packageJson.version = version;
-packageJson.name = name;
-packageJson.description = description;
+const version = packageJson.version;
+const name = packageJson.name;
+const description = packageJson.description;
 
-// Write back package.json
-fs.writeFileSync(packagePath, JSON.stringify(packageJson, null, 2) + '\n');
+console.log(`🔄 Syncing version ${version} from package.json...`);
 
-console.log(`✅ Updated package.json to version ${version}`);
+// Update src/constants/game-constants.js (ES module source)
+const constantsPath = path.join(__dirname, 'src', 'constants', 'game-constants.js');
+if (fs.existsSync(constantsPath)) {
+    let content = fs.readFileSync(constantsPath, 'utf8');
+    
+    // Update the version in GAME_INFO
+    content = content.replace(
+        /version: '[^']*'/,
+        `version: '${version}'`
+    );
+    
+    // Update the build date
+    const buildDate = new Date().toISOString();
+    content = content.replace(
+        /buildDate: '[^']*'/,
+        `buildDate: '${buildDate}'`
+    );
+    
+    fs.writeFileSync(constantsPath, content);
+    console.log(`✅ Updated src/constants/game-constants.js`);
+}
+
+// Update js/version.js (legacy compatibility)
+const versionPath = path.join(__dirname, 'js', 'version.js');
+const versionContent = `// Application Version Information
+const VERSION_INFO = {
+    VERSION: '${version}',
+    BUILD_DATE: '${new Date().toISOString()}',
+    RELEASE_NOTES: {
+        '${version}': 'Version synchronized from package.json'
+    }
+};
+
+// Export for use in other modules
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = VERSION_INFO;
+}
+
+// Global access for browser
+if (typeof window !== 'undefined') {
+    window.VERSION_INFO = VERSION_INFO;
+}
+`;
+
+fs.writeFileSync(versionPath, versionContent);
+console.log(`✅ Updated js/version.js`);
+
+console.log(`🎉 Version sync complete!`);
+console.log(`   Version: ${version}`);
 console.log(`   Name: ${name}`);
 console.log(`   Description: ${description}`);
