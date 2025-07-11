@@ -30,11 +30,23 @@ jobs:
     - name: Generate coverage report
       run: npm run test:coverage
       
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
+    - name: Upload coverage reports as artifacts
+      uses: actions/upload-artifact@v4
       with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        files: ./coverage/lcov.info
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
+        name: coverage-reports
+        path: coverage/
+        retention-days: 30
+        
+    - name: Generate coverage summary
+      run: |
+        echo "## 📊 Test Coverage Summary" >> $GITHUB_STEP_SUMMARY
+        echo "| Metric | Percentage |" >> $GITHUB_STEP_SUMMARY
+        echo "|--------|------------|" >> $GITHUB_STEP_SUMMARY
+        
+        # Extract coverage percentages from the test output
+        npm run test:coverage 2>&1 | grep -E "All files.*%" | head -1 | \
+        sed 's/.*|\s*\([0-9.]*\).*|\s*\([0-9.]*\).*|\s*\([0-9.]*\).*|\s*\([0-9.]*\).*/| Statements | \1% |\n| Branches | \2% |\n| Functions | \3% |\n| Lines | \4% |/' >> $GITHUB_STEP_SUMMARY || echo "| Coverage | See artifacts |" >> $GITHUB_STEP_SUMMARY
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "📋 **View detailed coverage report in the artifacts section**" >> $GITHUB_STEP_SUMMARY
+        echo "🔍 **Download the coverage-reports artifact to view HTML report**" >> $GITHUB_STEP_SUMMARY
