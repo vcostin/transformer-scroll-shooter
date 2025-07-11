@@ -16,7 +16,8 @@ export const GAME_CONSTANTS = {
     MESSAGE_DURATION: {
         BOSS: 3000,
         VICTORY: 2000,
-        INFO: 2000
+        INFO: 2000,
+        LEVEL_UP: 2500
     },
     MAX_MESSAGES: 3,
     

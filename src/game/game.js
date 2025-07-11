@@ -325,6 +325,12 @@ export class Game {
                             this.score += enemy.scoreValue || 100;
                             this.enemiesKilled++;
                             
+                            // Check for level progression
+                            if (this.enemiesKilled % this.enemiesPerLevel === 0) {
+                                this.level++;
+                                this.addMessage(`LEVEL ${this.level}!`, '#00ff00', GAME_CONSTANTS.MESSAGE_DURATION.LEVEL_UP);
+                            }
+                            
                             if (enemy.type === 'boss') {
                                 this.bossActive = false;
                                 this.score += GAME_CONSTANTS.BOSS_BONUS_SCORE;
