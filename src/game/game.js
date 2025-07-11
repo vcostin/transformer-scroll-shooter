@@ -322,7 +322,7 @@ export class Game {
                         this.audio.playSound('enemyHit');
                         
                         if (enemy.health <= 0) {
-                            this.score += enemy.scoreValue || 100;
+                            this.score += enemy.points || 100;
                             this.enemiesKilled++;
                             
                             // Check for level progression

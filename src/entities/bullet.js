@@ -14,6 +14,7 @@ export default class Bullet {
         this.velocityY = velocityY;
         this.type = type;
         this.friendly = friendly;
+        this.owner = friendly ? 'player' : 'enemy'; // Set owner based on friendly flag
         this.markedForDeletion = false;
         
         // Set properties based on type
