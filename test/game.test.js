@@ -497,6 +497,24 @@ describe('Game', () => {
       expect(game.effects.length).toBe(0)
       expect(game.messages.length).toBe(0)
     })
+    
+    it('should reset spawn timers to prevent immediate spawns', () => {
+      // Set up game with active spawn timers
+      game.enemySpawnTimer = 5000
+      game.powerupSpawnTimer = 3000
+      game.lastTime = 10000
+      game.fpsTimer = 1500
+      game.frameCount = 100
+      
+      game.restart()
+      
+      // Verify all timers are reset
+      expect(game.enemySpawnTimer).toBe(0)
+      expect(game.powerupSpawnTimer).toBe(0)
+      expect(game.lastTime).toBe(0)
+      expect(game.fpsTimer).toBe(0)
+      expect(game.frameCount).toBe(0)
+    })
   })
 
   describe('Level Progression', () => {

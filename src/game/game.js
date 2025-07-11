@@ -451,6 +451,13 @@ export class Game {
         this.effects = [];
         this.messages = [];
         
+        // Reset spawn timers to prevent immediate spawns after restart
+        this.enemySpawnTimer = 0;
+        this.powerupSpawnTimer = 0;
+        this.lastTime = 0;
+        this.fpsTimer = 0;
+        this.frameCount = 0;
+        
         this.player = new Player(this, 100, this.height / 2);
     }
     
