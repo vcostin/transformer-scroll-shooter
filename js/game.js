@@ -217,6 +217,19 @@ class Game {
         this.enemies.push(enemy);
     }
     
+    /**
+     * Spawns a boss enemy at the current level.
+     * Bosses are triggered every BOSS_LEVEL_INTERVAL levels and are significantly
+     * more challenging than regular enemies with unique abilities and higher health.
+     * 
+     * @description Creates a random boss type from available boss types:
+     * - fortress: Heavy armor, multiple turrets, missile attacks
+     * - speeddemon: Fast movement, teleportation, rapid-fire
+     * - shieldmaster: Rotating shields, energy waves, damage reduction
+     * 
+     * The boss is spawned off-screen and moves into view with a warning message.
+     * Sets the bossActive flag to prevent regular enemy spawning during boss battles.
+     */
     spawnBoss() {
         const bossTypes = ['fortress', 'speeddemon', 'shieldmaster'];
         const bossType = bossTypes[Math.floor(Math.random() * bossTypes.length)];

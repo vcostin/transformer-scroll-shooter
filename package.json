@@ -7,7 +7,9 @@
     "start": "npx http-server . -p 8080 -o",
     "dev": "npx live-server --port=8080 --open=/",
     "build": "echo 'No build process needed - pure HTML/JS/CSS game'",
-    "test": "echo 'No tests configured yet'",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
     "sync-version": "node sync-version.js",
     "version": "npm run sync-version && git add package.json"
   },
@@ -24,7 +26,9 @@
   ],
   "author": "vcostin",
   "license": "MIT",
-  "devDependencies": {},
+  "devDependencies": {
+    "jest": "^29.0.0"
+  },
   "dependencies": {},
   "repository": {
     "type": "git",

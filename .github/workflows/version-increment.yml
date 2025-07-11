@@ -115,7 +115,7 @@ jobs:
     - name: Commit version update
       run: |
         NEW_VERSION="${{ steps.new-version.outputs.version }}"
-        INCREMENT_TYPE="${{ steps.increment-type.outputs.increment_type }}"
+        INCREMENT_TYPE="${{ steps.increment-type.outputs.type }}"
         
         git add js/version.js
         [ -f package.json ] && git add package.json
