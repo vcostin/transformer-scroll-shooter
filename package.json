@@ -7,7 +7,9 @@
     "start": "npx http-server . -p 8080 -o",
     "dev": "npx live-server --port=8080 --open=/",
     "build": "echo 'No build process needed - pure HTML/JS/CSS game'",
-    "test": "echo 'No tests configured yet'"
+    "test": "echo 'No tests configured yet'",
+    "sync-version": "node sync-version.js",
+    "version": "npm run sync-version && git add package.json"
   },
   "keywords": [
     "game",

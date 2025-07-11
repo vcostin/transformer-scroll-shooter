@@ -112,6 +112,18 @@ Power-ups can combine for enhanced effects:
 
 3. Start playing immediately - no build process required!
 
+### Version Management
+The game uses a centralized version system to avoid discrepancies:
+
+- **Single source of truth**: `js/version.js` contains all version information
+- **Automatic sync**: Run `npm run sync-version` to update package.json
+- **Consistent versioning**: All UI elements, console logs, and metadata use the same version
+
+To update the game version:
+1. Edit version in `js/version.js`
+2. Run `npm run sync-version` to update package.json
+3. Commit and tag the release
+
 ## 🎨 Background Art System
 
 The game features a 4-layer parallax scrolling system:

@@ -110,7 +110,7 @@ class OptionsMenu {
         
         // Create version display
         const version = document.createElement('div');
-        version.textContent = `v${typeof GAME_VERSION !== 'undefined' ? GAME_VERSION : '1.1.0'}`;
+        version.textContent = GAME_INFO.shortVersion;
         version.style.cssText = `
             color: #666;
             text-align: center;
@@ -359,9 +359,12 @@ class OptionsMenu {
         `;
         
         helpContent.innerHTML = `
-            <h2 style="color: #00ff00; text-align: center; margin: 0 0 20px 0; text-shadow: 0 0 10px #00ff00;">
-                🎮 TRANSFORMER SCROLL SHOOTER 🎮
+            <h2 style="color: #00ff00; text-align: center; margin: 0 0 10px 0; text-shadow: 0 0 10px #00ff00;">
+                🎮 ${GAME_INFO.name.toUpperCase()} 🎮
             </h2>
+            <div style="color: #666; text-align: center; margin: 0 0 20px 0; font-size: 12px;">
+                ${GAME_INFO.shortVersion}
+            </div>
             
             <div style="line-height: 1.6;">
                 <h3 style="color: #ffff00; margin: 15px 0 10px 0; text-shadow: 0 0 5px #ffff00;">CONTROLS:</h3>

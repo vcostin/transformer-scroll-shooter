@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Transformer Scroll Shooter</title>
+    <script>
+        // Update title with version after page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof GAME_INFO !== 'undefined') {
+                document.title = GAME_INFO.fullTitle;
+            }
+        });
+    </script>
     <style>
         body {
             margin: 0;
@@ -81,6 +89,7 @@
         <div class="powerup-indicator" id="powerups"></div>
     </div>
     
+    <script src="js/version.js"></script>
     <script src="js/audio.js"></script>
     <script src="js/options.js"></script>
     <script src="js/game.js"></script>
