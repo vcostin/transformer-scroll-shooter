@@ -59,6 +59,11 @@ export class StateManager {
             lastUpdateTime: 0
         };
 
+        // Cached memory usage tracking
+        this.cachedStateSize = 0;
+        this.cachedHistorySize = 0;
+        this.memoryCacheValid = false;
+
         // Event dispatcher reference
         this.eventDispatcher = eventDispatcher;
 
@@ -154,6 +159,9 @@ export class StateManager {
             // Update current state
             this.currentState = newState;
             this.stats.totalUpdates++;
+            
+            // Invalidate memory cache since state changed
+            this.invalidateMemoryCache();
 
             // Add new state to history after updating
             if (this.options.enableHistory && !updateOptions.skipHistory) {
@@ -306,6 +314,9 @@ export class StateManager {
         this.historyIndex--;
         this.currentState = this.deepClone(this.history[this.historyIndex]);
         this.stats.historyOperations++;
+        
+        // Invalidate memory cache since state changed
+        this.invalidateMemoryCache();
 
         // Emit undo event
         if (this.options.enableEvents) {
@@ -338,6 +349,9 @@ export class StateManager {
         this.historyIndex++;
         this.currentState = this.deepClone(this.history[this.historyIndex]);
         this.stats.historyOperations++;
+        
+        // Invalidate memory cache since state changed
+        this.invalidateMemoryCache();
 
         // Emit redo event
         if (this.options.enableEvents) {
@@ -362,6 +376,10 @@ export class StateManager {
         if (!path) {
             // Reset entire state
             this.currentState = this.deepClone(DEFAULT_STATE);
+            
+            // Invalidate memory cache since state changed
+            this.invalidateMemoryCache();
+            
             if (this.options.enableHistory) {
                 this.clearHistory();
                 this.addCurrentStateToHistory();
@@ -430,6 +448,9 @@ export class StateManager {
      */
     clearAll() {
         this.currentState = this.deepClone(DEFAULT_STATE);
+        
+        // Invalidate memory cache since state changed
+        this.invalidateMemoryCache();
         this.clearHistory();
         this.subscriptions.clear();
         this.stats = {
@@ -628,6 +649,9 @@ export class StateManager {
             this.history.splice(0, removeCount);
             this.historyIndex -= removeCount;
         }
+        
+        // Invalidate memory cache since history changed
+        this.invalidateMemoryCache();
     }
 
     /**
@@ -637,6 +661,9 @@ export class StateManager {
     clearHistory() {
         this.history = [];
         this.historyIndex = -1;
+        
+        // Invalidate memory cache since history changed
+        this.invalidateMemoryCache();
     }
 
     /**
@@ -711,7 +738,28 @@ export class StateManager {
      * @private
      */
     getMemoryUsage() {
-        return JSON.stringify(this.currentState).length + JSON.stringify(this.history).length;
+        if (!this.memoryCacheValid) {
+            this.updateMemoryCache();
+        }
+        return this.cachedStateSize + this.cachedHistorySize;
+    }
+
+    /**
+     * Update memory cache with current state and history sizes
+     * @private
+     */
+    updateMemoryCache() {
+        this.cachedStateSize = JSON.stringify(this.currentState).length;
+        this.cachedHistorySize = JSON.stringify(this.history).length;
+        this.memoryCacheValid = true;
+    }
+
+    /**
+     * Invalidate memory cache (called when state or history changes)
+     * @private
+     */
+    invalidateMemoryCache() {
+        this.memoryCacheValid = false;
     }
 }
 

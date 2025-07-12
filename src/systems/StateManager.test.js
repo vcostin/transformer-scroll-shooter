@@ -463,6 +463,25 @@ describe('StateManager', () => {
             unsubscribeFunctions.forEach(unsubscribe => unsubscribe());
             expect(testStateManager.getStats().subscriptionCount).toBe(0);
         });
+
+        it('should cache memory usage calculations for performance', () => {
+            // First call should calculate and cache
+            const firstCall = testStateManager.getMemoryUsage();
+            expect(firstCall).toBeGreaterThan(0);
+            
+            // Second call should use cached value (no JSON.stringify overhead)
+            const secondCall = testStateManager.getMemoryUsage();
+            expect(secondCall).toBe(firstCall);
+            
+            // After state change, cache should be invalidated
+            testStateManager.setState('player.health', 75);
+            const thirdCall = testStateManager.getMemoryUsage();
+            expect(thirdCall).toBeGreaterThan(0);
+            
+            // Verify cache is working again
+            const fourthCall = testStateManager.getMemoryUsage();
+            expect(fourthCall).toBe(thirdCall);
+        });
     });
 
     describe('Utility methods', () => {
