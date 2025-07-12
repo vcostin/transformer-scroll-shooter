@@ -89,5 +89,4 @@ build/
 *.tmp
 *.temp
 
-# PR description files (temporary workaround files)
-PR_DESCRIPTION.md
+*.temp
