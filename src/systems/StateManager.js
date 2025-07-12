@@ -173,7 +173,9 @@ export class StateManager {
             }
 
             // Trigger subscriptions
-            this.triggerSubscriptions(path, value, oldValue);
+            if (!updateOptions.silent) {
+                this.triggerSubscriptions(path, value, oldValue);
+            }
 
             if (this.options.enableDebug) {
                 console.log(`✅ StateManager: setState('${path}')`, { 
@@ -191,6 +193,181 @@ export class StateManager {
             if (this.options.enableDebug) {
                 console.error(`❌ StateManager: setState('${path}') failed:`, error);
             }
+            throw error;
+        }
+    }
+
+    /**
+     * Set state asynchronously with optional loading states
+     * @param {string} path - Dot-notation path to state property
+     * @param {Promise|*} valueOrPromise - Value or Promise that resolves to value
+     * @param {Object} options - Update options
+     * @returns {Promise} Promise that resolves when state is updated
+     */
+    async setStateAsync(path, valueOrPromise, options = {}) {
+        // If it's not a promise, just use regular setState
+        if (!valueOrPromise || typeof valueOrPromise.then !== 'function') {
+            return this.setState(path, valueOrPromise, options);
+        }
+
+        // Set loading state if requested
+        if (options.loadingPath) {
+            this.setState(options.loadingPath, true, { skipHistory: true });
+        }
+
+        try {
+            const value = await valueOrPromise;
+            
+            // Clear loading state
+            if (options.loadingPath) {
+                this.setState(options.loadingPath, false, { skipHistory: true });
+            }
+            
+            // Set the actual value
+            return this.setState(path, value, options);
+            
+        } catch (error) {
+            // Clear loading state on error
+            if (options.loadingPath) {
+                this.setState(options.loadingPath, false, { skipHistory: true });
+            }
+            
+            // Set error state if requested
+            if (options.errorPath) {
+                this.setState(options.errorPath, error.message || 'Unknown error', { skipHistory: true });
+            }
+            
+            // Emit error event
+            if (this.options.enableEvents) {
+                this.eventDispatcher.emit('state:async-error', {
+                    path,
+                    error,
+                    timestamp: Date.now()
+                });
+            }
+            
+            throw error;
+        }
+    }
+
+    /**
+     * Batch multiple state updates atomically
+     * @param {Array} updates - Array of {path, value, options} objects
+     * @param {Object} batchOptions - Batch options
+     * @returns {boolean} True if any updates were applied
+     */
+    batchUpdate(updates, batchOptions = {}) {
+        if (!Array.isArray(updates) || updates.length === 0) {
+            return false;
+        }
+
+        const startTime = performance.now();
+        let hasChanges = false;
+        const changes = [];
+        
+        // Store original state for rollback
+        const originalState = this.deepClone(this.currentState);
+
+        try {
+            // Apply all updates without triggering events/history
+            for (const update of updates) {
+                const { path, value, options = {} } = update;
+                const result = this.setState(path, value, {
+                    ...options,
+                    skipEvents: true,
+                    skipHistory: true,
+                    silent: true
+                });
+                
+                if (result) {
+                    hasChanges = true;
+                    changes.push({ path, value, oldValue: this.getValueByPath(originalState, path) });
+                }
+            }
+
+            // If we have changes, handle events and history
+            if (hasChanges && !batchOptions.skipEvents) {
+                // Add to history as a single operation
+                if (this.options.enableHistory && !batchOptions.skipHistory) {
+                    this.addCurrentStateToHistory();
+                }
+
+                // Emit batch event
+                if (this.options.enableEvents) {
+                    this.eventDispatcher.emit('state:batch-update', {
+                        changes,
+                        timestamp: Date.now()
+                    });
+                }
+
+                // Trigger subscriptions for all changed paths
+                for (const change of changes) {
+                    this.triggerSubscriptions(change.path, change.value, change.oldValue);
+                }
+            }
+
+            // Update performance stats
+            if (hasChanges) {
+                this.stats.totalUpdates++;
+                this.updateAverageTime(performance.now() - startTime);
+            }
+
+            return hasChanges;
+
+        } catch (error) {
+            // Rollback on error
+            this.currentState = originalState;
+            this.invalidateMemoryCache();
+            
+            if (this.options.enableDebug) {
+                console.error('🚨 StateManager: Batch update failed, rolled back', error);
+            }
+            
+            throw error;
+        }
+    }
+
+    /**
+     * Create a transaction for multiple related updates
+     * @param {Function} transactionFn - Function that performs updates
+     * @returns {*} Result of transaction function
+     */
+    transaction(transactionFn) {
+        const originalState = this.deepClone(this.currentState);
+        const startTime = performance.now();
+        
+        try {
+            // Execute transaction
+            const result = transactionFn(this);
+            
+            // Add to history as single operation
+            if (this.options.enableHistory) {
+                this.addCurrentStateToHistory();
+            }
+            
+            // Emit transaction event
+            if (this.options.enableEvents) {
+                this.eventDispatcher.emit('state:transaction', {
+                    timestamp: Date.now(),
+                    duration: performance.now() - startTime
+                });
+            }
+            
+            if (this.options.enableDebug) {
+                console.log('💰 StateManager: Transaction completed', result);
+            }
+            
+            return result;
+            
+        } catch (error) {
+            // Rollback entire transaction
+            this.currentState = originalState;
+            this.invalidateMemoryCache();
+            
+            if (this.options.enableDebug) {
+                console.error('🚨 StateManager: Transaction failed, rolled back', error);
+            }
+            
             throw error;
         }
     }

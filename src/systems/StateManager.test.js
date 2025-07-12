@@ -584,4 +584,118 @@ describe('State Schema Integration', () => {
         testStateManager.resetState(STATE_PATHS.PLAYER_HEALTH);
         expect(testStateManager.getState(STATE_PATHS.PLAYER_HEALTH)).toBe(100); // Default value
     });
+
+    describe('Async state management', () => {
+        it('should handle async state updates with setStateAsync', async () => {
+            const asyncValue = new Promise(resolve => 
+                setTimeout(() => resolve(75), 10)
+            );
+            
+            const result = await testStateManager.setStateAsync('player.health', asyncValue);
+            expect(result).toBe(true);
+            expect(testStateManager.getState('player.health')).toBe(75);
+        });
+
+        it('should handle loading states during async operations', async () => {
+            const asyncValue = new Promise(resolve => 
+                setTimeout(() => resolve(90), 20)
+            );
+            
+            const promise = testStateManager.setStateAsync('player.health', asyncValue, {
+                loadingPath: 'ui.loading'
+            });
+            
+            // Should be loading initially
+            expect(testStateManager.getState('ui.loading')).toBe(true);
+            
+            await promise;
+            
+            // Should not be loading after completion
+            expect(testStateManager.getState('ui.loading')).toBe(false);
+            expect(testStateManager.getState('player.health')).toBe(90);
+        });
+
+        it('should handle async errors with error states', async () => {
+            const asyncError = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Test error')), 10)
+            );
+            
+            await expect(testStateManager.setStateAsync('player.health', asyncError, {
+                loadingPath: 'ui.loading',
+                errorPath: 'ui.error'
+            })).rejects.toThrow('Test error');
+            
+            expect(testStateManager.getState('ui.loading')).toBe(false);
+            expect(testStateManager.getState('ui.error')).toBe('Test error');
+        });
+
+        it('should support batch updates atomically', () => {
+            const updates = [
+                { path: 'player.health', value: 80 },
+                { path: 'player.energy', value: 60 },
+                { path: 'game.score', value: 1500 }
+            ];
+            
+            const result = testStateManager.batchUpdate(updates);
+            expect(result).toBe(true);
+            
+            expect(testStateManager.getState('player.health')).toBe(80);
+            expect(testStateManager.getState('player.energy')).toBe(60);
+            expect(testStateManager.getState('game.score')).toBe(1500);
+        });
+
+        it('should rollback batch updates on error', () => {
+            const originalHealth = testStateManager.getState('player.health');
+            
+            const updates = [
+                { path: 'player.health', value: 80 },
+                { path: 'game.status', value: 'invalid-status' } // This should fail validation
+            ];
+            
+            expect(() => testStateManager.batchUpdate(updates)).toThrow();
+            
+            // Should rollback to original state
+            expect(testStateManager.getState('player.health')).toBe(originalHealth);
+        });
+
+        it('should support transactions with rollback', () => {
+            const originalHealth = testStateManager.getState('player.health');
+            const originalScore = testStateManager.getState('game.score');
+            
+            expect(() => {
+                testStateManager.transaction((state) => {
+                    state.setState('player.health', 50);
+                    state.setState('game.score', 2000);
+                    throw new Error('Transaction failed');
+                });
+            }).toThrow('Transaction failed');
+            
+            // Should rollback both changes
+            expect(testStateManager.getState('player.health')).toBe(originalHealth);
+            expect(testStateManager.getState('game.score')).toBe(originalScore);
+        });
+
+        it('should emit async error events', async () => {
+            const errorSpy = vi.fn();
+            testStateManager.eventDispatcher.on('state:async-error', errorSpy);
+            
+            const asyncError = Promise.reject(new Error('Async test error'));
+            
+            try {
+                await testStateManager.setStateAsync('player.health', asyncError);
+            } catch (error) {
+                // Expected to throw
+            }
+            
+            expect(errorSpy).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    path: 'player.health',
+                    error: expect.objectContaining({
+                        message: 'Async test error'
+                    })
+                }),
+                'state:async-error'
+            );
+        });
+    });
 });
