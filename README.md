@@ -257,3 +257,17 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 **Happy gaming! Transform and conquer! 🚁🚗⛵🤿**
+
+## 🏗️ Architecture Documentation
+
+This project is undergoing a major architectural transformation to an **event-driven architecture**. 
+
+📚 **[View Architecture Documentation](./docs/README.md)**
+
+The new architecture will provide:
+- **Decoupled Components**: Event-driven communication between game systems
+- **State Management**: Centralized, immutable state handling
+- **Performance Optimization**: Web worker integration for heavy computations
+- **Advanced Features**: Save/load system and replay functionality
+
+**Current Status**: Planning phase complete, implementation in progress.
