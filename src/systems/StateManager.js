@@ -44,6 +44,9 @@ export class StateManager {
 
         // Subscriptions for state changes
         this.subscriptions = new Map();
+        
+        // Subscription index for O(1) unsubscribe performance
+        this.subscriptionIndex = new Map();
 
         // Performance tracking
         this.stats = {
@@ -73,11 +76,16 @@ export class StateManager {
     /**
      * Get state value by path
      * @param {string} path - Dot-notation path to state property
+     * @param {Object} options - Options for getting state
+     * @param {boolean} options.skipStats - Whether to skip statistics tracking
      * @returns {*} State value or undefined if not found
      */
-    getState(path = '') {
+    getState(path = '', options = {}) {
         const startTime = performance.now();
-        this.stats.totalGets++;
+        
+        if (!options.skipStats) {
+            this.stats.totalGets++;
+        }
 
         try {
             if (!path) {
@@ -168,14 +176,15 @@ export class StateManager {
                 });
             }
 
+            // Update average time only for successful updates
+            this.updateAverageTime(performance.now() - startTime);
+
             return true;
         } catch (error) {
             if (this.options.enableDebug) {
                 console.error(`❌ StateManager: setState('${path}') failed:`, error);
             }
             throw error;
-        } finally {
-            this.updateAverageTime(performance.now() - startTime);
         }
     }
 
@@ -209,7 +218,15 @@ export class StateManager {
         if (!this.subscriptions.has(path)) {
             this.subscriptions.set(path, []);
         }
-        this.subscriptions.get(path).push(subscription);
+        const subscriptions = this.subscriptions.get(path);
+        subscriptions.push(subscription);
+        
+        // Add to subscription index for O(1) unsubscribe
+        this.subscriptionIndex.set(subscriptionId, {
+            path,
+            index: subscriptions.length - 1
+        });
+        
         this.stats.totalSubscriptions++;
 
         // Call immediately if requested
@@ -232,21 +249,45 @@ export class StateManager {
      * @returns {boolean} True if subscription was removed
      */
     unsubscribe(subscriptionId) {
-        for (const [path, subscriptions] of this.subscriptions.entries()) {
-            const index = subscriptions.findIndex(sub => sub.id === subscriptionId);
-            if (index !== -1) {
-                subscriptions.splice(index, 1);
-                if (subscriptions.length === 0) {
-                    this.subscriptions.delete(path);
-                }
-                
-                if (this.options.enableDebug) {
-                    console.log(`📡 StateManager: Unsubscribed from '${path}'`, subscriptionId);
-                }
-                return true;
-            }
+        const subscriptionInfo = this.subscriptionIndex.get(subscriptionId);
+        if (!subscriptionInfo) {
+            return false;
         }
-        return false;
+        
+        const { path, index } = subscriptionInfo;
+        const subscriptions = this.subscriptions.get(path);
+        
+        if (!subscriptions || index >= subscriptions.length) {
+            return false;
+        }
+        
+        // Remove from subscriptions array (swap with last element to avoid shifting)
+        const lastIndex = subscriptions.length - 1;
+        if (index < lastIndex) {
+            subscriptions[index] = subscriptions[lastIndex];
+            // Update index for the swapped subscription
+            this.subscriptionIndex.set(subscriptions[index].id, {
+                path,
+                index
+            });
+        }
+        subscriptions.pop();
+        
+        // Remove from subscription index
+        this.subscriptionIndex.delete(subscriptionId);
+        
+        // Clean up empty subscription paths
+        if (subscriptions.length === 0) {
+            this.subscriptions.delete(path);
+        }
+        
+        this.stats.totalSubscriptions--;
+        
+        if (this.options.enableDebug) {
+            console.log(`📡 StateManager: Unsubscribed from '${path}'`, subscriptionId);
+        }
+        
+        return true;
     }
 
     /**
@@ -468,7 +509,7 @@ export class StateManager {
     deepClone(obj) {
         if (obj === null || typeof obj !== 'object') return obj;
         if (obj instanceof Date) return new Date(obj.getTime());
-        if (obj instanceof Array) return obj.map(item => this.deepClone(item));
+        if (Array.isArray(obj)) return obj.map(item => this.deepClone(item));
         if (typeof obj === 'object') {
             const cloned = {};
             for (const key in obj) {
@@ -534,15 +575,37 @@ export class StateManager {
 
         // Number range validation
         if (typeof value === 'number') {
-            if (rules.min !== undefined && value < rules.min) {
-                return `Value must be >= ${rules.min}`;
+            if (rules.min !== undefined && value < this.resolveReference(rules.min, path)) {
+                return `Value must be >= ${this.resolveReference(rules.min, path)}`;
             }
-            if (rules.max !== undefined && value > rules.max) {
-                return `Value must be <= ${rules.max}`;
+            if (rules.max !== undefined && value > this.resolveReference(rules.max, path)) {
+                return `Value must be <= ${this.resolveReference(rules.max, path)}`;
             }
         }
 
         return null;
+    }
+
+    /**
+     * Resolve validation rule references
+     * @param {*} value - The value to resolve (could be string reference or actual value)
+     * @param {string} path - Current path being validated
+     * @returns {*} Resolved value
+     * @private
+     */
+    resolveReference(value, path) {
+        if (typeof value !== 'string') {
+            return value;
+        }
+        
+        // Handle relative references within the same object
+        const pathParts = path.split('.');
+        const parentPath = pathParts.slice(0, -1).join('.');
+        const referencePath = parentPath ? `${parentPath}.${value}` : value;
+        
+        // Get value without incrementing stats (direct state access)
+        const state = this.getState(referencePath, { skipStats: true });
+        return state !== undefined ? state : value;
     }
 
     /**
