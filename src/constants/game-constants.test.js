@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { GAME_CONSTANTS, GAME_INFO } from '../src/constants/game-constants.js'
+import { GAME_CONSTANTS, GAME_INFO } from './game-constants.js'
 
 describe('Game Constants', () => {
   describe('GAME_CONSTANTS', () => {
