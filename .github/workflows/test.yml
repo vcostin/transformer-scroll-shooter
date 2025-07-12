@@ -2,7 +2,7 @@ name: Test Suite
 
 on:
   push:
-    branches: [ develop, feature/* ]
+    branches: [ develop, feature/*, fix/* ]
     # Note: master is excluded (deploy.yml handles master)
   pull_request:
     branches: [ master, develop ]
