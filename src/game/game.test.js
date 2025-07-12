@@ -593,6 +593,215 @@ describe('Game', () => {
     })
   })
 
+  describe('Boss Spawn Logic', () => {
+    beforeEach(() => {
+      game.player = {
+        x: 100,
+        y: 300,
+        width: 40,
+        height: 30,
+        health: 100,
+        takeDamage: vi.fn(),
+        collectPowerup: vi.fn()
+      }
+      
+      game.audio = {
+        playSound: vi.fn()
+      }
+      
+      game.addMessage = vi.fn()
+      game.spawnBoss = vi.fn()
+    })
+
+    it('should spawn boss on level 5 with no enemies killed', () => {
+      game.level = 5
+      game.enemiesKilled = 0
+      game.bossActive = false
+      
+      game.update(1000)
+      
+      expect(game.spawnBoss).toHaveBeenCalled()
+    })
+
+    it('should spawn boss on level 10 with no enemies killed', () => {
+      game.level = 10
+      game.enemiesKilled = 0
+      game.bossActive = false
+      
+      game.update(1000)
+      
+      expect(game.spawnBoss).toHaveBeenCalled()
+    })
+
+    it('should spawn boss on level 15 with no enemies killed', () => {
+      game.level = 15
+      game.enemiesKilled = 0
+      game.bossActive = false
+      
+      game.update(1000)
+      
+      expect(game.spawnBoss).toHaveBeenCalled()
+    })
+
+    it('should not spawn boss on non-boss levels', () => {
+      const nonBossLevels = [1, 2, 3, 4, 6, 7, 8, 9, 11, 12, 13, 14, 16]
+      
+      nonBossLevels.forEach(level => {
+        game.level = level
+        game.enemiesKilled = 0
+        game.bossActive = false
+        game.spawnBoss.mockClear()
+        
+        game.update(1000)
+        
+        expect(game.spawnBoss).not.toHaveBeenCalled()
+      })
+    })
+
+    it('should not spawn boss if already active', () => {
+      game.level = 5
+      game.enemiesKilled = 0
+      game.bossActive = true // Boss already active
+      
+      game.update(1000)
+      
+      expect(game.spawnBoss).not.toHaveBeenCalled()
+    })
+
+    it('should not spawn boss if enemies have been killed on boss level', () => {
+      game.level = 5
+      game.enemiesKilled = 3 // Some enemies killed
+      game.bossActive = false
+      
+      game.update(1000)
+      
+      expect(game.spawnBoss).not.toHaveBeenCalled()
+    })
+
+    it('should not spawn boss on level 1', () => {
+      game.level = 1
+      game.enemiesKilled = 0
+      game.bossActive = false
+      
+      game.update(1000)
+      
+      expect(game.spawnBoss).not.toHaveBeenCalled()
+    })
+
+    it('should spawn boss immediately when reaching boss level through progression', () => {
+      game.level = 4
+      game.enemiesKilled = 9 // About to level up
+      game.bossActive = false
+      
+      // Create and kill an enemy to trigger level progression
+      const bullet = {
+        x: 200,
+        y: 200,
+        width: 8,
+        height: 3,
+        owner: 'player',
+        damage: 20,
+        markedForDeletion: false
+      }
+      
+      const enemy = {
+        x: 200,
+        y: 200,
+        width: 30,
+        height: 20,
+        health: 20,
+        points: 10,
+        type: 'fighter',
+        takeDamage: vi.fn((damage) => {
+          enemy.health -= damage
+          if (enemy.health <= 0) {
+            enemy.markedForDeletion = true
+          }
+        }),
+        markedForDeletion: false
+      }
+      
+      game.bullets.push(bullet)
+      game.enemies.push(enemy)
+      
+      // Trigger collision detection which should advance to level 5
+      game.checkCollisions()
+      
+      expect(game.level).toBe(5)
+      expect(game.enemiesKilled).toBe(0)
+      
+      // Now update should spawn boss
+      game.update(1000)
+      
+      expect(game.spawnBoss).toHaveBeenCalled()
+    })
+
+    it('should handle boss defeat correctly', () => {
+      game.level = 5
+      game.bossActive = true
+      game.score = 1000
+      
+      // Create player bullet and boss
+      const bullet = {
+        x: 300,
+        y: 300,
+        width: 8,
+        height: 3,
+        owner: 'player',
+        damage: 200, // Enough to kill boss
+        markedForDeletion: false
+      }
+      
+      const boss = {
+        x: 300,
+        y: 300,
+        width: 80,
+        height: 60,
+        health: 200,
+        points: 500,
+        type: 'boss',
+        takeDamage: vi.fn((damage) => {
+          boss.health -= damage
+          if (boss.health <= 0) {
+            boss.markedForDeletion = true
+          }
+        }),
+        markedForDeletion: false
+      }
+      
+      game.bullets.push(bullet)
+      game.enemies.push(boss)
+      
+      game.checkCollisions()
+      
+      expect(game.bossActive).toBe(false)
+      expect(game.score).toBe(1000 + 500 + 1000) // original + boss points + boss bonus
+    })
+
+    it('should reset boss spawn logic after boss defeat', () => {
+      game.level = 5
+      game.bossActive = true
+      game.enemiesKilled = 0
+      
+      // Simulate boss defeat
+      game.bossActive = false
+      
+      // Should not spawn another boss on same level
+      game.update(1000)
+      
+      expect(game.spawnBoss).not.toHaveBeenCalled()
+      
+      // But should spawn boss on next boss level
+      game.level = 10
+      game.enemiesKilled = 0
+      game.spawnBoss.mockClear()
+      
+      game.update(1000)
+      
+      expect(game.spawnBoss).toHaveBeenCalled()
+    })
+  })
+
   describe('Edge Cases', () => {
     it('should handle empty arrays in update', () => {
       expect(() => {

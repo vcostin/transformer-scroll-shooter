@@ -165,7 +165,7 @@ export class Game {
         const spawnRate = (500 + Math.random() * 1000) / difficultyMultiplier; // Reduced from 1000-3000 to 500-1500
         
         // Check for boss spawn (every BOSS_LEVEL_INTERVAL levels)
-        if (this.level > 1 && this.level % GAME_CONSTANTS.BOSS_LEVEL_INTERVAL === 0 && !this.bossActive && this.enemiesKilled % this.enemiesPerLevel === 0 && this.enemiesKilled > 0) {
+        if (this.level > 1 && this.level % GAME_CONSTANTS.BOSS_LEVEL_INTERVAL === 0 && !this.bossActive && this.enemiesKilled === 0) {
             this.spawnBoss();
         }
         // Regular enemy spawning
