@@ -4,6 +4,7 @@
  */
 
 import { GAME_CONSTANTS } from '@/constants/game-constants.js';
+import { BOSS_TYPES, BOSS_MESSAGES } from '@/constants/boss-constants.js';
 import { AudioManager } from '@/systems/audio.js';
 import { OptionsMenu } from '@/ui/options.js';
 import { Background } from '@/rendering/background.js';
@@ -11,16 +12,6 @@ import { Explosion, PowerupEffect, MuzzleFlash } from '@/rendering/effects.js';
 import { Powerup, PowerupSpawner } from '@/systems/powerups.js';
 import Player from '@/entities/player.js';
 import Enemy from '@/entities/enemies/enemy.js';
-
-// Boss configuration constants
-const BOSS_TYPES = ['boss', 'boss_heavy', 'boss_fast', 'boss_sniper'];
-
-const BOSS_MESSAGES = {
-    'boss': 'BOSS APPROACHING!',
-    'boss_heavy': 'HEAVY ASSAULT BOSS INCOMING!',
-    'boss_fast': 'FAST ATTACK BOSS DETECTED!',
-    'boss_sniper': 'SNIPER BOSS TARGETING YOU!'
-};
 
 export class Game {
     constructor() {
@@ -495,7 +486,7 @@ export class Game {
     }
     
     isBoss(enemy) {
-        return enemy.type === 'boss' || enemy.type === 'boss_heavy' || enemy.type === 'boss_fast' || enemy.type === 'boss_sniper';
+        return BOSS_TYPES.includes(enemy.type);
     }
 }
 

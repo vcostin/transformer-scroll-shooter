@@ -230,14 +230,12 @@ describe('Boss Spawn Logic', () => {
       game.bossActive = false
       
       const initialEnemyCount = game.enemies.length
+       // Simulate a game update (should not spawn boss)
+      game.update(16)
       
-      // Try to spawn boss (should not work)
-      game.spawnBoss()
-      
-      // Boss should still be spawned (spawnBoss forces spawn)
-      // but in actual game logic, the condition check prevents this
-      expect(game.enemies.length).toBe(initialEnemyCount + 1)
-      expect(game.bossActive).toBe(true)
+      // Verify that boss was not spawned
+      expect(game.enemies.length).toBe(initialEnemyCount)
+      expect(game.bossActive).toBe(false)
     })
   })
 
