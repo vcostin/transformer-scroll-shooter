@@ -497,6 +497,15 @@ describe('StateManager', () => {
             expect(testStateManager.getStats().historySize).toBe(1);
         });
 
+        it('should emit clearAll event when clearing all state', () => {
+            const eventSpy = vi.fn();
+            testStateManager.eventDispatcher.on('state:clearAll', eventSpy);
+            
+            testStateManager.clearAll();
+            
+            expect(eventSpy).toHaveBeenCalledWith({ timestamp: expect.any(Number) }, 'state:clearAll');
+        });
+
         it('should provide comprehensive statistics', () => {
             testStateManager.setState('player.health', 50);
             testStateManager.subscribe('player.health', vi.fn());

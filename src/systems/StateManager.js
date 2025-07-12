@@ -639,7 +639,7 @@ export class StateManager {
         }
 
         if (this.options.enableEvents) {
-            this.eventDispatcher.emit('state:clear');
+            this.eventDispatcher.emit('state:clearAll', { timestamp: Date.now() });
         }
     }
 
@@ -942,6 +942,3 @@ export const stateManager = new StateManager({
     enableEvents: true,
     maxHistorySize: 50
 });
-
-// Export default instance for convenience
-export default stateManager;

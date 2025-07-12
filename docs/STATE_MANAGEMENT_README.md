@@ -35,7 +35,7 @@ const unsubscribe = stateManager.subscribe('player.health', (newValue, oldValue)
 ## 📚 Documentation
 
 ### Core Documentation
-- **[Complete API Reference](./docs/STATE_MANAGEMENT.md)** - Full documentation with examples
+- **[Complete API Reference](./STATE_MANAGEMENT.md)** - Full documentation with examples
 - **[Quick Reference](./docs/STATE_MANAGEMENT_QUICK_REFERENCE.md)** - Essential APIs and common patterns
 - **[Migration Guide](./docs/STATE_MANAGEMENT_MIGRATION.md)** - How to migrate from direct state manipulation
 
@@ -263,7 +263,7 @@ Contributions are welcome! Please read the contributing guidelines and ensure al
 ## 📞 Support
 
 For questions, issues, or feature requests:
-1. Check the [documentation](./docs/STATE_MANAGEMENT.md)
+1. Check the [documentation](./STATE_MANAGEMENT.md)
 2. Review the [migration guide](./docs/STATE_MANAGEMENT_MIGRATION.md)
 3. Check existing issues on GitHub
 4. Create a new issue with detailed information
