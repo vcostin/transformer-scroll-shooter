@@ -22,6 +22,11 @@ export function createMockGame(options = {}) {
     // Mock document.getElementById to return a mock canvas
     const mockCanvas = createMockCanvas();
     
+    // Store original globals to restore later
+    const originalDocument = global.document;
+    const originalWindow = global.window;
+    const originalProcess = global.process;
+    
     // Create mock elements for OptionsMenu
     const mockElement = {
         style: {},
@@ -81,6 +86,10 @@ export function createMockGame(options = {}) {
         if (game.destroy) {
             game.destroy();
         }
+        // Restore original globals to prevent test pollution
+        global.document = originalDocument;
+        global.window = originalWindow;
+        global.process = originalProcess;
         vi.clearAllMocks();
     };
 

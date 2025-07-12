@@ -62,8 +62,15 @@ export class Game {
         // Frame counter for events
         this.frameNumber = 0;
         
+        // Initialize FPS tracking variables
+        this.frameCount = 0;
+        this.fpsTimer = 0;
+        
         // Event listeners cleanup tracking
         this.eventListeners = new Set();
+        
+        // State manager subscriptions cleanup tracking
+        this.stateSubscriptions = new Set();
         
         // Input handling
         this.keys = {};
@@ -99,7 +106,7 @@ export class Game {
         });
         
         // Set up state change listeners to emit UI events
-        this.stateManager.subscribe('game.score', (newScore, oldScore) => {
+        const unsubscribeScore = this.stateManager.subscribe('game.score', (newScore, oldScore) => {
             if (oldScore !== undefined) {
                 this.eventDispatcher.emit(GAME_EVENTS.UI_SCORE_UPDATE, {
                     score: newScore,
@@ -108,6 +115,9 @@ export class Game {
                 });
             }
         });
+        
+        // Store subscription for cleanup
+        this.stateSubscriptions.add(unsubscribeScore);
     }
     
     addEventListener(eventName, handler) {
@@ -190,6 +200,10 @@ export class Game {
         // Clean up event listeners
         this.eventListeners.forEach(unsubscribe => unsubscribe());
         this.eventListeners.clear();
+        
+        // Clean up state manager subscriptions
+        this.stateSubscriptions.forEach(unsubscribe => unsubscribe());
+        this.stateSubscriptions.clear();
         
         // Clean up global reference
         if (window.game === this) {
