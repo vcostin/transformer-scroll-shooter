@@ -5,6 +5,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import Game from '@/game/game.js'
+import Enemy from '@/entities/enemies/enemy.js'
 import { GAME_CONSTANTS } from '@/constants/game-constants.js'
 
 describe('Boss Spawn Logic', () => {
@@ -219,7 +220,7 @@ describe('Boss Spawn Logic', () => {
       
       // Find the boss enemy (should be the last one spawned)
       const boss = game.enemies[game.enemies.length - 1]
-      expect(boss.type).toBe('boss')
+      expect(game.isBoss(boss)).toBe(true) // Check if it's any boss type
     })
 
     it('should not spawn boss when conditions are not met', () => {
@@ -331,6 +332,70 @@ describe('Boss Spawn Logic', () => {
                          !game.bossSpawnedThisLevel
       
       expect(shouldSpawn).toBe(false)
+    })
+  })
+
+  describe('Boss Variety', () => {
+    it('should spawn different boss types', () => {
+      // Test multiple boss spawns to see if we get variety
+      const bossTypes = new Set();
+      
+      // Mock Math.random to control boss type selection
+      const originalRandom = Math.random;
+      
+      // Test each boss type
+      Math.random = () => 0.0; // First boss type
+      game.spawnBoss();
+      bossTypes.add(game.enemies[game.enemies.length - 1].type);
+      
+      Math.random = () => 0.3; // Second boss type
+      game.enemies = []; // Clear enemies
+      game.spawnBoss();
+      bossTypes.add(game.enemies[game.enemies.length - 1].type);
+      
+      Math.random = () => 0.6; // Third boss type
+      game.enemies = []; // Clear enemies
+      game.spawnBoss();
+      bossTypes.add(game.enemies[game.enemies.length - 1].type);
+      
+      Math.random = () => 0.9; // Fourth boss type
+      game.enemies = []; // Clear enemies
+      game.spawnBoss();
+      bossTypes.add(game.enemies[game.enemies.length - 1].type);
+      
+      // Restore original Math.random
+      Math.random = originalRandom;
+      
+      // Should have spawned different boss types
+      expect(bossTypes.size).toBeGreaterThan(1);
+      expect(bossTypes.has('boss')).toBe(true);
+    })
+
+    it('should recognize all boss types as bosses', () => {
+      const bossTypes = ['boss', 'boss_heavy', 'boss_fast', 'boss_sniper'];
+      
+      bossTypes.forEach(bossType => {
+        const mockEnemy = { type: bossType };
+        expect(game.isBoss(mockEnemy)).toBe(true);
+      });
+      
+      // Non-boss types should return false
+      const nonBossTypes = ['fighter', 'bomber', 'scout'];
+      nonBossTypes.forEach(enemyType => {
+        const mockEnemy = { type: enemyType };
+        expect(game.isBoss(mockEnemy)).toBe(false);
+      });
+    })
+
+    it('should have different properties for different boss types', () => {
+      const bossTypes = ['boss', 'boss_heavy', 'boss_fast', 'boss_sniper'];
+      
+      bossTypes.forEach(bossType => {
+        const boss = new Enemy(game, 100, 100, bossType);
+        expect(boss.type).toBe(bossType);
+        expect(boss.maxHealth).toBeGreaterThan(100); // All bosses should have high health
+        expect(boss.points).toBeGreaterThan(400); // All bosses should give high points
+      });
     })
   })
 })

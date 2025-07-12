@@ -288,11 +288,26 @@ export class Game {
     }
     
     spawnBoss() {
-        const boss = new Enemy(this, this.width - 100, this.height / 2 - 30, 'boss');
+        // Array of different boss types
+        const bossTypes = ['boss', 'boss_heavy', 'boss_fast', 'boss_sniper'];
+        
+        // Select random boss type
+        const randomBossType = bossTypes[Math.floor(Math.random() * bossTypes.length)];
+        
+        const boss = new Enemy(this, this.width - 100, this.height / 2 - 30, randomBossType);
         this.enemies.push(boss);
         this.bossActive = true;
         this.bossSpawnedThisLevel = true;
-        this.addMessage('BOSS APPROACHING!', '#ff0000', GAME_CONSTANTS.MESSAGE_DURATION.BOSS);
+        
+        // Different messages for different boss types
+        const bossMessages = {
+            'boss': 'BOSS APPROACHING!',
+            'boss_heavy': 'HEAVY ASSAULT BOSS INCOMING!',
+            'boss_fast': 'FAST ATTACK BOSS DETECTED!',
+            'boss_sniper': 'SNIPER BOSS TARGETING YOU!'
+        };
+        
+        this.addMessage(bossMessages[randomBossType], '#ff0000', GAME_CONSTANTS.MESSAGE_DURATION.BOSS);
     }
     
     spawnPowerup() {
@@ -347,7 +362,7 @@ export class Game {
                                 this.addMessage(`LEVEL ${this.level}!`, '#00ff00', GAME_CONSTANTS.MESSAGE_DURATION.LEVEL_UP);
                             }
                             
-                            if (enemy.type === 'boss') {
+                            if (this.isBoss(enemy)) {
                                 this.bossActive = false;
                                 this.score += GAME_CONSTANTS.BOSS_BONUS_SCORE;
                                 this.player.health = Math.min(this.player.maxHealth, 
@@ -478,6 +493,10 @@ export class Game {
             cancelAnimationFrame(this.animationFrameId);
             this.animationFrameId = null;
         }
+    }
+    
+    isBoss(enemy) {
+        return enemy.type === 'boss' || enemy.type === 'boss_heavy' || enemy.type === 'boss_fast' || enemy.type === 'boss_sniper';
     }
 }
 

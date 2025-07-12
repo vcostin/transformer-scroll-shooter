@@ -78,6 +78,45 @@ export default class Enemy {
                 this.bulletSpeed = 300;
                 break;
                 
+            case 'boss_heavy':
+                this.width = 100;
+                this.height = 80;
+                this.maxHealth = 300;
+                this.health = this.maxHealth;
+                this.speed = 30;
+                this.damage = 75;
+                this.points = 750;
+                this.color = '#8B0000'; // Dark red
+                this.shootRate = 800;
+                this.bulletSpeed = 250;
+                break;
+                
+            case 'boss_fast':
+                this.width = 70;
+                this.height = 50;
+                this.maxHealth = 150;
+                this.health = this.maxHealth;
+                this.speed = 80;
+                this.damage = 40;
+                this.points = 600;
+                this.color = '#FF6600'; // Orange
+                this.shootRate = 600;
+                this.bulletSpeed = 350;
+                break;
+                
+            case 'boss_sniper':
+                this.width = 90;
+                this.height = 70;
+                this.maxHealth = 250;
+                this.health = this.maxHealth;
+                this.speed = 40;
+                this.damage = 80;
+                this.points = 800;
+                this.color = '#9400D3'; // Violet
+                this.shootRate = 1500;
+                this.bulletSpeed = 400;
+                break;
+                
             default:
                 // Default to fighter type
                 this.width = 30;
@@ -145,9 +184,9 @@ export default class Enemy {
                     this.moveTimer = 0;
                 }
                 
-                const targetDy = this.targetY - this.y;
-                if (Math.abs(targetDy) > 5) {
-                    this.y += Math.sign(targetDy) * moveSpeed * 0.8;
+                const scoutTargetDy = this.targetY - this.y;
+                if (Math.abs(scoutTargetDy) > 5) {
+                    this.y += Math.sign(scoutTargetDy) * moveSpeed * 0.8;
                 }
                 break;
                 
@@ -165,6 +204,54 @@ export default class Enemy {
                     if (Math.abs(bossDy) > 5) {
                         this.y += Math.sign(bossDy) * moveSpeed * 0.4;
                     }
+                }
+                break;
+                
+            case 'boss_heavy':
+                // Heavy boss - very slow but steady movement
+                this.x -= moveSpeed * 0.3; // Even slower than regular boss
+                
+                // Minimal vertical movement - stays more in center
+                if (player) {
+                    const centerY = this.game.height / 2 - this.height / 2;
+                    const dy = centerY - this.y;
+                    if (Math.abs(dy) > 20) {
+                        this.y += Math.sign(dy) * moveSpeed * 0.2;
+                    }
+                }
+                break;
+                
+            case 'boss_fast':
+                // Fast boss - quick horizontal movement with aggressive tracking
+                this.x -= moveSpeed * 0.8; // Faster than regular boss
+                
+                // Aggressive vertical tracking
+                if (player) {
+                    const bossTargetY = player.y - this.height / 2;
+                    const maxY = this.game.height - this.height;
+                    const clampedTargetY = Math.max(0, Math.min(maxY, bossTargetY));
+                    
+                    const bossDy = clampedTargetY - this.y;
+                    if (Math.abs(bossDy) > 2) {
+                        this.y += Math.sign(bossDy) * moveSpeed * 0.7;
+                    }
+                }
+                break;
+                
+            case 'boss_sniper':
+                // Sniper boss - maintains distance, minimal horizontal movement
+                this.x -= moveSpeed * 0.2; // Very slow horizontal movement
+                
+                // Erratic vertical movement to avoid being predictable
+                this.moveTimer += deltaTime;
+                if (this.moveTimer > 2000) {
+                    this.targetY = Math.random() * (this.game.height - this.height);
+                    this.moveTimer = 0;
+                }
+                
+                const sniperTargetDy = this.targetY - this.y;
+                if (Math.abs(sniperTargetDy) > 5) {
+                    this.y += Math.sign(sniperTargetDy) * moveSpeed * 0.3;
                 }
                 break;
         }
@@ -227,6 +314,15 @@ export default class Enemy {
                 break;
             case 'boss':
                 this.drawBoss(ctx);
+                break;
+            case 'boss_heavy':
+                this.drawBossHeavy(ctx);
+                break;
+            case 'boss_fast':
+                this.drawBossFast(ctx);
+                break;
+            case 'boss_sniper':
+                this.drawBossSniper(ctx);
                 break;
         }
         
@@ -319,6 +415,101 @@ export default class Enemy {
         ctx.fill();
     }
     
+    drawBossHeavy(ctx) {
+        // Main body - very large and bulky
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x, this.y + 20, this.width - 20, 40);
+        
+        // Upper and lower armor sections
+        ctx.fillRect(this.x + 5, this.y + 5, this.width - 30, 20);
+        ctx.fillRect(this.x + 5, this.y + 55, this.width - 30, 20);
+        
+        // Central core - darker
+        ctx.fillStyle = '#4B0000';
+        ctx.fillRect(this.x + 15, this.y + 25, this.width - 45, 30);
+        
+        // Heavy weapon pods
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x + this.width - 25, this.y + 15, 12, 20);
+        ctx.fillRect(this.x + this.width - 25, this.y + 45, 12, 20);
+        
+        // Massive nose section
+        ctx.beginPath();
+        ctx.moveTo(this.x, this.y + this.height / 2);
+        ctx.lineTo(this.x - 20, this.y + this.height / 2 - 12);
+        ctx.lineTo(this.x - 20, this.y + this.height / 2 + 12);
+        ctx.closePath();
+        ctx.fill();
+    }
+    
+    drawBossFast(ctx) {
+        // Main body - sleek and angular
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x, this.y + 12, this.width - 10, 26);
+        
+        // Angular wings
+        ctx.beginPath();
+        ctx.moveTo(this.x + 10, this.y);
+        ctx.lineTo(this.x + 30, this.y + 8);
+        ctx.lineTo(this.x + 15, this.y + 15);
+        ctx.closePath();
+        ctx.fill();
+        
+        ctx.beginPath();
+        ctx.moveTo(this.x + 10, this.y + 50);
+        ctx.lineTo(this.x + 30, this.y + 42);
+        ctx.lineTo(this.x + 15, this.y + 35);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Engine cores
+        ctx.fillStyle = '#FF9900';
+        ctx.fillRect(this.x + 5, this.y + 18, this.width - 25, 8);
+        ctx.fillRect(this.x + 5, this.y + 28, this.width - 25, 8);
+        
+        // Sharp nose
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.moveTo(this.x, this.y + this.height / 2);
+        ctx.lineTo(this.x - 12, this.y + this.height / 2 - 6);
+        ctx.lineTo(this.x - 12, this.y + this.height / 2 + 6);
+        ctx.closePath();
+        ctx.fill();
+    }
+    
+    drawBossSniper(ctx) {
+        // Main body - long and streamlined
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x, this.y + 18, this.width - 12, 34);
+        
+        // Sniper barrel/cannon
+        ctx.fillStyle = '#6A0DAD';
+        ctx.fillRect(this.x - 30, this.y + 28, 35, 14);
+        
+        // Targeting systems
+        ctx.fillStyle = '#FFD700';
+        ctx.fillRect(this.x + 10, this.y + 8, 8, 8);
+        ctx.fillRect(this.x + 10, this.y + 54, 8, 8);
+        
+        // Main body sections
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x + 5, this.y + 5, this.width - 25, 15);
+        ctx.fillRect(this.x + 5, this.y + 50, this.width - 25, 15);
+        
+        // Scope/targeting array
+        ctx.fillStyle = '#00FF00';
+        ctx.fillRect(this.x + 20, this.y + 30, 6, 10);
+        
+        // Pointed nose
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.moveTo(this.x, this.y + this.height / 2);
+        ctx.lineTo(this.x - 10, this.y + this.height / 2 - 5);
+        ctx.lineTo(this.x - 10, this.y + this.height / 2 + 5);
+        ctx.closePath();
+        ctx.fill();
+    }
+
     drawHealthBar(ctx) {
         const barWidth = this.width;
         const barHeight = 3;

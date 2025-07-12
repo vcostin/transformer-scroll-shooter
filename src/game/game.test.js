@@ -177,7 +177,7 @@ describe('Game', () => {
       
       expect(game.enemies.length).toBe(1)
       const boss = game.enemies[0]
-      expect(boss.type).toBe('boss')
+      expect(game.isBoss(boss)).toBe(true)
     })
 
     it('should set bossActive flag', () => {
@@ -198,7 +198,7 @@ describe('Game', () => {
       game.spawnBoss()
       
       expect(game.messages.length).toBe(1)
-      expect(game.messages[0].text).toBe('BOSS APPROACHING!')
+      expect(game.messages[0].text).toContain('BOSS')
     })
   })
 
