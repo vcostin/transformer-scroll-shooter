@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import Background from './background.js';
+import Background from '@/rendering/background.js';
 
 // Mock canvas context
 const mockCanvasContext = {

@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import Game from './game.js'
+import Game from '@/game/game.js'
 
 describe('Game', () => {
   let game

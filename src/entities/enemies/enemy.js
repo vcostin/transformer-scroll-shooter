@@ -5,7 +5,7 @@
  * Provides common functionality for movement, shooting, and rendering.
  */
 
-import Bullet from '../bullet.js';
+import Bullet from '@/entities/bullet.js';
 
 export default class Enemy {
     constructor(game, x, y, type) {

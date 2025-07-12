@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { OptionsMenu } from './options.js';
+import { OptionsMenu } from '@/ui/options.js';
 
 describe('OptionsMenu', () => {
     let optionsMenu;

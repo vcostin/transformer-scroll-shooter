@@ -1,8 +1,14 @@
 import { defineConfig } from 'vitest/config'
 import { createAppDefines } from './config/app-constants.js'
+import { resolve } from 'path'
 
 export default defineConfig({
   define: createAppDefines(),
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, 'src')
+    }
+  },
   test: {
     globals: true,
     environment: 'jsdom',

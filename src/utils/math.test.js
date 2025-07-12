@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import * as MathUtils from './math.js'
+import * as MathUtils from '@/utils/math.js'
 
 describe('MathUtils', () => {
   describe('clamp', () => {
