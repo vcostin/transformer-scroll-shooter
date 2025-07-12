@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { Powerup } from '../src/systems/powerups.js'
+import { Powerup } from './powerups.js'
 
 describe('Powerup Class', () => {
   let mockGame

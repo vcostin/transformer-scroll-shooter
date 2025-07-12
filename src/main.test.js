@@ -17,7 +17,7 @@ describe('Main Entry Point', () => {
     describe('Module Imports', () => {
         it('should import all required modules', async () => {
             // Import the main module
-            const mainModule = await import('../src/main.js');
+            const mainModule = await import('./main.js');
             
             // Check that all expected exports are present
             expect(mainModule.GAME_CONSTANTS).toBeDefined();
@@ -40,7 +40,7 @@ describe('Main Entry Point', () => {
         });
         
         it('should have valid module structure', async () => {
-            const mainModule = await import('../src/main.js');
+            const mainModule = await import('./main.js');
             
             // Check that game constants are properly structured
             expect(mainModule.GAME_CONSTANTS).toHaveProperty('BOSS_LEVEL_INTERVAL');
@@ -55,7 +55,7 @@ describe('Main Entry Point', () => {
     
     describe('Module Integration', () => {
         it('should have all utility functions available', async () => {
-            const mainModule = await import('../src/main.js');
+            const mainModule = await import('./main.js');
             
             // Check math utils
             expect(mainModule.MathUtils.clamp).toBeDefined();
@@ -68,7 +68,7 @@ describe('Main Entry Point', () => {
         });
         
         it('should have all effect classes available', async () => {
-            const mainModule = await import('../src/main.js');
+            const mainModule = await import('./main.js');
             
             expect(mainModule.Explosion).toBeDefined();
             expect(mainModule.PowerupEffect).toBeDefined();
@@ -77,7 +77,7 @@ describe('Main Entry Point', () => {
         });
         
         it('should have all system classes available', async () => {
-            const mainModule = await import('../src/main.js');
+            const mainModule = await import('./main.js');
             
             expect(mainModule.AudioManager).toBeDefined();
             expect(mainModule.Powerup).toBeDefined();
@@ -89,7 +89,7 @@ describe('Main Entry Point', () => {
     
     describe('Class Instantiation', () => {
         it('should be able to create instances of game classes', async () => {
-            const mainModule = await import('../src/main.js');
+            const mainModule = await import('./main.js');
             
             // Mock required dependencies
             const mockGame = {
@@ -133,7 +133,7 @@ describe('Main Entry Point', () => {
         });
         
         it('should be able to create player and enemy instances', async () => {
-            const mainModule = await import('../src/main.js');
+            const mainModule = await import('./main.js');
             
             const mockGame = {
                 canvas: { width: 800, height: 600 },
@@ -153,7 +153,7 @@ describe('Main Entry Point', () => {
     
     describe('Utility Functions', () => {
         it('should have working math utility functions', async () => {
-            const mainModule = await import('../src/main.js');
+            const mainModule = await import('./main.js');
             
             // Test math utility functions
             expect(mainModule.MathUtils.clamp(5, 0, 10)).toBe(5);
@@ -165,7 +165,7 @@ describe('Main Entry Point', () => {
         });
         
         it('should have working collision utility functions', async () => {
-            const mainModule = await import('../src/main.js');
+            const mainModule = await import('./main.js');
             
             // Test collision utility functions
             const rect1 = { x: 0, y: 0, width: 10, height: 10 };
@@ -187,7 +187,7 @@ describe('Main Entry Point', () => {
     
     describe('Constants and Configuration', () => {
         it('should have valid game constants', async () => {
-            const mainModule = await import('../src/main.js');
+            const mainModule = await import('./main.js');
             
             expect(mainModule.GAME_CONSTANTS.BOSS_LEVEL_INTERVAL).toBeTypeOf('number');
             expect(mainModule.GAME_CONSTANTS.BOSS_LEVEL_INTERVAL).toBeGreaterThan(0);
@@ -200,7 +200,7 @@ describe('Main Entry Point', () => {
         });
         
         it('should have valid game info', async () => {
-            const mainModule = await import('../src/main.js');
+            const mainModule = await import('./main.js');
             
             expect(mainModule.GAME_INFO.version).toBeTypeOf('string');
             expect(mainModule.GAME_INFO.version).toMatch(/^\d+\.\d+\.\d+$/);
@@ -217,12 +217,12 @@ describe('Main Entry Point', () => {
         it('should handle module loading errors gracefully', async () => {
             // This test ensures the main module can be imported without throwing
             expect(async () => {
-                await import('../src/main.js');
+                await import('./main.js');
             }).not.toThrow();
         });
         
         it('should handle class instantiation with invalid parameters', async () => {
-            const mainModule = await import('../src/main.js');
+            const mainModule = await import('./main.js');
             
             // Test that classes handle invalid parameters gracefully
             expect(() => new mainModule.AudioManager()).not.toThrow();

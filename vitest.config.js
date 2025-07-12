@@ -7,7 +7,7 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./test/setup.js'],
-    include: ['**/*.{test,spec}.{js,ts}'],
+    include: ['src/**/*.{test,spec}.{js,ts}', 'test/integration.test.js'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
@@ -17,6 +17,7 @@ export default defineConfig({
         'docs/',
         'js/', // Legacy files
         'test/',
+        'config/',
         '**/*.config.js',
         '**/*.test.js',
         '**/*.spec.js'
