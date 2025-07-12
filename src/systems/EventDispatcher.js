@@ -149,6 +149,17 @@ export class EventDispatcher {
         }
       } catch (error) {
         console.error(`Error in event handler for '${eventName}':`, error);
+        
+        // Emit error event if not already emitting an error event (prevent infinite loops)
+        if (eventName !== 'error') {
+          this.emit('error', {
+            originalEvent: eventName,
+            error,
+            listener: listener.handler,
+            timestamp: Date.now()
+          });
+        }
+        
         // Continue executing other handlers
       }
     }
