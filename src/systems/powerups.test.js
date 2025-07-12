@@ -306,10 +306,10 @@ describe('Powerup Class', () => {
       expect(() => powerup.render(mockCtx)).not.toThrow()
     })
 
-    it('should handle null or undefined context gracefully', () => {
+    it('should throw error when render is called with null context', () => {
       const powerup = new Powerup(mockGame, 100, 200, 'health')
 
-      // Should not throw when render is called with null context
+      // Should throw when render is called with null context
       expect(() => powerup.render(null)).toThrow()
     })
   })
