@@ -1,6 +1,8 @@
 # Event-Driven Architecture Documentation
 
-This directory contains all documentation for the game's architectural transformation from direct object manipulation to a modern event-driven system.
+This directory contains all **planning documentation** for the game's architectural transformation from direct object manipulation to a modern event-driven system.
+
+> **⚠️ Note**: This is documentation and planning work only. No implementation has begun yet. Implementation will happen in separate feature branches after this planning documentation is approved.
 
 ## 📚 Documentation Overview
 
@@ -16,8 +18,9 @@ Detailed implementation examples and acceptance criteria for each issue.
 ## 🎯 Quick Start
 
 1. **Review the [Architecture Roadmap](./EVENT_DRIVEN_ARCHITECTURE_ROADMAP.md)** to understand the overall vision
-2. **Check [Issues Summary](./ISSUES_SUMMARY.md)** for current project status
-3. **Start with [Issue #13](https://github.com/vcostin/transformer-scroll-shooter/issues/13)**: Core Event System
+2. **Check [Issues Summary](./ISSUES_SUMMARY.md)** for planned GitHub issues and milestones
+3. **Review [Implementation Reference](./IMPLEMENTATION_REFERENCE.md)** for detailed technical specifications
+4. **After approval**: Create feature branches to implement [Issue #13](https://github.com/vcostin/transformer-scroll-shooter/issues/13) and subsequent issues
 
 ## 🚀 Project Phases
 
