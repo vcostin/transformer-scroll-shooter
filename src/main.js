@@ -6,28 +6,28 @@
  */
 
 // Import all ES modules
-import { GAME_CONSTANTS, GAME_INFO } from './constants/game-constants.js';
-import * as CollisionUtils from './utils/collision.js';
-import * as MathUtils from './utils/math.js';
+import { GAME_CONSTANTS, GAME_INFO } from '@/constants/game-constants.js';
+import * as CollisionUtils from '@/utils/collision.js';
+import * as MathUtils from '@/utils/math.js';
 
 // Import game object modules
-import Player from './entities/player.js';
-import Bullet from './entities/bullet.js';
-import Enemy from './entities/enemies/enemy.js';
+import Player from '@/entities/player.js';
+import Bullet from '@/entities/bullet.js';
+import Enemy from '@/entities/enemies/enemy.js';
 
 // Import game systems
-import { AudioManager } from './systems/audio.js';
-import { Powerup, PowerupSpawner } from './systems/powerups.js';
+import { AudioManager } from '@/systems/audio.js';
+import { Powerup, PowerupSpawner } from '@/systems/powerups.js';
 
 // Import rendering systems
-import { Background } from './rendering/background.js';
-import { Explosion, PowerupEffect, MuzzleFlash, TransformEffect } from './rendering/effects.js';
+import { Background } from '@/rendering/background.js';
+import { Explosion, PowerupEffect, MuzzleFlash, TransformEffect } from '@/rendering/effects.js';
 
 // Import UI systems
-import { OptionsMenu } from './ui/options.js';
+import { OptionsMenu } from '@/ui/options.js';
 
 // Import main game class
-import Game from './game/game.js';
+import Game from '@/game/game.js';
 
 // Make all classes available globally for backward compatibility
 window.GAME_CONSTANTS = GAME_CONSTANTS;

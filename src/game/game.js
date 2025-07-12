@@ -3,14 +3,14 @@
  * Core game engine handling game loop, state management, and coordination
  */
 
-import { GAME_CONSTANTS } from '../constants/game-constants.js';
-import { AudioManager } from '../systems/audio.js';
-import { OptionsMenu } from '../ui/options.js';
-import { Background } from '../rendering/background.js';
-import { Explosion, PowerupEffect, MuzzleFlash } from '../rendering/effects.js';
-import { Powerup, PowerupSpawner } from '../systems/powerups.js';
-import Player from '../entities/player.js';
-import Enemy from '../entities/enemies/enemy.js';
+import { GAME_CONSTANTS } from '@/constants/game-constants.js';
+import { AudioManager } from '@/systems/audio.js';
+import { OptionsMenu } from '@/ui/options.js';
+import { Background } from '@/rendering/background.js';
+import { Explosion, PowerupEffect, MuzzleFlash } from '@/rendering/effects.js';
+import { Powerup, PowerupSpawner } from '@/systems/powerups.js';
+import Player from '@/entities/player.js';
+import Enemy from '@/entities/enemies/enemy.js';
 
 export class Game {
     constructor() {

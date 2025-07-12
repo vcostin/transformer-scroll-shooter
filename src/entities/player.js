@@ -5,8 +5,8 @@
  * Supports multiple vehicle modes with different properties.
  */
 
-import Bullet from './bullet.js';
-import { TransformEffect } from '../rendering/effects.js';
+import Bullet from '@/entities/bullet.js';
+import { TransformEffect } from '@/rendering/effects.js';
 
 export default class Player {
     constructor(game, x, y) {
