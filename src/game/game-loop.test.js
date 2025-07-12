@@ -4,96 +4,27 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { Game } from '../game/game.js';
-import { EventDispatcher } from '../systems/EventDispatcher.js';
 import { GAME_EVENTS } from '../constants/game-events.js';
+import { createMockGame, createEventSpy, mockGameLoop } from '../../test/game-test-utils.js';
 
 describe('Event-Driven Game Loop', () => {
     let game;
-    let mockCanvas;
-    let mockContext;
     let eventSpy;
+    let cleanup;
 
     beforeEach(() => {
-        // Mock canvas and context
-        mockContext = {
-            clearRect: vi.fn(),
-            fillRect: vi.fn(),
-            fillText: vi.fn(),
-            drawImage: vi.fn(),
-            save: vi.fn(),
-            restore: vi.fn(),
-            translate: vi.fn(),
-            rotate: vi.fn(),
-            scale: vi.fn(),
-            beginPath: vi.fn(),
-            arc: vi.fn(),
-            fill: vi.fn(),
-            stroke: vi.fn(),
-            moveTo: vi.fn(),
-            lineTo: vi.fn(),
-            closePath: vi.fn(),
-            setTransform: vi.fn(),
-            getImageData: vi.fn(),
-            putImageData: vi.fn(),
-            createImageData: vi.fn(),
-            measureText: vi.fn(() => ({ width: 100 })),
-            createLinearGradient: vi.fn(() => ({
-                addColorStop: vi.fn()
-            })),
-            createRadialGradient: vi.fn(() => ({
-                addColorStop: vi.fn()
-            }))
-        };
-
-        mockCanvas = {
-            width: 800,
-            height: 600,
-            getContext: vi.fn(() => mockContext),
-            addEventListener: vi.fn(),
-            removeEventListener: vi.fn()
-        };
-
-        // Mock DOM
-        global.document = {
-            getElementById: vi.fn(() => mockCanvas),
-            addEventListener: vi.fn(),
-            removeEventListener: vi.fn(),
-            createElement: vi.fn(() => ({
-                style: {},
-                appendChild: vi.fn(),
-                addEventListener: vi.fn(),
-                removeEventListener: vi.fn(),
-                classList: {
-                    add: vi.fn(),
-                    remove: vi.fn(),
-                    contains: vi.fn()
-                }
-            })),
-            body: {
-                appendChild: vi.fn(),
-                removeChild: vi.fn()
-            }
-        };
-
-        global.window = {
-            requestAnimationFrame: vi.fn((cb) => setTimeout(cb, 16)),
-            cancelAnimationFrame: vi.fn()
-        };
-
-        // Mock process.env for test detection
-        global.process = { env: { NODE_ENV: 'test' } };
-
-        // Create game instance
-        game = new Game();
+        // Create game instance using test utility
+        const result = createMockGame();
+        game = result.game;
+        cleanup = result.cleanup;
         
         // Spy on event emissions
-        eventSpy = vi.spyOn(game.eventDispatcher, 'emit');
+        eventSpy = createEventSpy(game.eventDispatcher);
     });
 
     afterEach(() => {
-        if (game) {
-            game.destroy?.();
+        if (cleanup) {
+            cleanup();
         }
         vi.clearAllMocks();
     });
@@ -106,13 +37,12 @@ describe('Event-Driven Game Loop', () => {
             
             game.lastTime = previousTime;
             
-            // Temporarily remove NODE_ENV check for this test
-            const originalEnv = process.env.NODE_ENV;
-            process.env.NODE_ENV = 'development';
+            // Use utility to mock game loop
+            const restoreEnv = mockGameLoop(game);
             
             game.gameLoop(currentTime);
             
-            process.env.NODE_ENV = originalEnv;
+            restoreEnv();
             
             expect(eventSpy).toHaveBeenCalledWith(
                 GAME_EVENTS.GAME_FRAME,
@@ -159,7 +89,7 @@ describe('Event-Driven Game Loop', () => {
             expect(eventSpy).toHaveBeenCalledWith(
                 GAME_EVENTS.GAME_RENDER,
                 expect.objectContaining({
-                    ctx: mockContext,
+                    ctx: game.ctx,
                     deltaTime: expect.any(Number)
                 })
             );
@@ -312,13 +242,12 @@ describe('Event-Driven Game Loop', () => {
             
             game.lastTime = previousTime;
             
-            // Temporarily remove NODE_ENV check for this test
-            const originalEnv = process.env.NODE_ENV;
-            process.env.NODE_ENV = 'development';
+            // Use utility to mock game loop
+            const restoreEnv = mockGameLoop(game);
             
             game.gameLoop(currentTime);
             
-            process.env.NODE_ENV = originalEnv;
+            restoreEnv();
             
             expect(eventSpy).toHaveBeenCalledWith(
                 GAME_EVENTS.PERFORMANCE_FRAME_TIME,

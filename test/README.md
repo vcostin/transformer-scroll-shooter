@@ -1,13 +1,143 @@
-# Testing Infrastructure - Phase 4
+# Test Infrastructure
 
-This document describes the testing infrastructure implemented for the Transformer Scroll Shooter game.
+This directory contains the test infrastructure for the game project. The testing architecture is designed with clear separation of concerns and elimination of code duplication.
 
-## Overview
+## 📁 Structure
 
-The testing infrastructure uses **Vitest** as the testing framework, providing:
-- Fast unit testing with ES modules support
-- Code coverage reporting  
-- Interactive test UI
+```
+test/
+├── setup.js                 # Global test environment setup
+├── game-test-utils.js       # Game-specific test utilities
+├── mocks/
+│   └── canvas-mock.js       # Shared canvas/2D context mocking
+└── README.md               # This file
+```
+
+## 🧪 Test Files Overview
+
+### `setup.js` - Global Test Environment
+**Purpose**: Global test environment setup that runs automatically for ALL tests
+**Responsibilities**:
+- Global API mocking (Audio, localStorage, requestAnimationFrame, performance)
+- Global canvas API mocking via `HTMLCanvasElement.prototype.getContext`
+- Console warning suppression (Web Audio API warnings)
+- Automatic mock cleanup with `beforeEach`
+
+### `game-test-utils.js` - Game-Specific Utilities
+**Purpose**: Reusable test utilities for specific game testing scenarios
+**Responsibilities**:
+- Creating mock game instances with complete DOM/Canvas setup
+- Specialized mock objects (entities, event spies)
+- Test-specific utilities (game loop mocking, test environment setup)
+- Custom cleanup functions
+
+### `mocks/canvas-mock.js` - Shared Canvas Mocking
+**Purpose**: Centralized canvas and 2D context mocking to eliminate duplication
+**Responsibilities**:
+- Complete Canvas 2D context API mocking
+- Canvas element mocking with proper dimensions and methods
+- Reusable across both global setup and individual test utilities
+
+## 🎯 Usage Examples
+
+### Basic Test Setup (Automatic)
+```javascript
+// No setup needed - global mocks are automatically applied
+import { describe, it, expect } from 'vitest';
+import { Game } from '@/game/game.js';
+
+describe('My Game Test', () => {
+  it('should work with global mocks', () => {
+    // Canvas, Audio, and DOM APIs are automatically mocked
+    const game = new Game();
+    expect(game).toBeDefined();
+  });
+});
+```
+
+### Advanced Test Setup (Manual)
+```javascript
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { createMockGame, createEventSpy } from '@/test/game-test-utils.js';
+
+describe('Advanced Game Test', () => {
+  let game, cleanup, eventSpy;
+
+  beforeEach(() => {
+    ({ game, cleanup } = createMockGame());
+    eventSpy = createEventSpy(game.eventDispatcher);
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('should work with specialized mocks', () => {
+    game.start();
+    expect(eventSpy).toHaveBeenCalledWith('game:start', expect.any(Object));
+  });
+});
+```
+
+## 🔧 Design Principles
+
+### Single Responsibility
+- **`setup.js`**: Global environment setup only
+- **`game-test-utils.js`**: Game-specific utilities only  
+- **`canvas-mock.js`**: Canvas mocking only
+
+### DRY (Don't Repeat Yourself)
+- Canvas mocking is centralized in `canvas-mock.js`
+- No duplication between global setup and test utilities
+- Reusable utilities prevent test code duplication
+
+### Separation of Concerns
+- Global setup handles environment-wide concerns
+- Test utilities handle test-specific concerns
+- Shared mocks handle common mocking patterns
+
+## 📋 Available Utilities
+
+### From `game-test-utils.js`:
+- `createMockGame(options)` - Create mock game with DOM setup
+- `createMockCanvas()` - Create mock canvas element
+- `createMockCanvasContext()` - Create mock 2D context
+- `createEventSpy(dispatcher)` - Create event emission spy
+- `createMockEntity(options)` - Create mock entity
+- `waitForNextFrame()` - Wait for next animation frame
+- `setupGameTest(feature)` - Set up feature-specific test environment
+- `mockGameLoop(game)` - Mock game loop for testing
+
+### From `canvas-mock.js`:
+- `createMockCanvasContext()` - Complete 2D context mock
+- `createMockCanvas()` - Complete canvas element mock
+
+## 🏗️ Architecture Benefits
+
+1. **No Code Duplication**: Canvas mocking is centralized
+2. **Clear Separation**: Each file has a single, well-defined purpose
+3. **Reusable**: Utilities can be used across multiple test files
+4. **Maintainable**: Changes to mocking only need to be made in one place
+5. **Extensible**: Easy to add new test utilities without affecting existing code
+
+## 🚀 Best Practices
+
+1. **Use global mocks** for basic functionality (they're applied automatically)
+2. **Use test utilities** for complex scenarios requiring specialized setup
+3. **Always call cleanup functions** to prevent test pollution
+4. **Import only what you need** to keep tests focused and fast
+5. **Add new utilities** to the appropriate file based on their purpose
+
+## 📝 Adding New Test Utilities
+
+### For Canvas/2D Context Mocking
+Add to `mocks/canvas-mock.js` if it's reusable canvas functionality.
+
+### For Game-Specific Utilities
+Add to `game-test-utils.js` if it's game-specific testing functionality.
+
+### For Global Environment Setup
+Add to `setup.js` if it needs to be applied to ALL tests automatically.
 - Hot reload during development
 - Comprehensive test utilities and mocks
 

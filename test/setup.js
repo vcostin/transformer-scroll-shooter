@@ -19,40 +19,10 @@ vi.spyOn(console, 'warn').mockImplementation((...args) => {
 })
 
 // Mock canvas and 2D context for testing
-global.HTMLCanvasElement.prototype.getContext = vi.fn(() => ({
-  fillRect: vi.fn(),
-  clearRect: vi.fn(),
-  getImageData: vi.fn(),
-  putImageData: vi.fn(),
-  createImageData: vi.fn(),
-  setTransform: vi.fn(),
-  drawImage: vi.fn(),
-  save: vi.fn(),
-  restore: vi.fn(),
-  beginPath: vi.fn(),
-  moveTo: vi.fn(),
-  lineTo: vi.fn(),
-  closePath: vi.fn(),
-  stroke: vi.fn(),
-  fill: vi.fn(),
-  arc: vi.fn(),
-  rect: vi.fn(),
-  fillText: vi.fn(),
-  measureText: vi.fn(() => ({ width: 0 })),
-  transform: vi.fn(),
-  translate: vi.fn(),
-  rotate: vi.fn(),
-  scale: vi.fn(),
-  createLinearGradient: vi.fn(),
-  createRadialGradient: vi.fn(),
-  createPattern: vi.fn(),
-  strokeRect: vi.fn(),
-  strokeText: vi.fn(),
-  canvas: {
-    width: 800,
-    height: 600,
-  },
-}))
+// Import canvas context from shared mocks to avoid duplication
+import { createMockCanvasContext } from './mocks/canvas-mock.js'
+
+global.HTMLCanvasElement.prototype.getContext = vi.fn(() => createMockCanvasContext())
 
 // Mock Audio API
 global.Audio = vi.fn().mockImplementation(() => ({
