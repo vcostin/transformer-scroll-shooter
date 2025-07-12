@@ -782,6 +782,7 @@ describe('Game', () => {
       game.level = 5
       game.bossActive = true
       game.enemiesKilled = 0
+      game.bossSpawnedThisLevel = true // Boss has already been spawned on this level
       
       // Simulate boss defeat
       game.bossActive = false
@@ -794,6 +795,7 @@ describe('Game', () => {
       // But should spawn boss on next boss level
       game.level = 10
       game.enemiesKilled = 0
+      game.bossSpawnedThisLevel = false // Reset for new level
       game.spawnBoss.mockClear()
       
       game.update(1000)

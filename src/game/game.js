@@ -29,6 +29,7 @@ export class Game {
         this.enemiesKilled = 0;
         this.enemiesPerLevel = GAME_CONSTANTS.ENEMIES_PER_LEVEL;
         this.bossActive = false;
+        this.bossSpawnedThisLevel = false;
         
         // Game objects
         this.player = null;
@@ -165,7 +166,7 @@ export class Game {
         const spawnRate = (500 + Math.random() * 1000) / difficultyMultiplier; // Reduced from 1000-3000 to 500-1500
         
         // Check for boss spawn (every BOSS_LEVEL_INTERVAL levels)
-        if (this.level > 1 && this.level % GAME_CONSTANTS.BOSS_LEVEL_INTERVAL === 0 && !this.bossActive && this.enemiesKilled === 0) {
+        if (this.level % GAME_CONSTANTS.BOSS_LEVEL_INTERVAL === 0 && !this.bossActive && this.enemiesKilled === 0 && !this.bossSpawnedThisLevel) {
             this.spawnBoss();
         }
         // Regular enemy spawning
@@ -290,6 +291,7 @@ export class Game {
         const boss = new Enemy(this, this.width - 100, this.height / 2 - 30, 'boss');
         this.enemies.push(boss);
         this.bossActive = true;
+        this.bossSpawnedThisLevel = true;
         this.addMessage('BOSS APPROACHING!', '#ff0000', GAME_CONSTANTS.MESSAGE_DURATION.BOSS);
     }
     
@@ -341,6 +343,7 @@ export class Game {
                             if (this.enemiesKilled % this.enemiesPerLevel === 0) {
                                 this.level++;
                                 this.enemiesKilled = 0; // Reset counter for next level
+                                this.bossSpawnedThisLevel = false; // Reset boss spawn flag for new level
                                 this.addMessage(`LEVEL ${this.level}!`, '#00ff00', GAME_CONSTANTS.MESSAGE_DURATION.LEVEL_UP);
                             }
                             
@@ -424,7 +427,7 @@ export class Game {
         // Update HTML UI elements
         document.getElementById('score').textContent = this.score;
         document.getElementById('health').textContent = this.player.health;
-        document.getElementById('mode').textContent = this.player.mode.toUpperCase();
+        document.getElementById('mode').textContent = this.player.mode ? this.player.mode.toUpperCase() : 'UNKNOWN';
         document.getElementById('level').textContent = this.level;
     }
     
@@ -444,6 +447,7 @@ export class Game {
         this.level = 1;
         this.enemiesKilled = 0;
         this.bossActive = false;
+        this.bossSpawnedThisLevel = false;
         
         this.enemies = [];
         this.bullets = [];
