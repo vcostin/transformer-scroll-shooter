@@ -407,6 +407,6 @@ The following labels were created in the GitHub repository:
 - `testing` - Testing related tasks
 - `feature` - New feature development
 
-## � Implementation Reference
+## 📊 Implementation Reference
 
 This document provides detailed implementation examples and acceptance criteria for each phase of the architectural transformation. Use it as a reference when working on the actual issues.
