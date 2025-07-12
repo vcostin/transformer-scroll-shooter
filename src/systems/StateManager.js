@@ -52,7 +52,6 @@ export class StateManager {
         this.stats = {
             totalUpdates: 0,
             totalGets: 0,
-            totalSubscriptions: 0,
             validationErrors: 0,
             historyOperations: 0,
             averageUpdateTime: 0,
@@ -234,8 +233,6 @@ export class StateManager {
             path,
             index: subscriptions.length - 1
         });
-        
-        this.stats.totalSubscriptions++;
 
         // Call immediately if requested
         if (subscriptionOptions.immediate) {
@@ -288,8 +285,6 @@ export class StateManager {
         if (subscriptions.length === 0) {
             this.subscriptions.delete(path);
         }
-        
-        this.stats.totalSubscriptions--;
         
         if (this.options.enableDebug) {
             console.log(`📡 StateManager: Unsubscribed from '${path}'`, subscriptionId);
@@ -456,7 +451,6 @@ export class StateManager {
         this.stats = {
             totalUpdates: 0,
             totalGets: 0,
-            totalSubscriptions: 0,
             validationErrors: 0,
             historyOperations: 0,
             averageUpdateTime: 0,

@@ -49,7 +49,7 @@ describe('StateManager', () => {
             const stats = testStateManager.getStats();
             expect(stats.totalUpdates).toBe(0);
             expect(stats.totalGets).toBe(0);
-            expect(stats.totalSubscriptions).toBe(0);
+            expect(stats.subscriptionCount).toBe(0);
         });
     });
 
@@ -505,7 +505,6 @@ describe('StateManager', () => {
             
             expect(stats).toHaveProperty('totalUpdates');
             expect(stats).toHaveProperty('totalGets');
-            expect(stats).toHaveProperty('totalSubscriptions');
             expect(stats).toHaveProperty('historySize');
             expect(stats).toHaveProperty('subscriptionCount');
             expect(stats).toHaveProperty('memoryUsage');
