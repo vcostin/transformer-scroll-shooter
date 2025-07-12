@@ -46,9 +46,10 @@ export class Game {
         
         // Timing
         this.lastTime = 0;
+        this.deltaTime = 0;
         this.enemySpawnTimer = 0;
         this.powerupSpawnTimer = 0;
-        this.fps = 0;
+        this.fps = 60;
         this.frameCount = 0;
         this.fpsTimer = 0;
         this.animationFrameId = null;
@@ -198,12 +199,16 @@ export class Game {
         }
         
         // Clean up event listeners
-        this.eventListeners.forEach(unsubscribe => unsubscribe());
-        this.eventListeners.clear();
+        if (this.eventListeners) {
+            this.eventListeners.forEach(unsubscribe => unsubscribe());
+            this.eventListeners.clear();
+        }
         
         // Clean up state manager subscriptions
-        this.stateSubscriptions.forEach(unsubscribe => unsubscribe());
-        this.stateSubscriptions.clear();
+        if (this.stateSubscriptions) {
+            this.stateSubscriptions.forEach(unsubscribe => unsubscribe());
+            this.stateSubscriptions.clear();
+        }
         
         // Clean up global reference
         if (window.game === this) {
