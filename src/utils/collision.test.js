@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import * as CollisionUtils from './collision.js'
+import * as CollisionUtils from '@/utils/collision.js'
 
 describe('CollisionUtils', () => {
   describe('checkRectCollision', () => {

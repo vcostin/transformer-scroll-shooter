@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import Enemy from './enemy.js'
+import Enemy from '@/entities/enemies/enemy.js'
 
 describe('Enemy', () => {
   let mockGame

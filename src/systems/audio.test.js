@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import AudioManager from './audio.js';
+import AudioManager from '@/systems/audio.js';
 
 // Mock Web Audio API
 class MockAudioContext {

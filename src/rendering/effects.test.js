@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { Effect, Explosion, PowerupEffect, MuzzleFlash, TrailEffect, TransformEffect } from './effects.js';
+import { Effect, Explosion, PowerupEffect, MuzzleFlash, TrailEffect, TransformEffect } from '@/rendering/effects.js';
 
 // Mock Canvas Context
 const createMockContext = () => ({
