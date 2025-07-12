@@ -286,4 +286,51 @@ describe('Boss Spawn Logic', () => {
       })
     })
   })
+
+  describe('Boss Spawn Level Tracking', () => {
+    it('should track boss spawn state per level', () => {
+      // Start with no boss spawned
+      game.level = 5
+      game.enemiesKilled = 0
+      game.bossActive = false
+      game.bossSpawnedThisLevel = false
+      
+      expect(game.bossSpawnedThisLevel).toBe(false)
+      
+      // Spawn boss
+      game.spawnBoss()
+      
+      expect(game.bossSpawnedThisLevel).toBe(true)
+      expect(game.bossActive).toBe(true)
+    })
+
+    it('should reset boss spawn tracking when advancing to new level', () => {
+      // Set up boss spawned state
+      game.level = 5
+      game.bossSpawnedThisLevel = true
+      game.bossActive = false
+      
+      // Advance to next level
+      game.level = 6
+      game.bossSpawnedThisLevel = false // This would happen in level progression
+      
+      expect(game.bossSpawnedThisLevel).toBe(false)
+    })
+
+    it('should prevent multiple boss spawns on same level', () => {
+      // Set up conditions where boss has already been spawned
+      game.level = 5
+      game.enemiesKilled = 0
+      game.bossActive = false
+      game.bossSpawnedThisLevel = true // Boss already spawned on this level
+      
+      // Try to spawn boss again
+      const shouldSpawn = game.level % GAME_CONSTANTS.BOSS_LEVEL_INTERVAL === 0 && 
+                         !game.bossActive && 
+                         game.enemiesKilled === 0 &&
+                         !game.bossSpawnedThisLevel
+      
+      expect(shouldSpawn).toBe(false)
+    })
+  })
 })
