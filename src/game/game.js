@@ -12,6 +12,16 @@ import { Powerup, PowerupSpawner } from '@/systems/powerups.js';
 import Player from '@/entities/player.js';
 import Enemy from '@/entities/enemies/enemy.js';
 
+// Boss configuration constants
+const BOSS_TYPES = ['boss', 'boss_heavy', 'boss_fast', 'boss_sniper'];
+
+const BOSS_MESSAGES = {
+    'boss': 'BOSS APPROACHING!',
+    'boss_heavy': 'HEAVY ASSAULT BOSS INCOMING!',
+    'boss_fast': 'FAST ATTACK BOSS DETECTED!',
+    'boss_sniper': 'SNIPER BOSS TARGETING YOU!'
+};
+
 export class Game {
     constructor() {
         this.canvas = document.getElementById('gameCanvas');
@@ -288,26 +298,15 @@ export class Game {
     }
     
     spawnBoss() {
-        // Array of different boss types
-        const bossTypes = ['boss', 'boss_heavy', 'boss_fast', 'boss_sniper'];
-        
         // Select random boss type
-        const randomBossType = bossTypes[Math.floor(Math.random() * bossTypes.length)];
+        const randomBossType = BOSS_TYPES[Math.floor(Math.random() * BOSS_TYPES.length)];
         
         const boss = new Enemy(this, this.width - 100, this.height / 2 - 30, randomBossType);
         this.enemies.push(boss);
         this.bossActive = true;
         this.bossSpawnedThisLevel = true;
         
-        // Different messages for different boss types
-        const bossMessages = {
-            'boss': 'BOSS APPROACHING!',
-            'boss_heavy': 'HEAVY ASSAULT BOSS INCOMING!',
-            'boss_fast': 'FAST ATTACK BOSS DETECTED!',
-            'boss_sniper': 'SNIPER BOSS TARGETING YOU!'
-        };
-        
-        this.addMessage(bossMessages[randomBossType], '#ff0000', GAME_CONSTANTS.MESSAGE_DURATION.BOSS);
+        this.addMessage(BOSS_MESSAGES[randomBossType], '#ff0000', GAME_CONSTANTS.MESSAGE_DURATION.BOSS);
     }
     
     spawnPowerup() {

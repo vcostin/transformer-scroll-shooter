@@ -7,6 +7,30 @@
 
 import Bullet from '@/entities/bullet.js';
 
+/**
+ * Enemy class - represents all enemy types including bosses
+ */
+
+// Boss configuration data structure
+const BOSS_CONFIGS = {
+    boss: {
+        width: 80, height: 60, maxHealth: 200, speed: 50, damage: 50, 
+        points: 500, color: '#ff0000', shootRate: 1000, bulletSpeed: 300
+    },
+    boss_heavy: {
+        width: 100, height: 80, maxHealth: 300, speed: 30, damage: 75,
+        points: 750, color: '#8B0000', shootRate: 800, bulletSpeed: 250
+    },
+    boss_fast: {
+        width: 70, height: 50, maxHealth: 150, speed: 80, damage: 40,
+        points: 600, color: '#FF6600', shootRate: 600, bulletSpeed: 350
+    },
+    boss_sniper: {
+        width: 90, height: 70, maxHealth: 250, speed: 40, damage: 80,
+        points: 800, color: '#9400D3', shootRate: 1500, bulletSpeed: 400
+    }
+};
+
 export default class Enemy {
     constructor(game, x, y, type) {
         this.game = game;
@@ -66,55 +90,13 @@ export default class Enemy {
                 break;
                 
             case 'boss':
-                this.width = 80;
-                this.height = 60;
-                this.maxHealth = 200;
-                this.health = this.maxHealth;
-                this.speed = 50;
-                this.damage = 50;
-                this.points = 500;
-                this.color = '#ff0000';
-                this.shootRate = 1000;
-                this.bulletSpeed = 300;
-                break;
-                
             case 'boss_heavy':
-                this.width = 100;
-                this.height = 80;
-                this.maxHealth = 300;
-                this.health = this.maxHealth;
-                this.speed = 30;
-                this.damage = 75;
-                this.points = 750;
-                this.color = '#8B0000'; // Dark red
-                this.shootRate = 800;
-                this.bulletSpeed = 250;
-                break;
-                
             case 'boss_fast':
-                this.width = 70;
-                this.height = 50;
-                this.maxHealth = 150;
-                this.health = this.maxHealth;
-                this.speed = 80;
-                this.damage = 40;
-                this.points = 600;
-                this.color = '#FF6600'; // Orange
-                this.shootRate = 600;
-                this.bulletSpeed = 350;
-                break;
-                
             case 'boss_sniper':
-                this.width = 90;
-                this.height = 70;
-                this.maxHealth = 250;
+                // Use centralized boss configuration
+                const config = BOSS_CONFIGS[this.type];
+                Object.assign(this, config);
                 this.health = this.maxHealth;
-                this.speed = 40;
-                this.damage = 80;
-                this.points = 800;
-                this.color = '#9400D3'; // Violet
-                this.shootRate = 1500;
-                this.bulletSpeed = 400;
                 break;
                 
             default:
