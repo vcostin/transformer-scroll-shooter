@@ -1,19 +1,51 @@
 /**
- * Options Menu System - ES Module Version
- * Handles game settings and configuration UI
+ * Options Menu System - Event-Driven Version
+ * Handles game settings and configuration UI with event integration
  */
 
+import { 
+    UI_EVENTS, 
+    UI_STATE_KEYS, 
+    MENU_TYPES 
+} from '../constants/ui-events.js';
+
 export class OptionsMenu {
-    constructor(game) {
+    constructor(game, eventDispatcher = null, stateManager = null) {
         this.game = game;
+        this.eventDispatcher = eventDispatcher;
+        this.stateManager = stateManager;
         this.isOpen = false;
         this.selectedOption = 0;
+        this.eventListeners = new Set();
+        
+        // Initialize options configuration
+        this.initializeOptions();
+        
+        // Set up event listeners
+        this.setupEventListeners();
+        
+        // Create UI overlay
+        this.overlay = null;
+        this.createOverlay();
+        
+        // Load saved settings
+        this.loadSettings();
+    }
+    
+    /**
+     * Initialize options configuration
+     */
+    initializeOptions() {
         this.options = [
             {
                 name: 'Master Volume',
                 type: 'slider',
                 value: () => this.game.audio.masterVolume,
-                setValue: (val) => this.game.audio.setMasterVolume(val),
+                setValue: (val) => {
+                    const oldValue = this.game.audio.masterVolume;
+                    this.game.audio.setMasterVolume(val);
+                    this.emitSettingChanged('masterVolume', val, oldValue);
+                },
                 min: 0,
                 max: 1,
                 step: 0.1
@@ -22,7 +54,11 @@ export class OptionsMenu {
                 name: 'Sound Effects',
                 type: 'slider',
                 value: () => this.game.audio.sfxVolume,
-                setValue: (val) => this.game.audio.setSfxVolume(val),
+                setValue: (val) => {
+                    const oldValue = this.game.audio.sfxVolume;
+                    this.game.audio.setSfxVolume(val);
+                    this.emitSettingChanged('sfxVolume', val, oldValue);
+                },
                 min: 0,
                 max: 1,
                 step: 0.1
@@ -31,7 +67,11 @@ export class OptionsMenu {
                 name: 'Music Volume',
                 type: 'slider',
                 value: () => this.game.audio.musicVolume,
-                setValue: (val) => this.game.audio.setMusicVolume(val),
+                setValue: (val) => {
+                    const oldValue = this.game.audio.musicVolume;
+                    this.game.audio.setMusicVolume(val);
+                    this.emitSettingChanged('musicVolume', val, oldValue);
+                },
                 min: 0,
                 max: 1,
                 step: 0.1
@@ -40,25 +80,136 @@ export class OptionsMenu {
                 name: 'Audio Enabled',
                 type: 'toggle',
                 value: () => this.game.audio.enabled,
-                setValue: (val) => this.game.audio.setEnabled(val)
+                setValue: (val) => {
+                    const oldValue = this.game.audio.enabled;
+                    this.game.audio.setEnabled(val);
+                    this.emitSettingChanged('audioEnabled', val, oldValue);
+                }
             },
             {
                 name: 'Show FPS',
                 type: 'toggle',
                 value: () => this.game.showFPS,
-                setValue: (val) => this.game.showFPS = val
+                setValue: (val) => {
+                    const oldValue = this.game.showFPS;
+                    this.game.showFPS = val;
+                    this.emitSettingChanged('showFPS', val, oldValue);
+                }
             },
             {
                 name: 'Difficulty',
                 type: 'select',
                 value: () => this.game.difficulty,
-                setValue: (val) => this.game.difficulty = val,
+                setValue: (val) => {
+                    const oldValue = this.game.difficulty;
+                    this.game.difficulty = val;
+                    this.emitSettingChanged('difficulty', val, oldValue);
+                },
                 options: ['Easy', 'Normal', 'Hard', 'Extreme']
             }
         ];
+    }
+    
+    /**
+     * Set up event listeners
+     */
+    setupEventListeners() {
+        if (!this.eventDispatcher) return;
         
-        this.overlay = null;
-        this.createOverlay();
+        // Listen for menu events
+        const menuOpenListener = this.eventDispatcher.on(UI_EVENTS.MENU_OPENED, (data) => {
+            if (data.menuType === MENU_TYPES.OPTIONS) {
+                this.open();
+            }
+        });
+        this.eventListeners.add(menuOpenListener);
+        
+        const menuCloseListener = this.eventDispatcher.on(UI_EVENTS.MENU_CLOSED, (data) => {
+            if (data.menuType === MENU_TYPES.OPTIONS) {
+                this.close();
+            }
+        });
+        this.eventListeners.add(menuCloseListener);
+        
+        // Listen for navigation events
+        const navigationListener = this.eventDispatcher.on(UI_EVENTS.MENU_NAVIGATION, (data) => {
+            if (this.isOpen) {
+                this.handleNavigation(data);
+            }
+        });
+        this.eventListeners.add(navigationListener);
+    }
+    
+    /**
+     * Emit setting changed event
+     */
+    emitSettingChanged(setting, value, oldValue) {
+        if (this.eventDispatcher) {
+            this.eventDispatcher.emit(UI_EVENTS.SETTING_CHANGED, {
+                setting,
+                value,
+                oldValue,
+                source: 'options'
+            });
+        }
+        
+        // Update state manager
+        if (this.stateManager) {
+            const stateKey = this.getStateKeyForSetting(setting);
+            if (stateKey) {
+                this.stateManager.setState(stateKey, value);
+            }
+        }
+    }
+    
+    /**
+     * Get state key for setting
+     */
+    getStateKeyForSetting(setting) {
+        const mappings = {
+            masterVolume: UI_STATE_KEYS.MASTER_VOLUME,
+            sfxVolume: UI_STATE_KEYS.SFX_VOLUME,
+            musicVolume: UI_STATE_KEYS.MUSIC_VOLUME,
+            audioEnabled: UI_STATE_KEYS.AUDIO_ENABLED,
+            showFPS: UI_STATE_KEYS.SHOW_FPS,
+            difficulty: UI_STATE_KEYS.DIFFICULTY
+        };
+        
+        return mappings[setting] || null;
+    }
+    
+    /**
+     * Handle navigation events
+     */
+    handleNavigation(data) {
+        const { direction, action } = data;
+        
+        switch (direction) {
+            case 'up':
+                this.selectedOption = Math.max(0, this.selectedOption - 1);
+                this.updateDisplay();
+                break;
+            case 'down':
+                this.selectedOption = Math.min(this.options.length - 1, this.selectedOption + 1);
+                this.updateDisplay();
+                break;
+        }
+        
+        if (action === 'select') {
+            this.selectCurrentOption();
+        }
+    }
+    
+    /**
+     * Select current option
+     */
+    selectCurrentOption() {
+        if (this.eventDispatcher) {
+            this.eventDispatcher.emit(UI_EVENTS.MENU_OPTION_SELECTED, {
+                optionIndex: this.selectedOption,
+                option: this.options[this.selectedOption]
+            });
+        }
     }
     
     createOverlay() {
@@ -112,8 +263,14 @@ export class OptionsMenu {
         this.overlay.appendChild(content);
         document.body.appendChild(this.overlay);
         
-        // Setup close button
+        // Setup close button with event emission
         document.getElementById('closeOptions').addEventListener('click', () => {
+            if (this.eventDispatcher) {
+                this.eventDispatcher.emit(UI_EVENTS.BUTTON_CLICKED, {
+                    buttonId: 'closeOptions',
+                    source: 'options'
+                });
+            }
             this.close();
         });
     }
@@ -121,6 +278,21 @@ export class OptionsMenu {
     open() {
         this.isOpen = true;
         this.overlay.style.display = 'block';
+        
+        // Emit menu opened event
+        if (this.eventDispatcher) {
+            this.eventDispatcher.emit(UI_EVENTS.MENU_OPENED, {
+                menuType: MENU_TYPES.OPTIONS,
+                source: 'options'
+            });
+        }
+        
+        // Update state
+        if (this.stateManager) {
+            this.stateManager.setState(UI_STATE_KEYS.MENU_OPEN, true);
+            this.stateManager.setState(UI_STATE_KEYS.MENU_TYPE, MENU_TYPES.OPTIONS);
+        }
+        
         this.game.paused = true;
         this.updateDisplay();
     }
@@ -128,6 +300,21 @@ export class OptionsMenu {
     close() {
         this.isOpen = false;
         this.overlay.style.display = 'none';
+        
+        // Emit menu closed event
+        if (this.eventDispatcher) {
+            this.eventDispatcher.emit(UI_EVENTS.MENU_CLOSED, {
+                menuType: MENU_TYPES.OPTIONS,
+                source: 'options'
+            });
+        }
+        
+        // Update state
+        if (this.stateManager) {
+            this.stateManager.setState(UI_STATE_KEYS.MENU_OPEN, false);
+            this.stateManager.setState(UI_STATE_KEYS.MENU_TYPE, null);
+        }
+        
         this.game.paused = false;
         this.saveSettings();
     }
@@ -247,7 +434,7 @@ export class OptionsMenu {
                 return true;
                 
             case 'Enter':
-                // Handle enter key for selected option
+                this.selectCurrentOption();
                 return true;
         }
         
@@ -281,6 +468,18 @@ export class OptionsMenu {
         } catch (e) {
             console.warn('Could not load settings:', e);
         }
+    }
+    
+    /**
+     * Cleanup event listeners
+     */
+    cleanup() {
+        this.eventListeners.forEach(listener => {
+            if (listener && typeof listener === 'function') {
+                listener();
+            }
+        });
+        this.eventListeners.clear();
     }
 }
 
