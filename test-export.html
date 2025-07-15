@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Export Test</title>
+</head>
+<body>
+    <div id="log" style="color: white; font-family: monospace; background: black; padding: 10px;"></div>
+    <script type="module">
+        const log = document.getElementById('log');
+        
+        function addLog(message, isError = false) {
+            const p = document.createElement('p');
+            p.textContent = message;
+            p.style.color = isError ? 'red' : 'lime';
+            p.style.margin = '2px 0';
+            log.appendChild(p);
+            console.log(message);
+        }
+        
+        addLog('Testing exports...');
+        
+        try {
+            // Test default import
+            addLog('Importing default Game...');
+            const Game = await import('./src/game/game.js');
+            addLog('Default import result: ' + typeof Game);
+            addLog('Game.default: ' + typeof Game.default);
+            
+            // Test named import
+            addLog('Importing named Game...');
+            const { Game: NamedGame } = await import('./src/game/game.js');
+            addLog('Named import result: ' + typeof NamedGame);
+            
+            // Test direct access
+            addLog('Direct access to Game.default...');
+            const DirectGame = Game.default;
+            addLog('Direct access result: ' + typeof DirectGame);
+            
+            if (DirectGame) {
+                addLog('Creating instance with DirectGame...');
+                const canvas = document.createElement('canvas');
+                canvas.id = 'gameCanvas';
+                canvas.width = 800;
+                canvas.height = 600;
+                document.body.appendChild(canvas);
+                
+                const game = new DirectGame();
+                addLog('Game instance created successfully!');
+                addLog('Game type: ' + game.constructor.name);
+            }
+            
+        } catch (error) {
+            addLog('Error: ' + error.message, true);
+            console.error('Full error:', error);
+            console.error('Stack trace:', error.stack);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Game Class Test</title>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="600" style="border: 1px solid white; background: black;"></canvas>
+    <div id="log" style="color: white; font-family: monospace; position: absolute; top: 10px; left: 10px;"></div>
+    <script type="module">
+        const log = document.getElementById('log');
+        
+        function addLog(message, isError = false) {
+            const p = document.createElement('p');
+            p.textContent = message;
+            p.style.color = isError ? 'red' : 'lime';
+            p.style.margin = '2px 0';
+            log.appendChild(p);
+            console.log(message);
+        }
+        
+        addLog('Starting game class test...');
+        
+        try {
+            addLog('Importing Game class...');
+            const { Game } = await import('./src/game/game.js');
+            addLog('Game class imported successfully');
+            
+            addLog('Creating Game instance...');
+            const game = new Game();
+            addLog('Game instance created successfully');
+            
+            addLog('Game object properties:');
+            addLog('- canvas: ' + (game.canvas ? 'Found' : 'Not found'));
+            addLog('- ctx: ' + (game.ctx ? 'Found' : 'Not found'));
+            addLog('- player: ' + (game.player ? 'Found' : 'Not found'));
+            addLog('- paused: ' + game.paused);
+            addLog('- gameOver: ' + game.gameOver);
+            
+            // Store game globally for inspection
+            window.testGame = game;
+            addLog('Game stored in window.testGame');
+            
+        } catch (error) {
+            addLog('Error: ' + error.message, true);
+            console.error('Full error:', error);
+            console.error('Stack trace:', error.stack);
+        }
+    </script>
+</body>
+</html>

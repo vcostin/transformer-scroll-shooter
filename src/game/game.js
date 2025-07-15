@@ -287,8 +287,8 @@ export class Game {
     }
     
     gameLoop(currentTime = 0) {
-        // Don't run game loop if in test environment
-        if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
+        // Don't run game loop if in test environment (only when running in Node.js/Vitest)
+        if (typeof window === 'undefined' || (typeof process !== 'undefined' && process.env.NODE_ENV === 'test' && typeof vitest !== 'undefined')) {
             return;
         }
         

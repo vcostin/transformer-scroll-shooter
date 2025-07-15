@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Loop Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: #fff;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        #gameCanvas {
+            display: block;
+            background: linear-gradient(to bottom, #001122, #003366);
+            border: 2px solid #333;
+            margin: 20px auto;
+        }
+        #debug {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.9);
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #333;
+            width: 300px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .error { color: #ff6666; }
+        .success { color: #66ff66; }
+        .warning { color: #ffaa00; }
+        .info { color: #66aaff; }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div id="debug">
+        <div><strong>Game Loop Debug</strong></div>
+        <div id="status">Initializing...</div>
+        <div id="log"></div>
+    </div>
+    
+    <script type="module">
+        const statusElement = document.getElementById('status');
+        const logElement = document.getElementById('log');
+        
+        function updateStatus(message) {
+            statusElement.textContent = message;
+            console.log('STATUS:', message);
+        }
+        
+        function addLog(message, type = 'info') {
+            const div = document.createElement('div');
+            div.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            div.className = type;
+            logElement.appendChild(div);
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(`${type.toUpperCase()}:`, message);
+        }
+        
+        async function testGameLoop() {
+            try {
+                updateStatus('Testing environment...');
+                
+                // Environment checks
+                addLog('typeof window: ' + typeof window, 'info');
+                addLog('typeof process: ' + typeof process, 'info');
+                if (typeof process !== 'undefined' && process.env) {
+                    addLog('NODE_ENV: ' + process.env.NODE_ENV, 'info');
+                }
+                addLog('typeof vitest: ' + typeof vitest, 'info');
+                addLog('typeof requestAnimationFrame: ' + typeof requestAnimationFrame, 'info');
+                
+                updateStatus('Importing game...');
+                addLog('Importing Game class...', 'info');
+                
+                const GameModule = await import('./src/game/game.js');
+                const Game = GameModule.default;
+                
+                addLog('Game class imported successfully', 'success');
+                
+                updateStatus('Creating game instance...');
+                addLog('Creating game instance...', 'info');
+                
+                const game = new Game();
+                addLog('Game instance created', 'success');
+                
+                // Store globally for debugging
+                window.testGame = game;
+                
+                updateStatus('Monitoring game loop...');
+                addLog('Starting game loop monitoring...', 'info');
+                
+                let lastFrame = 0;
+                let frameCount = 0;
+                let stuckCount = 0;
+                
+                const monitor = setInterval(() => {
+                    const currentFrame = game.frameNumber || 0;
+                    
+                    if (currentFrame > lastFrame) {
+                        frameCount++;
+                        stuckCount = 0;
+                        addLog(`Frame ${currentFrame} - FPS: ${game.fps || 0}`, 'success');
+                        lastFrame = currentFrame;
+                        
+                        if (frameCount >= 10) {
+                            addLog('✓ Game loop is working correctly!', 'success');
+                            updateStatus('Game loop working');
+                            clearInterval(monitor);
+                        }
+                    } else {
+                        stuckCount++;
+                        addLog(`No frame update (${stuckCount}s) - Frame stuck at ${currentFrame}`, 'warning');
+                        
+                        if (stuckCount >= 5) {
+                            addLog('❌ Game loop appears to be stuck!', 'error');
+                            updateStatus('Game loop stuck');
+                            clearInterval(monitor);
+                        }
+                    }
+                }, 1000);
+                
+                // Additional debug info
+                addLog('Game properties:', 'info');
+                addLog('- paused: ' + game.paused, 'info');
+                addLog('- gameOver: ' + game.gameOver, 'info');
+                addLog('- canvas: ' + (game.canvas ? 'found' : 'not found'), 'info');
+                addLog('- player: ' + (game.player ? 'found' : 'not found'), 'info');
+                
+            } catch (error) {
+                updateStatus('Error occurred');
+                addLog('Error: ' + error.message, 'error');
+                addLog('Stack: ' + error.stack, 'error');
+                console.error('Full error:', error);
+            }
+        }
+        
+        testGameLoop();
+    </script>
+</body>
+</html>

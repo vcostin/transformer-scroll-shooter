@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Environment Test</title>
+</head>
+<body>
+    <div id="log"></div>
+    <script>
+        const log = document.getElementById('log');
+        
+        function addLog(message) {
+            const p = document.createElement('p');
+            p.textContent = message;
+            log.appendChild(p);
+            console.log(message);
+        }
+        
+        addLog('typeof process: ' + typeof process);
+        addLog('NODE_ENV: ' + (typeof process !== 'undefined' && process.env ? process.env.NODE_ENV : 'undefined'));
+        addLog('window.location: ' + window.location.href);
+        addLog('typeof requestAnimationFrame: ' + typeof requestAnimationFrame);
+        
+        // Test if requestAnimationFrame works
+        let frameCount = 0;
+        function testFrame() {
+            frameCount++;
+            addLog('Frame ' + frameCount);
+            if (frameCount < 3) {
+                requestAnimationFrame(testFrame);
+            }
+        }
+        
+        addLog('Testing requestAnimationFrame...');
+        requestAnimationFrame(testFrame);
+    </script>
+</body>
+</html>

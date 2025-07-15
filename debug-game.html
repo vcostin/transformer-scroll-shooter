@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: #fff;
+            font-family: monospace;
+        }
+        #gameCanvas {
+            display: block;
+            background: linear-gradient(to bottom, #001122, #003366);
+            border: 2px solid #333;
+            margin: 20px auto;
+        }
+        #debug {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 12px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div id="debug">
+        <div id="status">Loading...</div>
+        <div id="log"></div>
+    </div>
+    
+    <script type="module">
+        const statusElement = document.getElementById('status');
+        const logElement = document.getElementById('log');
+        
+        function updateStatus(message) {
+            statusElement.textContent = message;
+            console.log('STATUS:', message);
+        }
+        
+        function addLog(message, isError = false) {
+            const p = document.createElement('div');
+            p.textContent = message;
+            p.style.color = isError ? '#ff6666' : '#66ff66';
+            p.style.margin = '2px 0';
+            logElement.appendChild(p);
+            console.log(isError ? 'ERROR:' : 'LOG:', message);
+        }
+        
+        async function initializeGame() {
+            try {
+                updateStatus('Importing modules...');
+                addLog('Starting import process...');
+                
+                // Import constants
+                addLog('Importing constants...');
+                const { GAME_CONSTANTS, GAME_INFO } = await import('./src/constants/game-constants.js');
+                addLog('✓ Constants imported');
+                
+                // Import Game class
+                addLog('Importing Game class...');
+                const GameModule = await import('./src/game/game.js');
+                const Game = GameModule.default;
+                addLog('✓ Game class imported');
+                
+                updateStatus('Creating game instance...');
+                addLog('Creating Game instance...');
+                
+                const game = new Game();
+                addLog('✓ Game instance created');
+                
+                updateStatus('Game running');
+                addLog('Game should be running now!');
+                
+                // Store globally for debugging
+                window.debugGame = game;
+                
+                // Check environment variables
+                addLog('typeof process: ' + typeof process);
+                if (typeof process !== 'undefined') {
+                    addLog('process.env: ' + JSON.stringify(process.env));
+                    addLog('process.env.NODE_ENV: ' + process.env.NODE_ENV);
+                }
+                
+                // Check if game loop is running
+                let frameCount = 0;
+                const checkFrames = () => {
+                    const currentFrame = game.frameNumber || 0;
+                    if (currentFrame > frameCount) {
+                        addLog('✓ Game loop is running - Frame ' + currentFrame);
+                        frameCount = currentFrame;
+                    } else {
+                        addLog('⚠ Game loop appears to be stopped', true);
+                    }
+                };
+                
+                setInterval(checkFrames, 1000);
+                
+            } catch (error) {
+                updateStatus('Error occurred');
+                addLog('Error: ' + error.message, true);
+                console.error('Full error:', error);
+                console.error('Stack trace:', error.stack);
+            }
+        }
+        
+        initializeGame();
+    </script>
+</body>
+</html>
