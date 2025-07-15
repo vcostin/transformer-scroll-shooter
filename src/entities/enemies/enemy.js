@@ -10,6 +10,10 @@ import Bullet from '@/entities/bullet.js';
 import { BOSS_CONFIGS } from '@/constants/boss-constants.js';
 import { ENEMY_EVENTS, ENEMY_STATES, ENEMY_TYPES, ENEMY_BEHAVIORS, AI_STATES } from '@/constants/enemy-events.js';
 
+// Constants
+const OFF_SCREEN_BOUNDARY = -100;
+const CRITICAL_HEALTH_THRESHOLD = 0.25;
+
 export default class Enemy {
     constructor(game, x, y, type) {
         this.game = game;
@@ -137,9 +141,9 @@ export default class Enemy {
         }
         
         // Check for off-screen or death conditions
-        if (this.x < -100 || this.health <= 0) {
+        if (this.x < OFF_SCREEN_BOUNDARY || this.health <= 0) {
             if (this.eventDispatcher) {
-                if (this.x < -100) {
+                if (this.x < OFF_SCREEN_BOUNDARY) {
                     this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_OFF_SCREEN, {
                         enemy: this,
                         x: this.x,
@@ -165,14 +169,6 @@ export default class Enemy {
         if (this.shootTimer > this.shootRate) {
             this.shoot();
             this.shootTimer = 0;
-        }
-        
-        // Emit events for backward compatibility bridge
-        if (this.eventDispatcher) {
-            this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_AI_UPDATE, {
-                enemy: this,
-                deltaTime: deltaTime
-            });
         }
     }
     
@@ -505,7 +501,7 @@ export default class Enemy {
         }
         
         // Check for critical health
-        if (this.health <= this.maxHealth * 0.25 && this.health > 0 && this.eventDispatcher) {
+        if (this.health <= this.maxHealth * CRITICAL_HEALTH_THRESHOLD && this.health > 0 && this.eventDispatcher) {
             this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_HEALTH_CRITICAL, {
                 enemy: this,
                 health: this.health,
@@ -569,7 +565,8 @@ export default class Enemy {
         } else {
             // Fallback for backward compatibility
             this.takeDamage(this.maxHealth);
-        }    }
+        }
+    }
     
     /**
      * Enemy death handling
