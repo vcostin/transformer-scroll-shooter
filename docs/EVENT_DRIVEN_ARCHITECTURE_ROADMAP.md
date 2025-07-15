@@ -26,7 +26,7 @@ Transform the game from direct object manipulation to a modern event-driven arch
 - **Goal**: Convert all entities to event-driven pattern
 - **Timeline**: 2-3 weeks
 - **Dependencies**: Phase 1 complete
-- **Status**: 🚀 **In Progress** - Player entity completed (PR #28)
+- **Status**: 🚀 **In Progress** - Player entity completed (PR #28), Enemy entity completed (PR #29) ✅
 
 ### Epic: UI Event Integration
 - **Goal**: Integrate UI interactions with event system
