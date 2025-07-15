@@ -35,7 +35,6 @@ export const PLAYER_EVENTS = {
     PLAYER_HEALTH_FULL: 'player.health.full',
     
     // Position events
-    PLAYER_POSITION_CHANGED: 'player.position.changed',
     PLAYER_BOUNDARY_HIT: 'player.boundary.hit',
     
     // Collision events
