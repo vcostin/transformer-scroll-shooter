@@ -43,7 +43,7 @@ export function createMockCanvasContext() {
         // Text
         fillText: vi.fn(),
         strokeText: vi.fn(),
-        measureText: vi.fn(() => ({ width: 100 })),
+        measureText: vi.fn(() => ({ width: 0 })),
         
         // Image data
         getImageData: vi.fn(),

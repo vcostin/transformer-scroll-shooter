@@ -54,6 +54,10 @@ export class Game {
         this.fpsTimer = 0;
         this.animationFrameId = null;
         
+        // Animation frame aliases for easier testing
+        this.requestAnimationFrame = requestAnimationFrame;
+        this.cancelAnimationFrame = cancelAnimationFrame;
+        
         // Systems
         this.eventDispatcher = new EventDispatcher();
         this.stateManager = stateManager;
@@ -191,7 +195,7 @@ export class Game {
     destroy() {
         // Clean up animation frame
         if (this.animationFrameId) {
-            cancelAnimationFrame(this.animationFrameId);
+            this.cancelAnimationFrame(this.animationFrameId);
         }
         
         // Clean up event listeners
@@ -313,7 +317,7 @@ export class Game {
         }
         
         this.render();
-        this.animationFrameId = requestAnimationFrame((time) => this.gameLoop(time));
+        this.animationFrameId = this.requestAnimationFrame((time) => this.gameLoop(time));
     }
     
     update(deltaTime) {
@@ -660,6 +664,8 @@ export class Game {
         this.enemySpawnTimer = 0;
         this.powerupSpawnTimer = 0;
         this.lastTime = 0;
+        
+        // Reset FPS counter variables but keep current fps value
         this.fpsTimer = 0;
         this.frameCount = 0;
         
@@ -676,7 +682,7 @@ export class Game {
     
     stop() {
         if (this.animationFrameId) {
-            cancelAnimationFrame(this.animationFrameId);
+            this.cancelAnimationFrame(this.animationFrameId);
             this.animationFrameId = null;
         }
     }

@@ -1,7 +1,3 @@
-/**
- * @jest-environment jsdom
- */
-
 import { createMockGame } from '@test/game-test-utils.js'
 
 describe('Game Test Utils', () => {

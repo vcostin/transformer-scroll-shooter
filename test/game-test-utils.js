@@ -76,7 +76,13 @@ export function createMockGame(options = {}) {
     };
 
     // Mock process.env for test detection
-    global.process = { env: { NODE_ENV: 'test' } };
+    global.process = { 
+        ...originalProcess, 
+        env: { 
+            ...originalProcess?.env, 
+            NODE_ENV: 'test' 
+        } 
+    };
 
     // Create game instance
     const game = new Game(options);
