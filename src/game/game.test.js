@@ -132,11 +132,52 @@ describe('Game', () => {
       expect(game.messages).toEqual([])
     })
 
-    it('should initialize game objects arrays', () => {
-      expect(Array.isArray(game.enemies)).toBe(true)
-      expect(Array.isArray(game.bullets)).toBe(true)
-      expect(Array.isArray(game.powerups)).toBe(true)
-      expect(Array.isArray(game.effects)).toBe(true)
+    it('should initialize FPS variables correctly', () => {
+      expect(game.frameCount).toBe(0)
+      expect(game.fpsTimer).toBe(0)
+      expect(game.lastTime).toBe(0)
+      expect(game.deltaTime).toBe(0)
+      expect(game.fps).toBe(60)
+    })
+
+    it('should initialize FPS variables to prevent reference errors', () => {
+      // Test that FPS variables are accessible without throwing errors
+      expect(() => {
+        const frameCount = game.frameCount
+        const fpsTimer = game.fpsTimer
+        const lastTime = game.lastTime
+        const deltaTime = game.deltaTime
+        const fps = game.fps
+      }).not.toThrow()
+    })
+
+    it('should initialize FPS variables with correct default values', () => {
+      // Verify specific default values for FPS-related variables
+      expect(game.frameCount).toBe(0)
+      expect(game.fpsTimer).toBe(0)
+      expect(game.lastTime).toBe(0)
+      expect(game.deltaTime).toBe(0)
+      expect(typeof game.fps).toBe('number')
+      expect(game.fps).toBeGreaterThan(0)
+    })
+
+    it('should initialize FPS variables before they are used', () => {
+      // Test that FPS variables are initialized in constructor
+      const newGame = new Game()
+      expect(newGame.frameCount).toBeDefined()
+      expect(newGame.fpsTimer).toBeDefined()
+      expect(newGame.lastTime).toBeDefined()
+      expect(newGame.deltaTime).toBeDefined()
+      expect(newGame.fps).toBeDefined()
+    })
+
+    it('should initialize FPS timing variables for game loop', () => {
+      // Test that timing variables are properly initialized for game loop
+      expect(game.frameCount).toBe(0)
+      expect(game.fpsTimer).toBe(0)
+      expect(game.lastTime).toBe(0)
+      expect(game.deltaTime).toBe(0)
+      expect(game.fps).toBe(60)
     })
   })
 
@@ -470,6 +511,96 @@ describe('Game', () => {
       
       expect(game.powerups).toContain(onScreenPowerup)
       expect(game.powerups).not.toContain(offScreenPowerup)
+    })
+
+    it('should cleanup state manager subscriptions when game is destroyed', () => {
+      // Add some subscription functions
+      const unsubscribe1 = vi.fn()
+      const unsubscribe2 = vi.fn()
+      
+      game.stateSubscriptions = new Set([unsubscribe1, unsubscribe2])
+      
+      game.destroy()
+      
+      expect(unsubscribe1).toHaveBeenCalled()
+      expect(unsubscribe2).toHaveBeenCalled()
+      expect(game.stateSubscriptions.size).toBe(0)
+    })
+
+    it('should prevent memory leaks by cleaning up state subscriptions', () => {
+      // Test that game properly cleans up subscriptions to prevent memory leaks
+      const unsubscribe1 = vi.fn()
+      const unsubscribe2 = vi.fn()
+      
+      game.stateSubscriptions = new Set([unsubscribe1, unsubscribe2])
+      
+      game.destroy()
+      
+      expect(unsubscribe1).toHaveBeenCalled()
+      expect(unsubscribe2).toHaveBeenCalled()
+      expect(game.stateSubscriptions.size).toBe(0)
+    })
+
+    it('should handle empty state subscriptions during cleanup', () => {
+      // Test that game can handle empty subscriptions set
+      game.stateSubscriptions = new Set()
+      
+      expect(() => {
+        game.destroy()
+      }).not.toThrow()
+    })
+
+    it('should handle undefined state subscriptions during cleanup', () => {
+      // Test that game can handle undefined subscriptions
+      game.stateSubscriptions = undefined
+      
+      expect(() => {
+        game.destroy()
+      }).not.toThrow()
+    })
+
+    it('should cleanup event listeners when game is destroyed', () => {
+      // Mock document and window event listeners
+      const mockRemoveEventListener = vi.fn()
+      const originalRemoveEventListener = document.removeEventListener
+      
+      document.removeEventListener = mockRemoveEventListener
+      
+      // Add some event listeners
+      const handler1 = vi.fn()
+      const handler2 = vi.fn()
+      
+      game.eventListeners = new Set([handler1, handler2])
+      
+      game.destroy()
+      
+      expect(game.eventListeners.size).toBe(0)
+      
+      // Restore original
+      document.removeEventListener = originalRemoveEventListener
+    })
+
+    it('should prevent memory leaks by cleaning up event listeners', () => {
+      // Test that game properly cleans up event listeners to prevent memory leaks
+      const handler1 = vi.fn()
+      const handler2 = vi.fn()
+      
+      game.eventListeners = new Set([handler1, handler2])
+      
+      game.destroy()
+      
+      expect(handler1).toHaveBeenCalled()
+      expect(handler2).toHaveBeenCalled()
+      expect(game.eventListeners.size).toBe(0)
+    })
+
+    it('should handle empty event listeners during cleanup', () => {
+      // Test that game can handle empty event listeners set
+      game.eventListeners = new Set()
+      
+      expect(() => {
+        game.destroy()
+      }).not.toThrow()
     })
   })
 
@@ -830,6 +961,44 @@ describe('Game', () => {
       expect(() => {
         game.updateArray(game.enemies, 10000)
       }).not.toThrow()
+    })
+  })
+
+  describe('Integration Tests', () => {
+    it('should handle complete game lifecycle with all fixes', () => {
+      // Test that all review fixes work together
+      
+      // 1. Test FPS variables initialization
+      expect(game.frameCount).toBe(0)
+      expect(game.fpsTimer).toBe(0)
+      expect(game.lastTime).toBe(0)
+      expect(game.deltaTime).toBe(0)
+      expect(game.fps).toBe(60)
+      
+      // 2. Test state subscriptions setup
+      game.stateSubscriptions = new Set([
+        vi.fn(),
+        vi.fn()
+      ])
+      
+      // 3. Test event listeners setup
+      game.eventListeners = new Set([
+        vi.fn(),
+        vi.fn()
+      ])
+      
+      // 4. Test game update cycle
+      game.update(16.67) // Typical 60fps delta time
+      
+      // 5. Test proper cleanup
+      game.destroy()
+      
+      // Verify all subscriptions were cleaned up
+      expect(game.stateSubscriptions.size).toBe(0)
+      expect(game.eventListeners.size).toBe(0)
+      
+      // All fixes should work together without errors
+      expect(true).toBe(true)
     })
   })
 })

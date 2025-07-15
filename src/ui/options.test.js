@@ -219,11 +219,24 @@ describe('OptionsMenu', () => {
         });
         
         it('should handle corrupted localStorage data gracefully', () => {
+            // Mock console.warn to prevent stderr output during test
+            const originalConsoleWarn = console.warn;
+            console.warn = vi.fn();
+            
             localStorage.getItem.mockReturnValue('invalid json');
             
             expect(() => {
                 optionsMenu.loadSettings();
             }).not.toThrow();
+            
+            // Verify warning was logged
+            expect(console.warn).toHaveBeenCalledWith(
+                'Could not load settings:',
+                expect.any(SyntaxError)
+            );
+            
+            // Restore console.warn
+            console.warn = originalConsoleWarn;
         });
     });
     

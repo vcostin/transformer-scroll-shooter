@@ -4,6 +4,7 @@
  */
 
 import { GAME_CONSTANTS } from '@/constants/game-constants.js';
+import { GAME_EVENTS } from '@/constants/game-events.js';
 import { BOSS_TYPES, BOSS_MESSAGES } from '@/constants/boss-constants.js';
 import { AudioManager } from '@/systems/audio.js';
 import { OptionsMenu } from '@/ui/options.js';
@@ -12,6 +13,8 @@ import { Explosion, PowerupEffect, MuzzleFlash } from '@/rendering/effects.js';
 import { Powerup, PowerupSpawner } from '@/systems/powerups.js';
 import Player from '@/entities/player.js';
 import Enemy from '@/entities/enemies/enemy.js';
+import { EventDispatcher } from '@/systems/EventDispatcher.js';
+import { stateManager } from '@/systems/StateManager.js';
 
 export class Game {
     constructor() {
@@ -43,22 +46,85 @@ export class Game {
         
         // Timing
         this.lastTime = 0;
+        this.deltaTime = 0;
         this.enemySpawnTimer = 0;
         this.powerupSpawnTimer = 0;
-        this.fps = 0;
+        this.fps = 60;
         this.frameCount = 0;
         this.fpsTimer = 0;
         this.animationFrameId = null;
         
+        // Animation frame aliases for easier testing
+        this.requestAnimationFrame = requestAnimationFrame;
+        this.cancelAnimationFrame = cancelAnimationFrame;
+        
         // Systems
+        this.eventDispatcher = new EventDispatcher();
+        this.stateManager = stateManager;
         this.audio = new AudioManager();
         this.options = new OptionsMenu(this);
+        
+        // Frame counter for events
+        this.frameNumber = 0;
+        
+        // Event listeners cleanup tracking
+        this.eventListeners = new Set();
+        
+        // State manager subscriptions cleanup tracking
+        this.stateSubscriptions = new Set();
         
         // Input handling
         this.keys = {};
         this.setupInput();
         
+        // Setup event listeners
+        this.setupEventListeners();
+        
         this.init();
+    }
+    
+    setupEventListeners() {
+        // Core game state event listeners
+        this.addEventListener(GAME_EVENTS.GAME_START, () => {
+            this.stateManager.setState('game.state', 'running');
+        });
+        
+        this.addEventListener(GAME_EVENTS.GAME_PAUSE, () => {
+            this.stateManager.setState('game.state', 'paused');
+        });
+        
+        this.addEventListener(GAME_EVENTS.GAME_RESUME, () => {
+            this.stateManager.setState('game.state', 'running');
+        });
+        
+        this.addEventListener(GAME_EVENTS.GAME_OVER, (data) => {
+            this.stateManager.setState('game.state', 'gameOver');
+            this.stateManager.setState('game.finalScore', data.score);
+        });
+        
+        this.addEventListener(GAME_EVENTS.UI_SCORE_UPDATE, (data) => {
+            this.stateManager.setState('game.score', data.score);
+        });
+        
+        // Set up state change listeners to emit UI events
+        const unsubscribeScore = this.stateManager.subscribe('game.score', (newScore, oldScore) => {
+            if (oldScore !== undefined) {
+                this.eventDispatcher.emit(GAME_EVENTS.UI_SCORE_UPDATE, {
+                    score: newScore,
+                    previousScore: oldScore || 0,
+                    delta: newScore - (oldScore || 0)
+                });
+            }
+        });
+        
+        // Store subscription for cleanup
+        this.stateSubscriptions.add(unsubscribeScore);
+    }
+    
+    addEventListener(eventName, handler) {
+        const unsubscribe = this.eventDispatcher.on(eventName, handler);
+        this.eventListeners.add(unsubscribe);
+        return unsubscribe;
     }
     
     init() {
@@ -72,12 +138,87 @@ export class Game {
         // Store reference for backward compatibility
         window.game = this;
         
+        // Emit game start event
+        this.startGame();
+        
         // Start game loop
         this.gameLoop();
     }
     
+    // Event-driven game state methods
+    startGame() {
+        this.eventDispatcher.emit(GAME_EVENTS.GAME_START, {
+            timestamp: Date.now()
+        });
+    }
+    
+    pauseGame() {
+        this.paused = true;
+        this.eventDispatcher.emit(GAME_EVENTS.GAME_PAUSE, {
+            timestamp: Date.now()
+        });
+    }
+    
+    resumeGame() {
+        this.paused = false;
+        this.eventDispatcher.emit(GAME_EVENTS.GAME_RESUME, {
+            timestamp: Date.now()
+        });
+    }
+    
+    endGame() {
+        this.gameOver = true;
+        this.eventDispatcher.emit(GAME_EVENTS.GAME_OVER, {
+            timestamp: Date.now(),
+            score: this.score,
+            level: this.level
+        });
+    }
+    
+    calculateFPS(deltaTime) {
+        this.frameCount++;
+        this.fpsTimer += deltaTime;
+        
+        if (this.fpsTimer >= 1000) {
+            this.fps = Math.round(this.frameCount * 1000 / this.fpsTimer);
+            this.frameCount = 0;
+            this.fpsTimer = 0;
+            
+            // Emit FPS update event
+            this.eventDispatcher.emit(GAME_EVENTS.PERFORMANCE_FPS_UPDATE, {
+                fps: this.fps,
+                frameTime: deltaTime
+            });
+        }
+    }
+    
+    destroy() {
+        // Clean up animation frame
+        if (this.animationFrameId) {
+            this.cancelAnimationFrame(this.animationFrameId);
+        }
+        
+        // Clean up event listeners
+        if (this.eventListeners) {
+            this.eventListeners.forEach(unsubscribe => unsubscribe());
+            this.eventListeners.clear();
+        }
+        
+        // Clean up state manager subscriptions
+        if (this.stateSubscriptions) {
+            this.stateSubscriptions.forEach(unsubscribe => unsubscribe());
+            this.stateSubscriptions.clear();
+        }
+        
+        // Clean up global reference
+        if (window.game === this) {
+            delete window.game;
+        }
+    }
+    
     setupInput() {
-        document.addEventListener('keydown', (e) => {
+        // Define event handlers as bound methods for proper cleanup
+        this.handleKeyDown = (e) => {
             // Handle options menu input first
             if (this.options.handleInput(e.code)) {
                 e.preventDefault();
@@ -112,16 +253,37 @@ export class Game {
                     }
                     break;
             }
-        });
+        };
         
-        document.addEventListener('keyup', (e) => {
+        this.handleKeyUp = (e) => {
             this.keys[e.code] = false;
-        });
+        };
         
-        // Handle click to resume audio (Chrome autoplay policy)
-        document.addEventListener('click', () => {
+        this.handleClick = () => {
             this.audio.resume();
-        }, { once: true });
+        };
+        
+        // Add event listeners and track them for cleanup
+        document.addEventListener('keydown', this.handleKeyDown);
+        document.addEventListener('keyup', this.handleKeyUp);
+        document.addEventListener('click', this.handleClick, { once: true });
+        
+        // Store cleanup functions
+        this.eventListeners.add(() => {
+            if (document && document.removeEventListener) {
+                document.removeEventListener('keydown', this.handleKeyDown);
+            }
+        });
+        this.eventListeners.add(() => {
+            if (document && document.removeEventListener) {
+                document.removeEventListener('keyup', this.handleKeyUp);
+            }
+        });
+        this.eventListeners.add(() => {
+            if (document && document.removeEventListener) {
+                document.removeEventListener('click', this.handleClick);
+            }
+        });
     }
     
     gameLoop(currentTime = 0) {
@@ -132,25 +294,40 @@ export class Game {
         
         const deltaTime = currentTime - this.lastTime;
         this.lastTime = currentTime;
+        this.frameNumber++;
         
-        // Calculate FPS
-        this.frameCount++;
-        this.fpsTimer += deltaTime;
-        if (this.fpsTimer >= 1000) {
-            this.fps = Math.round(this.frameCount * 1000 / this.fpsTimer);
-            this.frameCount = 0;
-            this.fpsTimer = 0;
-        }
+        // Emit frame event
+        this.eventDispatcher.emit(GAME_EVENTS.GAME_FRAME, {
+            deltaTime,
+            currentTime,
+            frame: this.frameNumber
+        });
+        
+        // Emit performance frame time event
+        this.eventDispatcher.emit(GAME_EVENTS.PERFORMANCE_FRAME_TIME, {
+            deltaTime,
+            timestamp: currentTime
+        });
+        
+        // Calculate FPS using the new method
+        this.calculateFPS(deltaTime);
         
         if (!this.paused && !this.gameOver) {
             this.update(deltaTime);
         }
         
         this.render();
-        this.animationFrameId = requestAnimationFrame((time) => this.gameLoop(time));
+        this.animationFrameId = this.requestAnimationFrame((time) => this.gameLoop(time));
     }
     
     update(deltaTime) {
+        // Emit game update event
+        this.eventDispatcher.emit(GAME_EVENTS.GAME_UPDATE, {
+            deltaTime,
+            currentTime: this.lastTime,
+            frame: this.frameNumber
+        });
+        
         // Update background
         if (this.background && typeof this.background.update === 'function') {
             this.background.update(deltaTime);
@@ -184,10 +361,10 @@ export class Game {
         }
         
         // Update game objects
-        this.updateArray(this.enemies, deltaTime);
-        this.updateArray(this.bullets, deltaTime);
-        this.updateArray(this.powerups, deltaTime);
-        this.updateArray(this.effects, deltaTime);
+        this.updateEntities('enemies', this.enemies, deltaTime);
+        this.updateEntities('bullets', this.bullets, deltaTime);
+        this.updateEntities('powerups', this.powerups, deltaTime);
+        this.updateEntities('effects', this.effects, deltaTime);
         
         // Update messages
         this.updateMessages();
@@ -218,7 +395,25 @@ export class Game {
         }
     }
     
+    updateEntities(entityType, entities, deltaTime) {
+        // Emit entity update event
+        this.eventDispatcher.emit(GAME_EVENTS.ENTITY_UPDATE, {
+            entityType,
+            deltaTime,
+            count: entities.length
+        });
+        
+        // Update entities using the existing method
+        this.updateArray(entities, deltaTime);
+    }
+    
     render() {
+        // Emit render event
+        this.eventDispatcher.emit(GAME_EVENTS.GAME_RENDER, {
+            ctx: this.ctx,
+            deltaTime: this.lastTime
+        });
+        
         // Clear canvas
         this.ctx.clearRect(0, 0, this.width, this.height);
         
@@ -447,6 +642,11 @@ export class Game {
     }
     
     restart() {
+        // Emit restart event
+        this.eventDispatcher.emit(GAME_EVENTS.GAME_RESTART, {
+            timestamp: Date.now()
+        });
+        
         this.score = 0;
         this.gameOver = false;
         this.level = 1;
@@ -464,6 +664,8 @@ export class Game {
         this.enemySpawnTimer = 0;
         this.powerupSpawnTimer = 0;
         this.lastTime = 0;
+        
+        // Reset FPS counter variables but keep current fps value
         this.fpsTimer = 0;
         this.frameCount = 0;
         
@@ -480,7 +682,7 @@ export class Game {
     
     stop() {
         if (this.animationFrameId) {
-            cancelAnimationFrame(this.animationFrameId);
+            this.cancelAnimationFrame(this.animationFrameId);
             this.animationFrameId = null;
         }
     }

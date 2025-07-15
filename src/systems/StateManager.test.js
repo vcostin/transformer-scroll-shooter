@@ -523,6 +523,10 @@ describe('StateManager', () => {
 
     describe('Error handling', () => {
         it('should handle subscription callback errors gracefully', () => {
+            // Mock console.error to prevent stderr output during test
+            const originalConsoleError = console.error;
+            console.error = vi.fn();
+            
             const errorCallback = vi.fn(() => {
                 throw new Error('Subscription error');
             });
@@ -531,6 +535,15 @@ describe('StateManager', () => {
             
             // Should not throw error
             expect(() => testStateManager.setState('player.health', 50)).not.toThrow();
+            
+            // Verify error was logged
+            expect(console.error).toHaveBeenCalledWith(
+                expect.stringContaining("StateManager subscription error for 'player.health':"),
+                expect.any(Error)
+            );
+            
+            // Restore console.error
+            console.error = originalConsoleError;
         });
 
         it('should handle validation errors properly', () => {
