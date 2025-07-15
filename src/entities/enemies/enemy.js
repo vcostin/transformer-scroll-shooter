@@ -374,7 +374,7 @@ export default class Enemy {
     setupEventListeners() {
         // AI update event listener
         const aiUpdateHandler = this.eventDispatcher.on(ENEMY_EVENTS.ENEMY_AI_UPDATE, (data) => {
-            if (data.enemyId === this.id || !data.enemyId) {
+            if (data.enemy === this) {
                 this.handleAIUpdate(data);
             }
         });
@@ -440,17 +440,37 @@ export default class Enemy {
                 this.aiState = AI_STATES.MOVING;
                 break;
             case AI_STATES.MOVING:
-                this.handleMovement(deltaTime);
+                // Check if we should switch to attacking
+                if (this.game.player) {
+                    this.aiState = AI_STATES.ATTACKING;
+                }
                 break;
             case AI_STATES.ATTACKING:
-                this.handleAttacking(deltaTime);
+                // Handle shooting while moving
+                this.shootTimer += deltaTime;
+                if (this.shootTimer > this.shootRate) {
+                    this.shoot();
+                    this.shootTimer = 0;
+                }
                 break;
             case AI_STATES.SEARCHING:
-                this.handleSearching(deltaTime);
+                // Look for targets
+                const player = this.game.player;
+                if (player && this.eventDispatcher) {
+                    this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_AI_TARGET_ACQUIRED, {
+                        enemy: this,
+                        target: player
+                    });
+                }
                 break;
             case AI_STATES.FLEEING:
-                this.handleFleeing(deltaTime);
+                // Special fleeing behavior could go here
                 break;
+        }
+        
+        // All AI states except SPAWNING and DYING should move
+        if (this.aiState !== AI_STATES.SPAWNING && this.aiState !== AI_STATES.DYING) {
+            this.move(deltaTime);
         }
         
         // Update state manager
@@ -549,47 +569,7 @@ export default class Enemy {
         } else {
             // Fallback for backward compatibility
             this.takeDamage(this.maxHealth);
-        }
-    }
-    
-    /**
-     * Handle different AI states
-     */
-    handleMovement(deltaTime) {
-        // This will be implemented in the move method
-        this.move(deltaTime);
-    }
-    
-    handleAttacking(deltaTime) {
-        // Shooting AI
-        this.shootTimer += deltaTime;
-        if (this.shootTimer > this.shootRate) {
-            this.shoot();
-            this.shootTimer = 0;
-        }
-        
-        // Continue moving while attacking
-        this.move(deltaTime);
-    }
-    
-    handleSearching(deltaTime) {
-        // Look for targets
-        const player = this.game.player;
-        if (player && this.eventDispatcher) {
-            this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_AI_TARGET_ACQUIRED, {
-                enemy: this,
-                target: player
-            });
-        }
-        
-        // Continue moving while searching
-        this.move(deltaTime);
-    }
-    
-    handleFleeing(deltaTime) {
-        // Move away from player
-        this.move(deltaTime);
-    }
+        }    }
     
     /**
      * Enemy death handling
