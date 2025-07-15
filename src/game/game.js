@@ -55,8 +55,8 @@ export class Game {
         this.animationFrameId = null;
         
         // Animation frame aliases for easier testing
-        this.requestAnimationFrame = requestAnimationFrame;
-        this.cancelAnimationFrame = cancelAnimationFrame;
+        this.requestAnimationFrame = requestAnimationFrame.bind(window);
+        this.cancelAnimationFrame = cancelAnimationFrame.bind(window);
         
         // Systems
         this.eventDispatcher = new EventDispatcher();
