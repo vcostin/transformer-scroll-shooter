@@ -16,6 +16,10 @@ describe('Main Entry Point', () => {
     
     describe('Module Imports', () => {
         it('should import all required modules', async () => {
+            // Mock console.error to prevent stderr output during test
+            const originalConsoleError = console.error;
+            console.error = vi.fn();
+            
             // Import the main module
             const mainModule = await import('./main.js');
             
@@ -28,6 +32,15 @@ describe('Main Entry Point', () => {
             expect(mainModule.Bullet).toBeDefined();
             expect(mainModule.Enemy).toBeDefined();
             expect(mainModule.AudioManager).toBeDefined();
+            
+            // Verify that Game initialization was attempted and failed gracefully
+            expect(console.error).toHaveBeenCalledWith(
+                '❌ Game initialization failed:',
+                expect.any(Error)
+            );
+            
+            // Restore console.error
+            console.error = originalConsoleError;
             expect(mainModule.Powerup).toBeDefined();
             expect(mainModule.PowerupSpawner).toBeDefined();
             expect(mainModule.Background).toBeDefined();

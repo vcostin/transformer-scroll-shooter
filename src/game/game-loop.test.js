@@ -319,6 +319,10 @@ describe('Event-Driven Game Loop', () => {
 
     describe('Error Handling', () => {
         it('should handle event listener errors gracefully', () => {
+            // Mock console.error to prevent stderr output during test
+            const originalConsoleError = console.error;
+            console.error = vi.fn();
+            
             const errorHandler = vi.fn();
             const faultyHandler = vi.fn(() => {
                 throw new Error('Test error');
@@ -333,9 +337,22 @@ describe('Event-Driven Game Loop', () => {
             }).not.toThrow();
             
             expect(errorHandler).toHaveBeenCalled();
+            
+            // Verify error was logged
+            expect(console.error).toHaveBeenCalledWith(
+                expect.stringContaining("Error in event handler for 'game:update':"),
+                expect.any(Error)
+            );
+            
+            // Restore console.error
+            console.error = originalConsoleError;
         });
 
         it('should maintain frame rate despite event errors', () => {
+            // Mock console.error to prevent stderr output during test
+            const originalConsoleError = console.error;
+            console.error = vi.fn();
+            
             const faultyHandler = vi.fn(() => {
                 throw new Error('Test error');
             });
@@ -345,6 +362,9 @@ describe('Event-Driven Game Loop', () => {
             const startTime = performance.now();
             game.gameLoop(startTime);
             game.gameLoop(startTime + 16.67);
+            
+            // Restore console.error
+            console.error = originalConsoleError;
             
             // Should continue running
             expect(game.animationFrameId).toBeDefined();
