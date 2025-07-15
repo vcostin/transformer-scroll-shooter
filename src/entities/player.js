@@ -1,12 +1,14 @@
 /**
- * Player Class - Phase 3 Game Object Module
+ * Player Class - Event-Driven Architecture
  * 
  * Represents the player character with transformer capabilities.
  * Supports multiple vehicle modes with different properties.
+ * Uses event-driven architecture for input handling, state management, and communication.
  */
 
 import Bullet from '@/entities/bullet.js';
 import { TransformEffect } from '@/rendering/effects.js';
+import { PLAYER_EVENTS, PLAYER_STATES, MOVE_DIRECTIONS } from '@/constants/player-events.js';
 
 export default class Player {
     constructor(game, x, y) {
@@ -73,11 +75,90 @@ export default class Player {
         };
         
         this.updateModeProperties();
+        
+        // Event-driven architecture setup (optional for backward compatibility)
+        this.eventDispatcher = game.eventDispatcher;
+        this.stateManager = game.stateManager;
+        this.eventListeners = new Set();
+        
+        // Initialize event listeners if event dispatcher is available
+        if (this.eventDispatcher) {
+            this.setupEventListeners();
+        }
+        
+        // Initialize state if state manager is available
+        if (this.stateManager) {
+            this.initializeState();
+        }
+    }
+    
+    /**
+     * Setup event listeners for input and collision events
+     */
+    setupEventListeners() {
+        // Input event listeners
+        const moveHandler = this.eventDispatcher.on(PLAYER_EVENTS.INPUT_MOVE, (data) => {
+            this.handleMoveInput(data);
+        });
+        
+        const shootHandler = this.eventDispatcher.on(PLAYER_EVENTS.INPUT_SHOOT, (data) => {
+            this.handleShootInput(data);
+        });
+        
+        const transformHandler = this.eventDispatcher.on(PLAYER_EVENTS.INPUT_TRANSFORM, (data) => {
+            this.handleTransformInput(data);
+        });
+        
+        // Health event listeners
+        const damageHandler = this.eventDispatcher.on(PLAYER_EVENTS.PLAYER_DAMAGED, (data) => {
+            this.handleDamage(data);
+        });
+        
+        const healHandler = this.eventDispatcher.on(PLAYER_EVENTS.PLAYER_HEALED, (data) => {
+            this.handleHeal(data);
+        });
+        
+        // Collision event listeners
+        const enemyCollisionHandler = this.eventDispatcher.on(PLAYER_EVENTS.PLAYER_COLLISION_ENEMY, (data) => {
+            this.handleEnemyCollision(data);
+        });
+        
+        const powerupCollisionHandler = this.eventDispatcher.on(PLAYER_EVENTS.PLAYER_COLLISION_POWERUP, (data) => {
+            this.handlePowerupCollision(data);
+        });
+        
+        // Store unsubscribe functions for cleanup
+        this.eventListeners.add(moveHandler);
+        this.eventListeners.add(shootHandler);
+        this.eventListeners.add(transformHandler);
+        this.eventListeners.add(damageHandler);
+        this.eventListeners.add(healHandler);
+        this.eventListeners.add(enemyCollisionHandler);
+        this.eventListeners.add(powerupCollisionHandler);
+    }
+    
+    /**
+     * Initialize player state in state manager
+     */
+    initializeState() {
+        if (this.stateManager) {
+            this.stateManager.setState(PLAYER_STATES.HEALTH, this.health);
+            this.stateManager.setState(PLAYER_STATES.POSITION, { x: this.x, y: this.y });
+            this.stateManager.setState(PLAYER_STATES.MODE, this.mode);
+            this.stateManager.setState(PLAYER_STATES.SPEED, this.speed);
+            this.stateManager.setState(PLAYER_STATES.SHOOT_RATE, this.currentShootRate);
+            this.stateManager.setState(PLAYER_STATES.POWERUPS, this.activePowerups);
+            this.stateManager.setState(PLAYER_STATES.SHIELD, this.shield);
+            this.stateManager.setState(PLAYER_STATES.TRANSFORM_COOLDOWN, this.transformCooldown);
+            this.stateManager.setState(PLAYER_STATES.SHOOT_COOLDOWN, this.shootCooldown);
+        }
     }
     
     update(deltaTime, keys) {
-        // Handle movement
-        this.handleMovement(deltaTime, keys);
+        // Legacy key-based movement for backward compatibility
+        if (keys) {
+            this.handleMovement(deltaTime, keys);
+        }
         
         // Update cooldowns
         this.shootCooldown = Math.max(0, this.shootCooldown - deltaTime);
@@ -86,6 +167,12 @@ export default class Player {
         // Update power-ups
         this.updatePowerups(deltaTime);
         
+        // Update state manager with cooldown changes
+        if (this.stateManager) {
+            this.stateManager.setState(PLAYER_STATES.SHOOT_COOLDOWN, this.shootCooldown);
+            this.stateManager.setState(PLAYER_STATES.TRANSFORM_COOLDOWN, this.transformCooldown);
+        }
+        
         // Check if dead
         if (this.health <= 0) {
             this.game.gameOver = true;
@@ -93,6 +180,9 @@ export default class Player {
     }
     
     handleMovement(deltaTime, keys) {
+        const previousX = this.x;
+        const previousY = this.y;
+        
         let dx = 0;
         let dy = 0;
         
@@ -120,6 +210,117 @@ export default class Player {
             this.x = Math.max(0, Math.min(this.game.width - this.width, this.x));
             this.y = Math.max(0, Math.min(this.game.height - this.height, this.y));
         }
+        
+        // Emit events and update state for backward compatibility
+        if (this.x !== previousX || this.y !== previousY) {
+            // Update state manager
+            if (this.stateManager) {
+                this.stateManager.setState(PLAYER_STATES.POSITION, { x: this.x, y: this.y });
+            }
+            
+            // Emit movement event
+            if (this.eventDispatcher) {
+                this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_MOVED, {
+                    x: this.x,
+                    y: this.y,
+                    previousX,
+                    previousY
+                });
+            }
+        }
+    }
+    
+    /**
+     * Handle movement input events
+     */
+    handleMoveInput(data) {
+        const { direction, deltaTime } = data;
+        const previousX = this.x;
+        const previousY = this.y;
+        
+        let dx = 0;
+        let dy = 0;
+        
+        // Handle single direction or array of directions
+        const directions = Array.isArray(direction) ? direction : [direction];
+        
+        for (const dir of directions) {
+            switch (dir) {
+                case MOVE_DIRECTIONS.UP:
+                    dy -= 1;
+                    break;
+                case MOVE_DIRECTIONS.DOWN:
+                    dy += 1;
+                    break;
+                case MOVE_DIRECTIONS.LEFT:
+                    dx -= 1;
+                    break;
+                case MOVE_DIRECTIONS.RIGHT:
+                    dx += 1;
+                    break;
+            }
+        }
+        
+        // Normalize diagonal movement
+        if (dx !== 0 && dy !== 0) {
+            dx *= 0.707;
+            dy *= 0.707;
+        }
+        
+        // Apply movement with mode-specific speed
+        const moveSpeed = this.speed * (deltaTime / 1000);
+        this.x += dx * moveSpeed;
+        this.y += dy * moveSpeed;
+        
+        // Check boundaries and emit boundary hit events
+        let boundaryHit = false;
+        let edge = null;
+        
+        if (this.x < 0) {
+            this.x = 0;
+            boundaryHit = true;
+            edge = 'left';
+        } else if (this.x > this.game.width - this.width) {
+            this.x = this.game.width - this.width;
+            boundaryHit = true;
+            edge = 'right';
+        }
+        
+        if (this.y < 0) {
+            this.y = 0;
+            boundaryHit = true;
+            edge = edge ? 'corner' : 'top';
+        } else if (this.y > this.game.height - this.height) {
+            this.y = this.game.height - this.height;
+            boundaryHit = true;
+            edge = edge ? 'corner' : 'bottom';
+        }
+        
+        // Emit boundary hit event if needed
+        if (boundaryHit && this.eventDispatcher) {
+            this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_BOUNDARY_HIT, {
+                edge,
+                x: this.x,
+                y: this.y
+            });
+        }
+        
+        // Only emit moved event if position actually changed
+        if (this.x !== previousX || this.y !== previousY) {
+            if (this.eventDispatcher) {
+                this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_MOVED, {
+                    x: this.x,
+                    y: this.y,
+                    previousX,
+                    previousY
+                });
+            }
+            
+            // Update state manager
+            if (this.stateManager) {
+                this.stateManager.setState(PLAYER_STATES.POSITION, { x: this.x, y: this.y });
+            }
+        }
     }
     
     shoot() {
@@ -134,6 +335,54 @@ export default class Player {
             bullets.forEach(bullet => this.game.addBullet(bullet));
             
             this.shootCooldown = this.currentShootRate;
+            
+            // Update state manager for backward compatibility
+            if (this.stateManager) {
+                this.stateManager.setState(PLAYER_STATES.SHOOT_COOLDOWN, this.shootCooldown);
+            }
+            
+            // Emit event for consistency (backward compatibility bridge)
+            if (this.eventDispatcher) {
+                this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_SHOT, {
+                    x: this.x + this.width,
+                    y: this.y + this.height / 2,
+                    bulletType: props.bulletType,
+                    mode: this.mode
+                });
+            }
+        }
+    }
+    
+    /**
+     * Handle shooting input events
+     */
+    handleShootInput(data) {
+        if (this.shootCooldown <= 0) {
+            const props = this.modeProperties[this.mode];
+            
+            // Play shoot sound
+            this.game.audio.playSound('shoot', 0.6);
+            
+            // Create bullets based on current mode and power-ups
+            const bullets = this.createBullets();
+            bullets.forEach(bullet => this.game.addBullet(bullet));
+            
+            this.shootCooldown = this.currentShootRate;
+            
+            // Update state manager
+            if (this.stateManager) {
+                this.stateManager.setState(PLAYER_STATES.SHOOT_COOLDOWN, this.shootCooldown);
+            }
+            
+            // Emit shot event
+            if (this.eventDispatcher) {
+                this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_SHOT, {
+                    x: this.x + this.width,
+                    y: this.y + this.height / 2,
+                    bulletType: props.bulletType,
+                    mode: this.mode
+                });
+            }
         }
     }
     
@@ -173,6 +422,8 @@ export default class Player {
     
     transform() {
         if (this.transformCooldown <= 0) {
+            const oldMode = this.mode;
+            
             // Play transform sound
             this.game.audio.playSound('transform', 0.8);
             
@@ -183,6 +434,60 @@ export default class Player {
             
             // Add transform effect
             this.game.addEffect(new TransformEffect(this.game, this.x, this.y));
+            
+            // Update state manager for backward compatibility
+            if (this.stateManager) {
+                this.stateManager.setState(PLAYER_STATES.MODE, this.mode);
+                this.stateManager.setState(PLAYER_STATES.SPEED, this.speed);
+                this.stateManager.setState(PLAYER_STATES.SHOOT_RATE, this.currentShootRate);
+                this.stateManager.setState(PLAYER_STATES.TRANSFORM_COOLDOWN, this.transformCooldown);
+            }
+            
+            // Emit event for consistency (backward compatibility bridge)
+            if (this.eventDispatcher) {
+                this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_TRANSFORMED, {
+                    oldMode,
+                    newMode: this.mode,
+                    modeIndex: this.currentModeIndex
+                });
+            }
+        }
+    }
+    
+    /**
+     * Handle transformation input events
+     */
+    handleTransformInput(data) {
+        if (this.transformCooldown <= 0) {
+            const oldMode = this.mode;
+            
+            // Play transform sound
+            this.game.audio.playSound('transform', 0.8);
+            
+            this.currentModeIndex = (this.currentModeIndex + 1) % this.modes.length;
+            this.mode = this.modes[this.currentModeIndex];
+            this.updateModeProperties();
+            this.transformCooldown = 1000; // 1 second cooldown
+            
+            // Add transform effect
+            this.game.addEffect(new TransformEffect(this.game, this.x, this.y));
+            
+            // Update state manager
+            if (this.stateManager) {
+                this.stateManager.setState(PLAYER_STATES.MODE, this.mode);
+                this.stateManager.setState(PLAYER_STATES.SPEED, this.speed);
+                this.stateManager.setState(PLAYER_STATES.SHOOT_RATE, this.currentShootRate);
+                this.stateManager.setState(PLAYER_STATES.TRANSFORM_COOLDOWN, this.transformCooldown);
+            }
+            
+            // Emit transformation event
+            if (this.eventDispatcher) {
+                this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_TRANSFORMED, {
+                    oldMode,
+                    newMode: this.mode,
+                    modeIndex: this.currentModeIndex
+                });
+            }
         }
     }
     
@@ -247,14 +552,161 @@ export default class Player {
         }
     }
     
-    takeDamage(damage) {
-        // Play hit sound
-        this.game.audio.playSound('playerHit', 0.7);
+    /**
+     * Handle damage events
+     */
+    handleDamage(data) {
+        const { damage } = data;
+        const oldHealth = this.health;
         
+        // Apply damage (consider shield)
+        let actualDamage = damage;
         if (this.shield > 0) {
+            actualDamage = Math.max(0, damage - this.shield);
             this.shield = Math.max(0, this.shield - damage);
-        } else {
-            this.health = Math.max(0, this.health - damage);
+        }
+        
+        this.health = Math.max(0, this.health - actualDamage);
+        
+        // Update state manager
+        if (this.stateManager) {
+            this.stateManager.setState(PLAYER_STATES.HEALTH, this.health);
+            this.stateManager.setState(PLAYER_STATES.SHIELD, this.shield);
+        }
+        
+        // Emit health changed event
+        if (this.eventDispatcher) {
+            this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_HEALTH_CHANGED, {
+                health: this.health,
+                maxHealth: this.maxHealth,
+                percentage: this.health / this.maxHealth
+            });
+        }
+        
+        // Emit critical health event if health is low
+        if (this.health > 0 && this.health <= this.maxHealth * 0.25 && this.eventDispatcher) {
+            this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_HEALTH_CRITICAL, {
+                health: this.health,
+                maxHealth: this.maxHealth
+            });
+        }
+        
+        // Emit death event if health reaches zero
+        if (this.health <= 0 && this.eventDispatcher) {
+            this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_DIED, {
+                finalHealth: this.health,
+                position: { x: this.x, y: this.y }
+            });
+        }
+    }
+    
+    /**
+     * Handle healing events
+     */
+    handleHeal(data) {
+        const { amount } = data;
+        const oldHealth = this.health;
+        
+        this.health = Math.min(this.maxHealth, this.health + amount);
+        
+        // Update state manager
+        if (this.stateManager) {
+            this.stateManager.setState(PLAYER_STATES.HEALTH, this.health);
+        }
+        
+        // Emit health changed event
+        if (this.eventDispatcher) {
+            this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_HEALTH_CHANGED, {
+                health: this.health,
+                maxHealth: this.maxHealth,
+                percentage: this.health / this.maxHealth
+            });
+        }
+        
+        // Emit full health event if at max health
+        if (this.health === this.maxHealth && this.eventDispatcher) {
+            this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_HEALTH_FULL, {
+                health: this.health,
+                maxHealth: this.maxHealth
+            });
+        }
+    }
+    
+    /**
+     * Handle enemy collision events
+     */
+    handleEnemyCollision(data) {
+        const { enemy } = data;
+        
+        // Apply damage from enemy
+        if (enemy.damage) {
+            this.handleDamage({ damage: enemy.damage });
+        }
+    }
+    
+    /**
+     * Handle powerup collision events
+     */
+    handlePowerupCollision(data) {
+        const { powerup } = data;
+        
+        // Add powerup to active powerups
+        const powerupData = {
+            type: powerup.type,
+            duration: powerup.duration,
+            startTime: Date.now()
+        };
+        
+        this.activePowerups.push(powerupData);
+        
+        // Apply powerup effects
+        this.applyPowerupEffects(powerupData);
+        
+        // Update state manager
+        if (this.stateManager) {
+            this.stateManager.setState(PLAYER_STATES.POWERUPS, this.activePowerups);
+        }
+        
+        // Emit powerup activated event
+        if (this.eventDispatcher) {
+            this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_POWERUP_ACTIVATED, {
+                type: powerup.type,
+                duration: powerup.duration,
+                player: this
+            });
+        }
+    }
+    
+    /**
+     * Apply powerup effects immediately
+     */
+    applyPowerupEffects(powerup) {
+        switch (powerup.type) {
+            case 'shield':
+                this.shield = 50;
+                if (this.eventDispatcher) {
+                    this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_SHIELD_ACTIVATED, {
+                        shield: this.shield,
+                        duration: powerup.duration
+                    });
+                }
+                break;
+            case 'rapidfire':
+                this.updateModeProperties();
+                break;
+            case 'multishot':
+                // Effect is applied in createBullets method
+                break;
+        }
+    }
+    
+    /**
+     * Clean up event listeners
+     */
+    destroy() {
+        if (this.eventListeners) {
+            this.eventListeners.forEach(unsubscribe => unsubscribe());
+            this.eventListeners.clear();
         }
     }
     

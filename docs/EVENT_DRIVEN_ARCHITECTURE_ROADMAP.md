@@ -115,6 +115,25 @@ Transform the game from direct object manipulation to a modern event-driven arch
 3. Follow the dependency chain through each phase
 4. Regular check-ins and code reviews after each epic
 
+## 🔄 Backward Compatibility Strategy
+
+### Phase 1: Foundation (Event-Driven Architecture)
+- **✅ Level 1**: Direct compatibility - all existing methods work unchanged
+- **✅ Level 2**: Optional event-driven features - only active when systems available
+- **🔨 Level 3**: Hybrid mode - bridge methods emit events from legacy actions
+
+### Phase 2: Architecture Integration
+- **🔨 Bridge Implementation**: Legacy methods emit events for consistency
+- **🔨 Input System Bridge**: Convert key input to events automatically
+- **🔨 State Synchronization**: Keep state manager in sync with legacy actions
+
+### Phase 3: Advanced Features (Optional)
+- **Migration Utilities**: Tools to help migrate from legacy to event-driven
+- **Performance Optimization**: Optimize hybrid mode performance
+- **Gradual Deprecation**: Optional deprecation warnings for legacy patterns
+
+For detailed backward compatibility strategy, see [BACKWARD_COMPATIBILITY.md](./BACKWARD_COMPATIBILITY.md)
+
 ---
 
 *This roadmap will evolve as we progress through implementation.*

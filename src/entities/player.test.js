@@ -1,11 +1,14 @@
 /**
- * Player Class Tests - Phase 4 Testing Infrastructure
+ * Player Class Tests - Event-Driven Architecture
  * 
- * Basic tests for the Player entity class
+ * Tests for both legacy and event-driven functionality
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import Player from '@/entities/player.js'
+import { PLAYER_EVENTS, PLAYER_STATES, MOVE_DIRECTIONS } from '@/constants/player-events.js'
+import { EventDispatcher } from '@/systems/EventDispatcher.js'
+import { StateManager } from '@/systems/StateManager.js'
 
 describe('Player', () => {
   let mockGame
@@ -44,6 +47,8 @@ describe('Player', () => {
       audio: {
         playSound: vi.fn()
       },
+      addBullet: vi.fn(),
+      addEffect: vi.fn(),
       delta: 16 // 60 FPS
     }
     
@@ -178,4 +183,196 @@ describe('Player', () => {
       })
     })
   })
+
+  describe('Event-Driven Architecture', () => {
+        let eventDispatcher, stateManager, eventSpy, stateSpy
+
+        beforeEach(() => {
+            // Setup event dispatcher and state manager
+            eventDispatcher = new EventDispatcher()
+            stateManager = new StateManager({
+                enableHistory: true,
+                enableValidation: true,
+                enableEvents: true
+            })
+            
+            // Add event dispatcher and state manager to mock game
+            mockGame.eventDispatcher = eventDispatcher
+            mockGame.stateManager = stateManager
+            
+            // Setup spies
+            eventSpy = vi.spyOn(eventDispatcher, 'emit')
+            stateSpy = vi.spyOn(stateManager, 'setState')
+            
+            // Create new player with event-driven features
+            player = new Player(mockGame, 100, 300)
+        })
+
+        afterEach(() => {
+            vi.restoreAllMocks()
+        })
+
+        it('should handle movement via input events', () => {
+            const initialX = player.x
+            
+            eventDispatcher.emit(PLAYER_EVENTS.INPUT_MOVE, {
+                direction: MOVE_DIRECTIONS.RIGHT,
+                deltaTime: 16
+            })
+            
+            expect(player.x).toBeGreaterThan(initialX)
+        })
+
+        it('should emit player events when actions occur', () => {
+            // Test movement event
+            eventDispatcher.emit(PLAYER_EVENTS.INPUT_MOVE, {
+                direction: MOVE_DIRECTIONS.UP,
+                deltaTime: 16
+            })
+            
+            expect(eventSpy).toHaveBeenCalledWith(PLAYER_EVENTS.PLAYER_MOVED, expect.any(Object))
+            
+            // Test shooting event
+            eventSpy.mockClear()
+            eventDispatcher.emit(PLAYER_EVENTS.INPUT_SHOOT, { deltaTime: 16 })
+            
+            expect(eventSpy).toHaveBeenCalledWith(PLAYER_EVENTS.PLAYER_SHOT, expect.any(Object))
+        })
+
+        it('should update state manager with changes', () => {
+            eventDispatcher.emit(PLAYER_EVENTS.INPUT_MOVE, {
+                direction: MOVE_DIRECTIONS.DOWN,
+                deltaTime: 16
+            })
+            
+            expect(stateSpy).toHaveBeenCalledWith(PLAYER_STATES.POSITION, {
+                x: player.x,
+                y: player.y
+            })
+        })
+
+        it('should handle damage via events', () => {
+            const initialHealth = player.health
+            
+            eventDispatcher.emit(PLAYER_EVENTS.PLAYER_DAMAGED, { damage: 25 })
+            
+            expect(player.health).toBe(initialHealth - 25)
+            expect(eventSpy).toHaveBeenCalledWith(PLAYER_EVENTS.PLAYER_HEALTH_CHANGED, expect.any(Object))
+        })
+
+        it('should clean up event listeners when destroyed', () => {
+            const unsubscribeSpy = vi.fn()
+            vi.spyOn(eventDispatcher, 'on').mockReturnValue(unsubscribeSpy)
+            
+            const newPlayer = new Player(mockGame, 100, 300)
+            newPlayer.destroy()
+            
+            expect(unsubscribeSpy).toHaveBeenCalled()
+        })
+    })
+
+  describe('Backward Compatibility Bridge', () => {
+        let eventDispatcher, stateManager, eventSpy, stateSpy
+
+        beforeEach(() => {
+            // Setup event dispatcher and state manager
+            eventDispatcher = new EventDispatcher()
+            stateManager = new StateManager({
+                enableHistory: true,
+                enableValidation: true,
+                enableEvents: true
+            })
+            
+            // Add event dispatcher and state manager to mock game
+            mockGame.eventDispatcher = eventDispatcher
+            mockGame.stateManager = stateManager
+            
+            // Setup spies
+            eventSpy = vi.spyOn(eventDispatcher, 'emit')
+            stateSpy = vi.spyOn(stateManager, 'setState')
+            
+            // Create new player with event-driven features
+            player = new Player(mockGame, 100, 300)
+        })
+
+        afterEach(() => {
+            vi.restoreAllMocks()
+        })
+
+        it('should emit events when using legacy shoot method', () => {
+            player.shoot()
+            
+            expect(eventSpy).toHaveBeenCalledWith(PLAYER_EVENTS.PLAYER_SHOT, {
+                x: expect.any(Number),
+                y: expect.any(Number),
+                bulletType: expect.any(String),
+                mode: expect.any(String)
+            })
+        })
+
+        it('should update state when using legacy shoot method', () => {
+            player.shoot()
+            
+            expect(stateSpy).toHaveBeenCalledWith(PLAYER_STATES.SHOOT_COOLDOWN, expect.any(Number))
+        })
+
+        it('should emit events when using legacy transform method', () => {
+            const initialMode = player.mode
+            
+            player.transform()
+            
+            expect(eventSpy).toHaveBeenCalledWith(PLAYER_EVENTS.PLAYER_TRANSFORMED, {
+                oldMode: initialMode,
+                newMode: player.mode,
+                modeIndex: player.currentModeIndex
+            })
+        })
+
+        it('should update state when using legacy transform method', () => {
+            player.transform()
+            
+            expect(stateSpy).toHaveBeenCalledWith(PLAYER_STATES.MODE, player.mode)
+            expect(stateSpy).toHaveBeenCalledWith(PLAYER_STATES.SPEED, player.speed)
+        })
+
+        it('should emit events when using legacy movement', () => {
+            const keys = { 'KeyW': true }
+            
+            player.handleMovement(16, keys)
+            
+            expect(eventSpy).toHaveBeenCalledWith(PLAYER_EVENTS.PLAYER_MOVED, {
+                x: player.x,
+                y: player.y,
+                previousX: expect.any(Number),
+                previousY: expect.any(Number)
+            })
+        })
+
+        it('should update state when using legacy movement', () => {
+            const keys = { 'KeyD': true }
+            
+            player.handleMovement(16, keys)
+            
+            expect(stateSpy).toHaveBeenCalledWith(PLAYER_STATES.POSITION, {
+                x: player.x,
+                y: player.y
+            })
+        })
+
+        it('should work without event dispatcher (graceful degradation)', () => {
+            // Create player without event dispatcher
+            const mockGameNoEvents = { ...mockGame }
+            delete mockGameNoEvents.eventDispatcher
+            delete mockGameNoEvents.stateManager
+            
+            const playerNoEvents = new Player(mockGameNoEvents, 100, 300)
+            
+            // Should not throw errors
+            expect(() => {
+                playerNoEvents.shoot()
+                playerNoEvents.transform()
+                playerNoEvents.handleMovement(16, { 'KeyW': true })
+            }).not.toThrow()
+        })
+    })
 })
