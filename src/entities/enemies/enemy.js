@@ -368,44 +368,24 @@ export default class Enemy {
      * Setup event listeners for AI updates and collision events
      */
     setupEventListeners() {
-        // AI update event listener
-        const aiUpdateHandler = this.eventDispatcher.on(ENEMY_EVENTS.ENEMY_AI_UPDATE, (data) => {
-            if (data.enemy === this) {
-                this.handleAIUpdate(data);
-            }
-        });
-        this.eventListeners.add(aiUpdateHandler);
+        // Define event-to-handler mapping for cleaner registration
+        const eventHandlerMapping = {
+            [ENEMY_EVENTS.ENEMY_AI_UPDATE]: this.handleAIUpdate.bind(this),
+            [ENEMY_EVENTS.ENEMY_DAMAGED]: this.handleDamage.bind(this),
+            [ENEMY_EVENTS.ENEMY_AI_TARGET_ACQUIRED]: this.handleTargetAcquisition.bind(this),
+            [ENEMY_EVENTS.ENEMY_COLLISION_BULLET]: this.handleBulletCollision.bind(this),
+            [ENEMY_EVENTS.ENEMY_COLLISION_PLAYER]: this.handlePlayerCollision.bind(this),
+        };
         
-        // Damage event listener
-        const damageHandler = this.eventDispatcher.on(ENEMY_EVENTS.ENEMY_DAMAGED, (data) => {
-            if (data.enemy === this) {
-                this.handleDamage(data);
-            }
-        });
-        this.eventListeners.add(damageHandler);
-        
-        // Target acquisition event listener
-        const targetHandler = this.eventDispatcher.on(ENEMY_EVENTS.ENEMY_AI_TARGET_ACQUIRED, (data) => {
-            if (data.enemy === this) {
-                this.handleTargetAcquisition(data);
-            }
-        });
-        this.eventListeners.add(targetHandler);
-        
-        // Collision event listeners
-        const bulletCollisionHandler = this.eventDispatcher.on(ENEMY_EVENTS.ENEMY_COLLISION_BULLET, (data) => {
-            if (data.enemy === this) {
-                this.handleBulletCollision(data);
-            }
-        });
-        this.eventListeners.add(bulletCollisionHandler);
-        
-        const playerCollisionHandler = this.eventDispatcher.on(ENEMY_EVENTS.ENEMY_COLLISION_PLAYER, (data) => {
-            if (data.enemy === this) {
-                this.handlePlayerCollision(data);
-            }
-        });
-        this.eventListeners.add(playerCollisionHandler);
+        // Register all event listeners with instance-specific filtering
+        for (const [event, handler] of Object.entries(eventHandlerMapping)) {
+            const listener = this.eventDispatcher.on(event, (data) => {
+                if (data.enemy === this) {
+                    handler(data);
+                }
+            });
+            this.eventListeners.add(listener);
+        }
     }
     
     /**
