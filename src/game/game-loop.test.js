@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { GAME_EVENTS } from '../constants/game-events.js';
-import { createMockGame, createEventSpy, mockGameLoop } from '../../test/game-test-utils.js';
+import { createMockGame, createEventSpy, mockGameLoop } from '@test/game-test-utils.js';
 
 describe('Event-Driven Game Loop', () => {
     let game;

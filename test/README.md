@@ -58,7 +58,7 @@ describe('My Game Test', () => {
 ### Advanced Test Setup (Manual)
 ```javascript
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createMockGame, createEventSpy } from '@/test/game-test-utils.js';
+import { createMockGame, createEventSpy } from '@test/game-test-utils.js';
 
 describe('Advanced Game Test', () => {
   let game, cleanup, eventSpy;

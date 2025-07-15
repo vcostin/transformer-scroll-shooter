@@ -6,7 +6,8 @@ export default defineConfig({
   define: createAppDefines(),
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src')
+      '@': resolve(__dirname, 'src'),
+      '@test': resolve(__dirname, 'test')
     }
   },
   test: {
