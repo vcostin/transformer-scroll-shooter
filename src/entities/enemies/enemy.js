@@ -1,17 +1,14 @@
 /**
- * Enemy Base Class - Phase 3 Game Object Module
+ * Enemy Base Class - Event-Driven Architecture
  * 
  * Base class for all enemy types in the game.
  * Provides common functionality for movement, shooting, and rendering.
+ * Uses event-driven architecture for AI updates, state management, and communication.
  */
 
 import Bullet from '@/entities/bullet.js';
-
-/**
- * Enemy class - represents all enemy types including bosses
- */
-
 import { BOSS_CONFIGS } from '@/constants/boss-constants.js';
+import { ENEMY_EVENTS, ENEMY_STATES, ENEMY_TYPES, ENEMY_BEHAVIORS, AI_STATES } from '@/constants/enemy-events.js';
 
 export default class Enemy {
     constructor(game, x, y, type) {
@@ -28,6 +25,35 @@ export default class Enemy {
         this.shootTimer = 0;
         this.moveTimer = 0;
         this.targetY = y;
+        this.aiState = AI_STATES.SPAWNING;
+        this.behavior = ENEMY_BEHAVIORS.AGGRESSIVE;
+        
+        // Event-driven architecture setup (optional for backward compatibility)
+        this.eventDispatcher = game.eventDispatcher;
+        this.stateManager = game.stateManager;
+        this.eventListeners = new Set();
+        
+        // Initialize event listeners if event dispatcher is available
+        if (this.eventDispatcher) {
+            this.setupEventListeners();
+        }
+        
+        // Initialize state if state manager is available
+        if (this.stateManager) {
+            this.initializeState();
+        }
+        
+        // Emit creation event
+        if (this.eventDispatcher) {
+            this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_CREATED, {
+                enemy: this,
+                type: this.type,
+                x: this.x,
+                y: this.y,
+                health: this.health,
+                maxHealth: this.maxHealth
+            });
+        }
     }
     
     setupType() {
@@ -99,6 +125,38 @@ export default class Enemy {
     }
     
     update(deltaTime) {
+        // Event-driven update (preferred)
+        if (this.eventDispatcher) {
+            this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_AI_UPDATE, {
+                enemy: this,
+                deltaTime: deltaTime
+            });
+        } else {
+            // Legacy update (backward compatibility)
+            this.legacyUpdate(deltaTime);
+        }
+        
+        // Check for off-screen or death conditions
+        if (this.x < -100 || this.health <= 0) {
+            if (this.eventDispatcher) {
+                if (this.x < -100) {
+                    this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_OFF_SCREEN, {
+                        enemy: this,
+                        x: this.x,
+                        y: this.y
+                    });
+                }
+                this.markedForDeletion = true;
+            } else {
+                this.markedForDeletion = true;
+            }
+        }
+    }
+    
+    /**
+     * Legacy update method for backward compatibility
+     */
+    legacyUpdate(deltaTime) {
         // Move towards player
         this.move(deltaTime);
         
@@ -109,15 +167,20 @@ export default class Enemy {
             this.shootTimer = 0;
         }
         
-        // Mark for deletion if off screen or dead
-        if (this.x < -100 || this.health <= 0) {
-            this.markedForDeletion = true;
+        // Emit events for backward compatibility bridge
+        if (this.eventDispatcher) {
+            this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_AI_UPDATE, {
+                enemy: this,
+                deltaTime: deltaTime
+            });
         }
     }
     
     move(deltaTime) {
         const player = this.game.player;
         const moveSpeed = this.speed * (deltaTime / 1000);
+        const previousX = this.x;
+        const previousY = this.y;
         
         switch (this.type) {
             case 'fighter':
@@ -219,6 +282,26 @@ export default class Enemy {
                 }
                 break;
         }
+        
+        // Emit movement events if position changed
+        if (this.x !== previousX || this.y !== previousY) {
+            // Update state manager
+            if (this.stateManager) {
+                this.stateManager.setState(ENEMY_STATES.POSITION, { x: this.x, y: this.y });
+            }
+            
+            // Emit movement event
+            if (this.eventDispatcher) {
+                this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_MOVED, {
+                    enemy: this,
+                    x: this.x,
+                    y: this.y,
+                    previousX,
+                    previousY,
+                    type: this.type
+                });
+            }
+        }
     }
     
     shoot() {
@@ -247,21 +330,316 @@ export default class Enemy {
             );
             
             this.game.addBullet(bullet);
+            
+            // Emit shooting event
+            if (this.eventDispatcher) {
+                this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_SHOT, {
+                    enemy: this,
+                    bullet: bullet,
+                    x: this.x,
+                    y: this.y + this.height / 2,
+                    velocityX,
+                    velocityY,
+                    target: player,
+                    type: this.type
+                });
+            }
+            
+            // Update state manager
+            if (this.stateManager) {
+                this.stateManager.setState(ENEMY_STATES.SHOOT_TIMER, this.shootTimer);
+            }
         }
     }
     
     takeDamage(damage) {
-        this.health -= damage;
-        if (this.health <= 0) {
-            this.cleanup();
+        // Event-driven damage handling (preferred)
+        if (this.eventDispatcher) {
+            this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_DAMAGED, {
+                enemy: this,
+                damage: damage
+            });
+        } else {
+            // Legacy damage handling (backward compatibility)
+            this.health -= damage;
+            if (this.health <= 0) {
+                this.cleanup();
+            }
         }
     }
     
-    cleanup() {
-        // Base cleanup - can be overridden by subclasses
-        // This is a placeholder for any timers or intervals to clean up
+    /**
+     * Setup event listeners for AI updates and collision events
+     */
+    setupEventListeners() {
+        // AI update event listener
+        const aiUpdateHandler = this.eventDispatcher.on(ENEMY_EVENTS.ENEMY_AI_UPDATE, (data) => {
+            if (data.enemyId === this.id || !data.enemyId) {
+                this.handleAIUpdate(data);
+            }
+        });
+        this.eventListeners.add(aiUpdateHandler);
+        
+        // Damage event listener
+        const damageHandler = this.eventDispatcher.on(ENEMY_EVENTS.ENEMY_DAMAGED, (data) => {
+            if (data.enemy === this) {
+                this.handleDamage(data);
+            }
+        });
+        this.eventListeners.add(damageHandler);
+        
+        // Target acquisition event listener
+        const targetHandler = this.eventDispatcher.on(ENEMY_EVENTS.ENEMY_AI_TARGET_ACQUIRED, (data) => {
+            if (data.enemy === this) {
+                this.handleTargetAcquisition(data);
+            }
+        });
+        this.eventListeners.add(targetHandler);
+        
+        // Collision event listeners
+        const bulletCollisionHandler = this.eventDispatcher.on(ENEMY_EVENTS.ENEMY_COLLISION_BULLET, (data) => {
+            if (data.enemy === this) {
+                this.handleBulletCollision(data);
+            }
+        });
+        this.eventListeners.add(bulletCollisionHandler);
+        
+        const playerCollisionHandler = this.eventDispatcher.on(ENEMY_EVENTS.ENEMY_COLLISION_PLAYER, (data) => {
+            if (data.enemy === this) {
+                this.handlePlayerCollision(data);
+            }
+        });
+        this.eventListeners.add(playerCollisionHandler);
     }
     
+    /**
+     * Initialize state in state manager
+     */
+    initializeState() {
+        if (this.stateManager) {
+            this.stateManager.setState(ENEMY_STATES.HEALTH, this.health);
+            this.stateManager.setState(ENEMY_STATES.POSITION, { x: this.x, y: this.y });
+            this.stateManager.setState(ENEMY_STATES.VELOCITY, { x: 0, y: 0 });
+            this.stateManager.setState(ENEMY_STATES.TARGET, null);
+            this.stateManager.setState(ENEMY_STATES.BEHAVIOR, this.behavior);
+            this.stateManager.setState(ENEMY_STATES.SHOOT_TIMER, this.shootTimer);
+            this.stateManager.setState(ENEMY_STATES.MOVE_TIMER, this.moveTimer);
+            this.stateManager.setState(ENEMY_STATES.AI_STATE, this.aiState);
+        }
+    }
+    
+    /**
+     * Handle AI update events
+     */
+    handleAIUpdate(data) {
+        const { deltaTime } = data;
+        
+        // Update AI behavior based on current state
+        switch (this.aiState) {
+            case AI_STATES.SPAWNING:
+                this.aiState = AI_STATES.MOVING;
+                break;
+            case AI_STATES.MOVING:
+                this.handleMovement(deltaTime);
+                break;
+            case AI_STATES.ATTACKING:
+                this.handleAttacking(deltaTime);
+                break;
+            case AI_STATES.SEARCHING:
+                this.handleSearching(deltaTime);
+                break;
+            case AI_STATES.FLEEING:
+                this.handleFleeing(deltaTime);
+                break;
+        }
+        
+        // Update state manager
+        if (this.stateManager) {
+            this.stateManager.setState(ENEMY_STATES.AI_STATE, this.aiState);
+        }
+    }
+    
+    /**
+     * Handle damage events
+     */
+    handleDamage(data) {
+        const { damage } = data;
+        const oldHealth = this.health;
+        
+        this.health -= damage;
+        
+        // Update state manager
+        if (this.stateManager) {
+            this.stateManager.setState(ENEMY_STATES.HEALTH, this.health);
+        }
+        
+        // Emit health changed event
+        if (this.eventDispatcher) {
+            this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_HEALTH_CHANGED, {
+                enemy: this,
+                health: this.health,
+                maxHealth: this.maxHealth,
+                previousHealth: oldHealth,
+                damage: damage
+            });
+        }
+        
+        // Check for critical health
+        if (this.health <= this.maxHealth * 0.25 && this.health > 0 && this.eventDispatcher) {
+            this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_HEALTH_CRITICAL, {
+                enemy: this,
+                health: this.health,
+                maxHealth: this.maxHealth
+            });
+        }
+        
+        // Check for death
+        if (this.health <= 0) {
+            this.die();
+        }
+    }
+    
+    /**
+     * Handle target acquisition
+     */
+    handleTargetAcquisition(data) {
+        const { target } = data;
+        
+        // Update state manager
+        if (this.stateManager) {
+            this.stateManager.setState(ENEMY_STATES.TARGET, target);
+        }
+        
+        // Change AI state to attacking if we have a target
+        if (target) {
+            this.aiState = AI_STATES.ATTACKING;
+        }
+    }
+    
+    /**
+     * Handle bullet collision events
+     */
+    handleBulletCollision(data) {
+        const { bullet } = data;
+        
+        // Apply damage from bullet
+        if (this.eventDispatcher) {
+            this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_DAMAGED, {
+                enemy: this,
+                damage: bullet.damage || 10
+            });
+        } else {
+            // Fallback for backward compatibility
+            this.takeDamage(bullet.damage || 10);
+        }
+    }
+    
+    /**
+     * Handle player collision events
+     */
+    handlePlayerCollision(data) {
+        const { player } = data;
+        
+        // Deal damage to player and self-destruct
+        if (this.eventDispatcher) {
+            this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_DAMAGED, {
+                enemy: this,
+                damage: this.maxHealth // Self-destruct
+            });
+        } else {
+            // Fallback for backward compatibility
+            this.takeDamage(this.maxHealth);
+        }
+    }
+    
+    /**
+     * Handle different AI states
+     */
+    handleMovement(deltaTime) {
+        // This will be implemented in the move method
+        this.move(deltaTime);
+    }
+    
+    handleAttacking(deltaTime) {
+        // Shooting AI
+        this.shootTimer += deltaTime;
+        if (this.shootTimer > this.shootRate) {
+            this.shoot();
+            this.shootTimer = 0;
+        }
+        
+        // Continue moving while attacking
+        this.move(deltaTime);
+    }
+    
+    handleSearching(deltaTime) {
+        // Look for targets
+        const player = this.game.player;
+        if (player && this.eventDispatcher) {
+            this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_AI_TARGET_ACQUIRED, {
+                enemy: this,
+                target: player
+            });
+        }
+        
+        // Continue moving while searching
+        this.move(deltaTime);
+    }
+    
+    handleFleeing(deltaTime) {
+        // Move away from player
+        this.move(deltaTime);
+    }
+    
+    /**
+     * Enemy death handling
+     */
+    die() {
+        this.aiState = AI_STATES.DYING;
+        
+        // Emit death event
+        if (this.eventDispatcher) {
+            this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_DIED, {
+                enemy: this,
+                type: this.type,
+                x: this.x,
+                y: this.y,
+                points: this.points
+            });
+        }
+        
+        // Mark for deletion
+        this.markedForDeletion = true;
+        
+        // Clean up
+        this.cleanup();
+    }
+    
+    /**
+     * Cleanup event listeners and emit destroy event
+     */
+    cleanup() {
+        // Clean up event listeners
+        if (this.eventDispatcher && this.eventListeners) {
+            this.eventListeners.forEach(removeListener => {
+                if (typeof removeListener === 'function') {
+                    removeListener();
+                }
+            });
+            this.eventListeners.clear();
+        }
+        
+        // Emit destruction event
+        if (this.eventDispatcher) {
+            this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_DESTROYED, {
+                enemy: this,
+                type: this.type,
+                x: this.x,
+                y: this.y
+            });
+        }
+    }
+
     render(ctx) {
         // Draw enemy based on type
         ctx.fillStyle = this.color;
