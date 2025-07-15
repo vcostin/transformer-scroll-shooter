@@ -63,10 +63,6 @@ export class Game {
         // Frame counter for events
         this.frameNumber = 0;
         
-        // Initialize FPS tracking variables
-        this.frameCount = 0;
-        this.fpsTimer = 0;
-        
         // Event listeners cleanup tracking
         this.eventListeners = new Set();
         
@@ -217,7 +213,8 @@ export class Game {
     }
     
     setupInput() {
-        document.addEventListener('keydown', (e) => {
+        // Define event handlers as bound methods for proper cleanup
+        this.handleKeyDown = (e) => {
             // Handle options menu input first
             if (this.options.handleInput(e.code)) {
                 e.preventDefault();
@@ -252,16 +249,37 @@ export class Game {
                     }
                     break;
             }
-        });
+        };
         
-        document.addEventListener('keyup', (e) => {
+        this.handleKeyUp = (e) => {
             this.keys[e.code] = false;
-        });
+        };
         
-        // Handle click to resume audio (Chrome autoplay policy)
-        document.addEventListener('click', () => {
+        this.handleClick = () => {
             this.audio.resume();
-        }, { once: true });
+        };
+        
+        // Add event listeners and track them for cleanup
+        document.addEventListener('keydown', this.handleKeyDown);
+        document.addEventListener('keyup', this.handleKeyUp);
+        document.addEventListener('click', this.handleClick, { once: true });
+        
+        // Store cleanup functions
+        this.eventListeners.add(() => {
+            if (document && document.removeEventListener) {
+                document.removeEventListener('keydown', this.handleKeyDown);
+            }
+        });
+        this.eventListeners.add(() => {
+            if (document && document.removeEventListener) {
+                document.removeEventListener('keyup', this.handleKeyUp);
+            }
+        });
+        this.eventListeners.add(() => {
+            if (document && document.removeEventListener) {
+                document.removeEventListener('click', this.handleClick);
+            }
+        });
     }
     
     gameLoop(currentTime = 0) {
