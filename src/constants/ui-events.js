@@ -71,6 +71,7 @@ export const UI_STATE_KEYS = {
     MENU_SELECTED_OPTION: 'ui.menu.selectedOption',
     
     // Game state
+    GAME_STATE: 'ui.game.state',
     GAME_PAUSED: 'ui.game.paused',
     GAME_OVER: 'ui.game.over',
     GAME_SCORE: 'ui.game.score',
@@ -126,7 +127,10 @@ export const INPUT_ACTIONS = {
     RESTART: 'restart',
     MENU: 'menu',
     CONFIRM: 'confirm',
-    CANCEL: 'cancel'
+    CANCEL: 'cancel',
+    DEBUG_TOGGLE: 'debugToggle',
+    FPS_TOGGLE: 'fpsToggle',
+    DEBUG_INFO: 'debugInfo'
 };
 
 // Key Mappings (default bindings)

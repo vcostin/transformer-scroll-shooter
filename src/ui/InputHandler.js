@@ -5,8 +5,9 @@
 
 import { 
     UI_EVENTS, 
-    INPUT_ACTIONS 
-} from '../constants/ui-events.js';
+    INPUT_ACTIONS,
+    UI_STATE_KEYS 
+} from '@/constants/ui-events.js';
 
 export class InputHandler {
     constructor(eventDispatcher, stateManager) {
@@ -47,9 +48,9 @@ export class InputHandler {
         this.keyMappings.set('KeyD', INPUT_ACTIONS.MOVE_RIGHT);
         
         // Combat controls
-        this.keyMappings.set('Space', INPUT_ACTIONS.FIRE);
-        this.keyMappings.set('Enter', INPUT_ACTIONS.FIRE);
-        this.keyMappings.set('KeyZ', INPUT_ACTIONS.FIRE);
+        this.keyMappings.set('Space', INPUT_ACTIONS.SHOOT);
+        this.keyMappings.set('Enter', INPUT_ACTIONS.SHOOT);
+        this.keyMappings.set('KeyZ', INPUT_ACTIONS.SHOOT);
         this.keyMappings.set('KeyX', INPUT_ACTIONS.SPECIAL);
         this.keyMappings.set('KeyC', INPUT_ACTIONS.BOMB);
         
@@ -327,8 +328,8 @@ export class InputHandler {
      */
     handleInputAction(action, data) {
         // Get current UI state
-        const isMenuOpen = this.stateManager.getState('menuOpen');
-        const menuType = this.stateManager.getState('menuType');
+        const isMenuOpen = this.stateManager.getState(UI_STATE_KEYS.MENU_OPEN);
+        const menuType = this.stateManager.getState(UI_STATE_KEYS.MENU_TYPE);
         
         // Handle menu-specific actions
         if (isMenuOpen) {

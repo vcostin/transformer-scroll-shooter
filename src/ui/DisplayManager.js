@@ -6,7 +6,7 @@
 import { 
     UI_EVENTS, 
     UI_STATE_KEYS 
-} from '../constants/ui-events.js';
+} from '@/constants/ui-events.js';
 
 export class DisplayManager {
     constructor(canvas, eventDispatcher, stateManager) {
@@ -399,8 +399,8 @@ export class DisplayManager {
             `Canvas: ${this.canvas.width}x${this.canvas.height}`,
             `Notifications: ${this.notifications.length}`,
             `HUD Elements: ${this.hudElements.size}`,
-            `State: ${this.stateManager.getState('gameState') || 'unknown'}`,
-            `Menu: ${this.stateManager.getState('menuType') || 'none'}`
+            `State: ${this.stateManager.getState(UI_STATE_KEYS.GAME_STATE) || 'unknown'}`,
+            `Menu: ${this.stateManager.getState(UI_STATE_KEYS.MENU_TYPE) || 'none'}`
         ];
         
         this.ctx.font = '12px monospace';
