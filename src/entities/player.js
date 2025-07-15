@@ -601,6 +601,21 @@ export default class Player {
     }
     
     /**
+     * Take damage - backward compatibility bridge method
+     * This method provides compatibility with the collision system
+     * @param {number} damage - Amount of damage to take
+     */
+    takeDamage(damage) {
+        // Bridge to event-driven damage handling
+        if (this.eventDispatcher) {
+            this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_DAMAGED, { damage });
+        } else {
+            // Fallback to direct damage handling
+            this.handleDamage({ damage });
+        }
+    }
+    
+    /**
      * Handle healing events
      */
     handleHeal(data) {

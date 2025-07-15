@@ -131,6 +131,16 @@ describe('Player', () => {
       expect(player.health).toBeGreaterThan(0)
       expect(player.maxHealth).toBeGreaterThan(0)
     })
+
+    it('should have takeDamage method for backward compatibility', () => {
+      const initialHealth = player.health
+      
+      // Test takeDamage method
+      player.takeDamage(25)
+      
+      expect(player.health).toBe(initialHealth - 25)
+      expect(typeof player.takeDamage).toBe('function')
+    })
   })
 
   describe('Transformation System', () => {
