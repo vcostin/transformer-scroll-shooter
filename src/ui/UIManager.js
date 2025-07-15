@@ -7,10 +7,10 @@ import {
     UI_EVENTS, 
     UI_STATE_KEYS, 
     INPUT_ACTIONS 
-} from '../constants/ui-events.js';
-import MenuSystem from './MenuSystem.js';
-import InputHandler from './InputHandler.js';
-import DisplayManager from './DisplayManager.js';
+} from '@/constants/ui-events.js';
+import MenuSystem from '@/ui/MenuSystem.js';
+import InputHandler from '@/ui/InputHandler.js';
+import DisplayManager from '@/ui/DisplayManager.js';
 
 export class UIManager {
     constructor(game, eventDispatcher, stateManager) {
