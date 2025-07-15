@@ -286,9 +286,29 @@ export class Game {
         });
     }
     
+    /**
+     * Check if we're running in a test environment
+     * Extracted for clarity and to avoid complex conditions in gameLoop
+     */
+    isTestEnvironment() {
+        // Running in Node.js (SSR/headless) without window
+        if (typeof window === 'undefined') {
+            return true;
+        }
+        
+        // Running in Vitest test environment
+        if (typeof process !== 'undefined' && 
+            process.env.NODE_ENV === 'test' && 
+            typeof vitest !== 'undefined') {
+            return true;
+        }
+        
+        return false;
+    }
+    
     gameLoop(currentTime = 0) {
-        // Don't run game loop if in test environment (only when running in Node.js/Vitest)
-        if (typeof window === 'undefined' || (typeof process !== 'undefined' && process.env.NODE_ENV === 'test' && typeof vitest !== 'undefined')) {
+        // Don't run game loop if in test environment
+        if (this.isTestEnvironment()) {
             return;
         }
         

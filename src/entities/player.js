@@ -579,7 +579,9 @@ export default class Player {
             this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_HEALTH_CHANGED, {
                 health: this.health,
                 maxHealth: this.maxHealth,
-                percentage: this.health / this.maxHealth
+                percentage: this.health / this.maxHealth,
+                previousHealth: oldHealth,
+                damageDealt: actualDamage
             });
         }
         
