@@ -75,7 +75,7 @@ export class EffectContext {
     // Track the forked promise for potential cancellation
     this.effectManager.trackForkedEffect(forkedPromise);
 
-    return Promise.resolve(forkedPromise);
+    return forkedPromise;
   }
 
   /**
@@ -174,6 +174,7 @@ export class EffectContext {
 
     return new Promise((resolve) => {
       const timeoutId = setTimeout(() => {
+        // Check cancellation during timeout callback
         if (!this.cancelToken.cancelled) {
           resolve();
         }

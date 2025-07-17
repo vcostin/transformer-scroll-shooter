@@ -265,14 +265,29 @@ export class EffectManager {
    * Cancel all running effects
    */
   cancelAllEffects() {
-    // Cancel all running effects
+    // Cancel all running effects - properly handle cancellation
     for (const effectPromise of this.runningEffects) {
-      // Effects should handle cancellation gracefully
-      // This is a basic implementation
+      // Check if the promise has a cancel method (AbortController pattern)
+      if (effectPromise && typeof effectPromise.cancel === 'function') {
+        try {
+          effectPromise.cancel();
+        } catch (error) {
+          this._debug('Error cancelling effect:', error);
+        }
+      }
     }
     this.runningEffects.clear();
 
-    // Cancel all forked effects
+    // Cancel all forked effects - properly handle cancellation
+    for (const forkedPromise of this.forkedEffects) {
+      if (forkedPromise && typeof forkedPromise.cancel === 'function') {
+        try {
+          forkedPromise.cancel();
+        } catch (error) {
+          this._debug('Error cancelling forked effect:', error);
+        }
+      }
+    }
     this.forkedEffects.clear();
 
     // Clear all timeouts
@@ -304,10 +319,10 @@ export class EffectManager {
   trackTimeout(timeoutId) {
     this.timeouts.add(timeoutId);
     
-    // Auto-remove after timeout completes
-    setTimeout(() => {
+    // Auto-remove after timeout completes - use Promise.resolve().then() for better async handling
+    Promise.resolve().then(() => {
       this.timeouts.delete(timeoutId);
-    }, 0);
+    });
   }
 
   /**
@@ -356,15 +371,13 @@ export class EffectManager {
     // Could implement resume logic here
   }
 
-  /**
-   * Generate unique ID for effects
-   * @returns {string} Unique ID
-   */
-  _generateId() {
-    return `effect_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  /**
+   /**
+    * Generate unique ID for effects
+    * @returns {string} Unique ID
+    */
+   _generateId() {
+     return `effect_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+   }  /**
    * Debug logging
    * @param {...*} args - Arguments to log
    */
