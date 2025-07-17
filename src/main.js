@@ -51,7 +51,14 @@ export {
 };
 
 // For debugging and development (development only)
-if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+// Check for development environment using multiple detection methods
+const isDevelopment = (typeof window !== 'undefined' && 
+    (window.location?.hostname === 'localhost' || 
+     window.location?.hostname === '127.0.0.1' || 
+     window.location?.port === '8080' ||
+     (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development')));
+
+if (isDevelopment) {
     window.ModuleSystem = {
         GAME_CONSTANTS,
         GAME_INFO,

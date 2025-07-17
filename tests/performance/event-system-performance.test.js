@@ -233,9 +233,14 @@ describe('Event System Performance', () => {
             // Simulate performance regression by adding expensive listeners
             for (let i = 0; i < 10; i++) {
                 eventDispatcher.on(UI_EVENTS.MENU_OPENED, () => {
-                    // Simulate expensive operation
-                    const start = performance.now();
-                    while (performance.now() - start < 1) { /* busy wait */ }
+                    // Simulate expensive operation using a deterministic approach
+                    const operations = 100000; // Deterministic operation count
+                    let result = 0;
+                    for (let j = 0; j < operations; j++) {
+                        result += Math.random() * Math.sin(j) * Math.cos(j);
+                    }
+                    // Prevent optimization by using the result
+                    if (result > Number.MAX_SAFE_INTEGER) console.log(result);
                 });
             }
             

@@ -344,15 +344,30 @@ export class PerformanceProfiler {
      */
     exportResults() {
         const report = this.generateReport();
-        const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
+        const jsonReport = JSON.stringify(report, null, 2);
         
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `performance-report-${Date.now()}.json`;
-        a.click();
-        
-        URL.revokeObjectURL(url);
+        if (typeof document !== 'undefined' && typeof URL !== 'undefined') {
+            // Browser environment
+            const blob = new Blob([jsonReport], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `performance-report-${Date.now()}.json`;
+            a.click();
+            
+            URL.revokeObjectURL(url);
+        } else if (typeof require !== 'undefined') {
+            // Node.js environment
+            const fs = require('fs');
+            const fileName = `performance-report-${Date.now()}.json`;
+            fs.writeFileSync(fileName, jsonReport, 'utf8');
+            console.log(`Performance report saved to ${fileName}`);
+        } else {
+            // Fallback: just log the report
+            console.error('Unable to export results: No suitable environment detected.');
+            console.log('Performance Report:', jsonReport);
+        }
     }
 }
 
