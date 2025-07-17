@@ -156,25 +156,7 @@ export class PatternMatcher {
    * @private
    */
   _compileGlobPattern(pattern) {
-    // Handle edge case: single asterisk
-    if (pattern === '*') {
-      return /^.*$/;
-    }
-    
-    // Handle edge case: single question mark
-    if (pattern === '?') {
-      return /^.$/;
-    }
-    
-    // Escape special regex characters except * and ?
-    const escaped = this._escapeRegexChars(pattern);
-    
-    // Convert glob patterns to regex
-    const regex = escaped
-      .replace(/\*/g, '.*')  // Convert '*' in glob patterns to '.*' in regex, matching any sequence of characters
-      .replace(/\?/g, '.');  // Convert '?' in glob patterns to '.' in regex, matching a single character
-    
-    return new RegExp(`^${regex}$`);
+    return this._compilePatternToRegex(pattern);
   }
 
   /**
@@ -182,6 +164,14 @@ export class PatternMatcher {
    * @private
    */
   _compileWildcardPattern(pattern) {
+    return this._compilePatternToRegex(pattern);
+  }
+
+  /**
+   * Shared logic to compile patterns (glob or wildcard) to regex
+   * @private
+   */
+  _compilePatternToRegex(pattern) {
     // Handle edge case: single asterisk
     if (pattern === '*') {
       return /^.*$/;
@@ -195,7 +185,7 @@ export class PatternMatcher {
     // Escape special regex characters except * and ?
     const escaped = this._escapeRegexChars(pattern);
     
-    // Convert wildcard patterns to regex
+    // Convert patterns to regex
     const regex = escaped
       .replace(/\*/g, '.*')  // * matches any characters
       .replace(/\?/g, '.');  // ? matches a single character
@@ -236,7 +226,7 @@ export class PatternMatcher {
     }
     
     // Fallback for older browsers or environments without crypto.randomUUID
-    // Using pattern_ prefix for fallback to ensure uniqueness across different ID generation methods
+    // Use pattern_ prefix in fallback to distinguish from crypto-generated UUIDs
     return `pattern_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
   }
 }
