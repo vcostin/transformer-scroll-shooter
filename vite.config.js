@@ -28,11 +28,5 @@ export default defineConfig({
     include: []
   },
   base: './',
-  assetsInclude: ['**/*.mp3', '**/*.wav', '**/*.ogg', '**/*.png', '**/*.jpg', '**/*.gif'],
-  test: {
-    include: ['src/**/*.{test,spec}.{js,ts}', 'test/integration.test.js', 'tests/**/*.{test,spec}.{js,ts}'],
-    environment: 'jsdom',
-    setupFiles: ['./test/setup.js'],
-    globals: true
-  }
+  assetsInclude: ['**/*.mp3', '**/*.wav', '**/*.ogg', '**/*.png', '**/*.jpg', '**/*.gif']
 })

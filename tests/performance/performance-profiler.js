@@ -16,7 +16,6 @@ export class PerformanceProfiler {
             frameTime: 16.67, // 60fps = 16.67ms per frame
             eventDispatchTime: 1.0, // 1ms max for event dispatch
             memoryGrowthRate: 0.1, // 10% memory growth max
-            eventListenerCount: 1000, // Max event listeners
             stateUpdateTime: 0.5 // 0.5ms max for state updates
         };
     }
@@ -67,11 +66,12 @@ export class PerformanceProfiler {
             times.push(end - start);
         }
         
+        const total = times.reduce((a, b) => a + b, 0);
         const results = {
             name,
             iterations,
-            total: times.reduce((a, b) => a + b, 0),
-            average: times.reduce((a, b) => a + b, 0) / times.length,
+            total: total,
+            average: total / times.length,
             min: Math.min(...times),
             max: Math.max(...times),
             median: this.calculateMedian(times),

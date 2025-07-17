@@ -74,13 +74,15 @@ export class CompatibilityAnalyzer {
         });
 
         // Find global references
-        const globalMatches = [...content.matchAll(this.patterns.globalReferences[0])];
-        globalMatches.forEach(match => {
-            analysis.globalReferences.push({
-                variable: match[1],
-                match: match[0],
-                index: match.index,
-                line: this.getLineNumber(content, match.index)
+        this.patterns.globalReferences.forEach(pattern => {
+            const matches = [...content.matchAll(pattern)];
+            matches.forEach(match => {
+                analysis.globalReferences.push({
+                    variable: match[1],
+                    match: match[0],
+                    index: match.index,
+                    line: this.getLineNumber(content, match.index)
+                });
             });
         });
 
