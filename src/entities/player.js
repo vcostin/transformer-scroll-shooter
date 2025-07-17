@@ -9,6 +9,7 @@
 import Bullet from '@/entities/bullet.js';
 import { TransformEffect } from '@/rendering/effects.js';
 import { PLAYER_EVENTS, PLAYER_STATES, MOVE_DIRECTIONS } from '@/constants/player-events.js';
+import * as MathUtils from '@/utils/math.js';
 
 export default class Player {
     constructor(game, x, y) {
@@ -76,17 +77,17 @@ export default class Player {
         
         this.updateModeProperties();
         
-        // Event-driven architecture setup (optional for backward compatibility)
+        // Event-driven architecture setup
         this.eventDispatcher = game.eventDispatcher;
         this.stateManager = game.stateManager;
         this.eventListeners = new Set();
         
-        // Initialize event listeners if event dispatcher is available
+        // Initialize event listeners
         if (this.eventDispatcher) {
             this.setupEventListeners();
         }
         
-        // Initialize state if state manager is available
+        // Initialize state
         if (this.stateManager) {
             this.initializeState();
         }
@@ -202,16 +203,11 @@ export default class Player {
         this.x += dx * moveSpeed;
         this.y += dy * moveSpeed;
         
-        // Keep player on screen - use utility function when available
-        if (typeof window !== 'undefined' && typeof window.MathUtils !== 'undefined') {
-            this.x = window.MathUtils.clamp(this.x, 0, this.game.width - this.width);
-            this.y = window.MathUtils.clamp(this.y, 0, this.game.height - this.height);
-        } else {
-            this.x = Math.max(0, Math.min(this.game.width - this.width, this.x));
-            this.y = Math.max(0, Math.min(this.game.height - this.height, this.y));
-        }
+        // Keep player on screen
+        this.x = MathUtils.clamp(this.x, 0, this.game.width - this.width);
+        this.y = MathUtils.clamp(this.y, 0, this.game.height - this.height);
         
-        // Emit events and update state for backward compatibility
+        // Emit events and update state
         if (this.x !== previousX || this.y !== previousY) {
             // Update state manager
             if (this.stateManager) {

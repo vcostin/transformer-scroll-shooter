@@ -29,27 +29,8 @@ import { OptionsMenu } from '@/ui/options.js';
 // Import main game class
 import Game from '@/game/game.js';
 
-// Make all classes available globally for backward compatibility
-window.GAME_CONSTANTS = GAME_CONSTANTS;
-window.GAME_INFO = GAME_INFO;
-window.CollisionUtils = CollisionUtils;
-window.MathUtils = MathUtils;
-window.Player = Player;
-window.Bullet = Bullet;
-window.Enemy = Enemy;
-window.AudioManager = AudioManager;
-window.Powerup = Powerup;
-window.PowerupSpawner = PowerupSpawner;
-window.Background = Background;
-window.Explosion = Explosion;
-window.PowerupEffect = PowerupEffect;
-window.MuzzleFlash = MuzzleFlash;
-window.TransformEffect = TransformEffect;
-window.OptionsMenu = OptionsMenu;
-window.Game = Game;
-
-// For debugging and development
-window.ModuleSystem = {
+// Export all modules for proper ES6 module usage
+export {
     GAME_CONSTANTS,
     GAME_INFO,
     CollisionUtils,
@@ -69,10 +50,39 @@ window.ModuleSystem = {
     Game
 };
 
+// For debugging and development (development only)
+// Check for development environment using multiple detection methods
+const isDevelopment = (typeof window !== 'undefined' && 
+    (window.location?.hostname === 'localhost' || 
+     window.location?.hostname === '127.0.0.1' || 
+     window.location?.port === '8080' ||
+     (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development')));
+
+if (isDevelopment) {
+    window.ModuleSystem = {
+        GAME_CONSTANTS,
+        GAME_INFO,
+        CollisionUtils,
+        MathUtils,
+        Player,
+        Bullet,
+        Enemy,
+        AudioManager,
+        Powerup,
+        PowerupSpawner,
+        Background,
+        Explosion,
+        PowerupEffect,
+        MuzzleFlash,
+        TransformEffect,
+        OptionsMenu,
+        Game
+    };
+}
+
 // Log successful module loading
 console.log('🔧 Phase 5 Complete ES Module System loaded successfully');
 console.log('📦 All game systems are now ES modules');
-console.log('🎮 Game classes are available globally for compatibility');
 
 // ===== GAME INITIALIZATION =====
 // Initialize the game directly
@@ -156,23 +166,4 @@ function addMobileControls() {
     }
 }
 
-// Export for potential future use
-export {
-    GAME_CONSTANTS,
-    GAME_INFO,
-    CollisionUtils,
-    MathUtils,
-    Player,
-    Bullet,
-    Enemy,
-    AudioManager,
-    Powerup,
-    PowerupSpawner,
-    Background,
-    Explosion,
-    PowerupEffect,
-    MuzzleFlash,
-    TransformEffect,
-    OptionsMenu,
-    Game
-};
+// Module system loaded successfully
