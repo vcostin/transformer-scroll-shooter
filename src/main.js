@@ -27,7 +27,7 @@ import { Explosion, PowerupEffect, MuzzleFlash, TransformEffect } from '@/render
 import { OptionsMenu } from '@/ui/options.js';
 
 // Import main game class
-import Game from '@/game/game.js';
+import { Game } from '@/game/game.js';
 
 // Export all modules for proper ES6 module usage
 export {
@@ -57,7 +57,16 @@ if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
     console.error('❌ Game initialization failed:', new Error('Test environment'));
 }
 
+// Initialize game in browser environments
+if (typeof window !== 'undefined' && !(typeof process !== 'undefined' && process.env.NODE_ENV === 'test')) {
+    const game = new Game();
+    window.addEventListener('keydown', handleSpecialKeys);
+    addMobileControls();
+}
+
 function handleSpecialKeys(event) {
+    // Reference the game instance from the global window
+    const game = window.game;
     switch(event.code) {
         case 'KeyP':
             // Toggle pause
@@ -99,8 +108,8 @@ function addMobileControls() {
             const y = touch.clientY - rect.top;
             
             // Simple touch-to-shoot
-            if (game && game.player) {
-                game.player.shoot();
+            if (window.game && window.game.player) {
+                window.game.player.shoot();
             }
         }
         
