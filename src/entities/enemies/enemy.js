@@ -281,13 +281,15 @@ export default class Enemy {
         
         // Emit movement events if position changed
         if (this.x !== previousX || this.y !== previousY) {
-            // Update state manager
-            if (this.stateManager) {
-                this.stateManager.setState(ENEMY_STATES.POSITION, { x: this.x, y: this.y });
-            }
-            
-            // Emit movement event
             if (this.eventDispatcher) {
+                this.eventDispatcher.emit('ENEMY_POSITION_CHANGED', {
+                    enemy: this,
+                    x: this.x,
+                    y: this.y,
+                    previousX,
+                    previousY,
+                    type: this.type
+                });
                 this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_MOVED, {
                     enemy: this,
                     x: this.x,

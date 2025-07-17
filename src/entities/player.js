@@ -10,6 +10,7 @@ import Bullet from '@/entities/bullet.js';
 import { TransformEffect } from '@/rendering/effects.js';
 import { PLAYER_EVENTS, PLAYER_STATES, MOVE_DIRECTIONS } from '@/constants/player-events.js';
 import * as MathUtils from '@/utils/math.js';
+import { EffectManager } from '@/systems/EffectManager.js';
 
 export default class Player {
     constructor(game, x, y) {
@@ -139,19 +140,15 @@ export default class Player {
     }
     
     /**
-     * Initialize player state in state manager
+     * Initialize player state using EffectManager
      */
     initializeState() {
         if (this.stateManager) {
-            this.stateManager.setState(PLAYER_STATES.HEALTH, this.health);
-            this.stateManager.setState(PLAYER_STATES.POSITION, { x: this.x, y: this.y });
-            this.stateManager.setState(PLAYER_STATES.MODE, this.mode);
-            this.stateManager.setState(PLAYER_STATES.SPEED, this.speed);
-            this.stateManager.setState(PLAYER_STATES.SHOOT_RATE, this.currentShootRate);
-            this.stateManager.setState(PLAYER_STATES.POWERUPS, this.activePowerups);
-            this.stateManager.setState(PLAYER_STATES.SHIELD, this.shield);
-            this.stateManager.setState(PLAYER_STATES.TRANSFORM_COOLDOWN, this.transformCooldown);
-            this.stateManager.setState(PLAYER_STATES.SHOOT_COOLDOWN, this.shootCooldown);
+            const effectManager = new EffectManager(this.eventDispatcher);
+            effectManager.initializePlayerState(this);
+            effectManager.start();
+            // Emit the PLAYER_STATE_INIT event
+            this.eventDispatcher.emit('PLAYER_STATE_INIT');
         }
     }
     
@@ -160,20 +157,20 @@ export default class Player {
         if (keys) {
             this.handleMovement(deltaTime, keys);
         }
-        
+
         // Update cooldowns
         this.shootCooldown = Math.max(0, this.shootCooldown - deltaTime);
         this.transformCooldown = Math.max(0, this.transformCooldown - deltaTime);
-        
+
         // Update power-ups
         this.updatePowerups(deltaTime);
-        
-        // Update state manager with cooldown changes
-        if (this.stateManager) {
-            this.stateManager.setState(PLAYER_STATES.SHOOT_COOLDOWN, this.shootCooldown);
-            this.stateManager.setState(PLAYER_STATES.TRANSFORM_COOLDOWN, this.transformCooldown);
+
+        // Emit events for cooldown changes (handled by EffectManager)
+        if (this.eventDispatcher) {
+            this.eventDispatcher.emit('PLAYER_SHOOT_COOLDOWN_CHANGED', { value: this.shootCooldown });
+            this.eventDispatcher.emit('PLAYER_TRANSFORM_COOLDOWN_CHANGED', { value: this.transformCooldown });
         }
-        
+
         // Check if dead
         if (this.health <= 0) {
             this.game.gameOver = true;
@@ -207,15 +204,10 @@ export default class Player {
         this.x = MathUtils.clamp(this.x, 0, this.game.width - this.width);
         this.y = MathUtils.clamp(this.y, 0, this.game.height - this.height);
         
-        // Emit events and update state
+        // Emit events for movement and position (handled by EffectManager)
         if (this.x !== previousX || this.y !== previousY) {
-            // Update state manager
-            if (this.stateManager) {
-                this.stateManager.setState(PLAYER_STATES.POSITION, { x: this.x, y: this.y });
-            }
-            
-            // Emit movement event
             if (this.eventDispatcher) {
+                this.eventDispatcher.emit('PLAYER_POSITION_CHANGED', { x: this.x, y: this.y });
                 this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_MOVED, {
                     x: this.x,
                     y: this.y,
@@ -304,6 +296,7 @@ export default class Player {
         // Only emit moved event if position actually changed
         if (this.x !== previousX || this.y !== previousY) {
             if (this.eventDispatcher) {
+                this.eventDispatcher.emit('PLAYER_POSITION_CHANGED', { x: this.x, y: this.y });
                 this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_MOVED, {
                     x: this.x,
                     y: this.y,
@@ -311,34 +304,21 @@ export default class Player {
                     previousY
                 });
             }
-            
-            // Update state manager
-            if (this.stateManager) {
-                this.stateManager.setState(PLAYER_STATES.POSITION, { x: this.x, y: this.y });
-            }
         }
     }
     
     shoot() {
         if (this.shootCooldown <= 0) {
             const props = this.modeProperties[this.mode];
-            
             // Play shoot sound
             this.game.audio.playSound('shoot', 0.6);
-            
             // Create bullets based on current mode and power-ups
             const bullets = this.createBullets();
             bullets.forEach(bullet => this.game.addBullet(bullet));
-            
             this.shootCooldown = this.currentShootRate;
-            
-            // Update state manager for backward compatibility
-            if (this.stateManager) {
-                this.stateManager.setState(PLAYER_STATES.SHOOT_COOLDOWN, this.shootCooldown);
-            }
-            
-            // Emit event for consistency (backward compatibility bridge)
+            // Emit event for shoot cooldown change (handled by EffectManager)
             if (this.eventDispatcher) {
+                this.eventDispatcher.emit('PLAYER_SHOOT_COOLDOWN_CHANGED', { value: this.shootCooldown });
                 this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_SHOT, {
                     x: this.x + this.width,
                     y: this.y + this.height / 2,
