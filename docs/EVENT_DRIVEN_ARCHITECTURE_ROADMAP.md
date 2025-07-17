@@ -26,17 +26,39 @@ Transform the game from direct object manipulation to a modern event-driven arch
 - **Goal**: Convert all entities to event-driven pattern
 - **Timeline**: 2-3 weeks
 - **Dependencies**: Phase 1 complete
-- **Status**: 🚀 **In Progress** - Player entity completed (PR #28), Enemy entity completed (PR #29) ✅
+- **Status**: ✅ **Complete** - Player entity completed (PR #28), Enemy entity completed (PR #29), UI Event Integration completed (PR #30)
 
 ### Epic: UI Event Integration
 - **Goal**: Integrate UI interactions with event system
 - **Timeline**: 1-2 weeks
 - **Dependencies**: Event System
+- **Status**: ✅ **Complete** - UI Event Integration System implemented (PR #30)
 
 ### Epic: Testing & Performance
 - **Goal**: Comprehensive testing and performance optimization
 - **Timeline**: 1-2 weeks
 - **Dependencies**: Core architecture complete
+- **Status**: ✅ **Complete** - Performance Testing Framework implemented (PR #31)
+
+## 📋 Phase 2.5: Side Effects Architecture (NEW)
+
+### Epic: Side Effects System
+- **Goal**: Implement Redux-Saga style side effects management
+- **Timeline**: 2-3 weeks
+- **Dependencies**: Phase 2 complete
+- **Status**: 🚀 **Planning** - Separate business logic from side effects
+
+### Epic: Effect Context & Control Flow
+- **Goal**: Add async control flow (call, fork, put, take)
+- **Timeline**: 1-2 weeks
+- **Dependencies**: Side Effects System
+- **Status**: 📋 **Planned** - Redux-Saga inspired effect context
+
+### Epic: Side Effects Migration
+- **Goal**: Migrate existing side effects to new architecture
+- **Timeline**: 2-3 weeks
+- **Dependencies**: Effect Context complete
+- **Status**: 📋 **Planned** - Systematic migration of all entities
 
 ## 📋 Phase 3: Advanced Features (Optional)
 
@@ -81,13 +103,15 @@ Transform the game from direct object manipulation to a modern event-driven arch
 │  ┌─────────────────────────────────────────────────────────┐ │
 │  │              Event Dispatcher                          │ │
 │  └─────────────────────────────────────────────────────────┘ │
-│                           │                                 │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │              State Manager                             │ │
-│  └─────────────────────────────────────────────────────────┘ │
+│           │                       │                         │
+│  ┌─────────────────────┐  ┌─────────────────────────────────┐ │
+│  │   Effect Manager    │  │       State Manager             │ │
+│  │  (Side Effects)     │  │                                 │ │
+│  └─────────────────────┘  └─────────────────────────────────┘ │
 │                           │                                 │
 │  ┌─────────────────────────────────────────────────────────┐ │
 │  │              Game Engine Core                          │ │
+│  │            (Pure Business Logic)                      │ │
 │  └─────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
                             │
