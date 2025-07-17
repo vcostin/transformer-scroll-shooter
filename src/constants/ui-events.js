@@ -60,7 +60,14 @@ export const UI_EVENTS = {
     
     // Error handling
     UI_ERROR: 'ui.error',
-    UI_WARNING: 'ui.warning'
+    UI_WARNING: 'ui.warning',
+    
+    // State change event
+    STATE_CHANGED: 'ui.state.changed',
+    // Settings events
+    SETTINGS_SAVE: 'ui.settings.save',
+    SETTINGS_LOAD: 'ui.settings.load',
+    SETTINGS_LOADED: 'ui.settings.loaded'
 };
 
 // UI State Keys for StateManager

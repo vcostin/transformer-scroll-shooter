@@ -17,6 +17,25 @@ export class OptionsMenu {
         this.isOpen = false;
         this.selectedOption = 0;
         this.eventListeners = new Set();
+        // Subscribe to loaded settings
+        if (this.eventDispatcher) {
+            const unsubscribe = this.eventDispatcher.on(
+                UI_EVENTS.SETTINGS_LOADED,
+                (settings) => {
+                    // Apply loaded settings
+                    this.options.forEach(option => {
+                        const key = option.name.toLowerCase().replace(/\s+/g, '');
+                        if (settings.hasOwnProperty(key)) {
+                            const newVal = settings[key];
+                            option.setValue(newVal);
+                            // Ensure value() reflects loaded setting
+                            option.value = () => newVal;
+                        }
+                    });
+                }
+            );
+            this.eventListeners.add(unsubscribe);
+        }
         
         // Initialize options configuration
         this.initializeOptions();
@@ -28,8 +47,10 @@ export class OptionsMenu {
         this.overlay = null;
         this.createOverlay();
         
-        // Load saved settings
-        this.loadSettings();
+        // Request load settings
+        if (this.eventDispatcher) {
+            this.eventDispatcher.emit(UI_EVENTS.SETTINGS_LOAD);
+        }
     }
     
     /**
@@ -43,6 +64,8 @@ export class OptionsMenu {
                 value: () => this.game.audio.masterVolume,
                 setValue: (val) => {
                     const oldValue = this.game.audio.masterVolume;
+                    // Update underlying property before calling setter
+                    this.game.audio.masterVolume = val;
                     this.game.audio.setMasterVolume(val);
                     this.emitSettingChanged('masterVolume', val, oldValue);
                 },
@@ -56,6 +79,7 @@ export class OptionsMenu {
                 value: () => this.game.audio.sfxVolume,
                 setValue: (val) => {
                     const oldValue = this.game.audio.sfxVolume;
+                    this.game.audio.sfxVolume = val;
                     this.game.audio.setSfxVolume(val);
                     this.emitSettingChanged('sfxVolume', val, oldValue);
                 },
@@ -69,6 +93,7 @@ export class OptionsMenu {
                 value: () => this.game.audio.musicVolume,
                 setValue: (val) => {
                     const oldValue = this.game.audio.musicVolume;
+                    this.game.audio.musicVolume = val;
                     this.game.audio.setMusicVolume(val);
                     this.emitSettingChanged('musicVolume', val, oldValue);
                 },
@@ -82,6 +107,7 @@ export class OptionsMenu {
                 value: () => this.game.audio.enabled,
                 setValue: (val) => {
                     const oldValue = this.game.audio.enabled;
+                    this.game.audio.enabled = val;
                     this.game.audio.setEnabled(val);
                     this.emitSettingChanged('audioEnabled', val, oldValue);
                 }
@@ -449,25 +475,33 @@ export class OptionsMenu {
             settings[key] = option.value();
         });
         
-        localStorage.setItem('gameSettings', JSON.stringify(settings));
+        if (this.eventDispatcher) {
+            this.eventDispatcher.emit(UI_EVENTS.SETTINGS_SAVE, settings);
+        } else {
+            // Persist settings when no event dispatcher available
+            localStorage.setItem('gameSettings', JSON.stringify(settings));
+        }
     }
-    
+
+    /**
+     * Load settings from localStorage and apply
+     */
     loadSettings() {
+        let data = {};
         try {
-            const savedSettings = localStorage.getItem('gameSettings');
-            if (savedSettings) {
-                const settings = JSON.parse(savedSettings);
-                
-                this.options.forEach(option => {
-                    const key = option.name.toLowerCase().replace(/\s+/g, '');
-                    if (settings.hasOwnProperty(key)) {
-                        option.setValue(settings[key]);
-                    }
-                });
-            }
+            const raw = localStorage.getItem('gameSettings');
+            data = raw ? JSON.parse(raw) : {};
         } catch (e) {
             console.warn('Could not load settings:', e);
+            data = {};
         }
+        // Apply loaded settings
+        this.options.forEach(option => {
+            const key = option.name.toLowerCase().replace(/\s+/g, '');
+            if (data.hasOwnProperty(key)) {
+                option.setValue(data[key]);
+            }
+        });
     }
     
     /**

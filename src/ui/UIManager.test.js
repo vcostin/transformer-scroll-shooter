@@ -11,6 +11,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { UIManager } from '@/ui/UIManager.js';
 import {
     UI_EVENTS,
     MENU_TYPES,
@@ -431,6 +432,44 @@ describe('UI Event Integration System', () => {
             expect(eventFlow).toContain(UI_EVENTS.SETTING_CHANGED);
             expect(eventFlow).toContain(UI_EVENTS.NOTIFICATION_SHOW);
             expect(eventFlow).toContain(UI_EVENTS.MENU_CLOSED);
+        });
+    });
+
+    describe('UIManager State Change Events', () => {
+        let mockEventDispatcher;
+        beforeEach(() => {
+            // Use UIManager imported above
+            mockEventDispatcher = { emit: vi.fn(), on: vi.fn(), off: vi.fn() };
+        });
+
+        it('should emit STATE_CHANGED when menu is opened', () => {
+            const uiManager = new UIManager(null, mockEventDispatcher, null);
+            uiManager.displayManager = null; // avoid display code
+            const data = { menuType: 'options' };
+            uiManager.handleMenuOpened(data);
+            expect(mockEventDispatcher.emit).toHaveBeenCalledWith(
+                UI_EVENTS.STATE_CHANGED,
+                { key: UI_STATE_KEYS.MENU_OPEN, value: true }
+            );
+            expect(mockEventDispatcher.emit).toHaveBeenCalledWith(
+                UI_EVENTS.STATE_CHANGED,
+                { key: UI_STATE_KEYS.MENU_TYPE, value: data.menuType }
+            );
+        });
+
+        it('should emit STATE_CHANGED when menu is closed', () => {
+            const uiManager = new UIManager(null, mockEventDispatcher, null);
+            uiManager.displayManager = null;
+            const data = { menuType: 'options' };
+            uiManager.handleMenuClosed(data);
+            expect(mockEventDispatcher.emit).toHaveBeenCalledWith(
+                UI_EVENTS.STATE_CHANGED,
+                { key: UI_STATE_KEYS.MENU_OPEN, value: false }
+            );
+            expect(mockEventDispatcher.emit).toHaveBeenCalledWith(
+                UI_EVENTS.STATE_CHANGED,
+                { key: UI_STATE_KEYS.MENU_TYPE, value: null }
+            );
         });
     });
 });
