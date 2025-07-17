@@ -1,4 +1,4 @@
-import { EffectContext } from './EffectContext.js';
+import { EffectContext } from '@/systems/EffectContext.js';
 
 /**
  * EffectManager - Coordinates side effects execution

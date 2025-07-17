@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { EffectManager } from './EffectManager.js';
-import { EffectContext } from './EffectContext.js';
+import { EffectManager } from '@/systems/EffectManager.js';
+import { EffectContext } from '@/systems/EffectContext.js';
 
 describe('EffectManager', () => {
   let effectManager;

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { EventDispatcher } from './EventDispatcher.js';
-import { EffectManager } from './EffectManager.js';
-import { EffectContext } from './EffectContext.js';
+import { EventDispatcher } from '@/systems/EventDispatcher.js';
+import { EffectManager } from '@/systems/EffectManager.js';
+import { EffectContext } from '@/systems/EffectContext.js';
 
 describe('Side Effects Integration', () => {
   let eventDispatcher;
