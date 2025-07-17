@@ -1,4 +1,5 @@
 import { EffectContext } from '@/systems/EffectContext.js';
+import { PatternMatcher } from '@/utils/PatternMatcher.js';
 
 /**
  * EffectManager - Coordinates side effects execution
@@ -7,7 +8,8 @@ import { EffectContext } from '@/systems/EffectContext.js';
 export class EffectManager {
   constructor(eventDispatcher) {
     this.eventDispatcher = eventDispatcher;
-    this.effects = new Map(); // eventPattern -> [effectHandlers]
+    this.patternMatcher = new PatternMatcher();
+    this.effects = new Map(); // Keeping for backward compatibility
     this.runningEffects = new Set();
     this.forkedEffects = new Set();
     this.timeouts = new Set();
@@ -35,7 +37,13 @@ export class EffectManager {
 
     const { priority = 0, once = false } = options;
 
-    // Convert string patterns to RegExp for consistent handling
+    // Register with PatternMatcher for advanced pattern matching
+    const patternId = this.patternMatcher.register(eventPattern, effectHandler, {
+      priority,
+      once
+    });
+
+    // Keep backward compatibility with old effects Map
     const patternKey = eventPattern instanceof RegExp ? eventPattern.source : eventPattern.replace(/\*/g, '.*');
     const pattern = eventPattern instanceof RegExp ? eventPattern : new RegExp(`^${patternKey}$`);
 
@@ -47,21 +55,23 @@ export class EffectManager {
       fn: effectHandler,
       priority,
       once,
-      id: this._generateId(),
+      id: patternId,
       pattern: eventPattern
     };
 
     const effectEntry = this.effects.get(patternKey);
     effectEntry.handlers.push(handler);
-
-    // Sort by priority (higher priority first)
     effectEntry.handlers.sort((a, b) => b.priority - a.priority);
 
     this._debug(`Registered effect for pattern '${eventPattern}' with priority ${priority}`);
 
     // Return unsubscribe function
     return () => {
-      const index = effectEntry.handlers.findIndex(h => h.id === handler.id);
+      // Remove from PatternMatcher
+      this.patternMatcher.unregister(patternId);
+      
+      // Remove from old effects Map for backward compatibility
+      const index = effectEntry.handlers.findIndex(h => h.id === patternId);
       if (index !== -1) {
         effectEntry.handlers.splice(index, 1);
         if (effectEntry.handlers.length === 0) {
@@ -145,24 +155,30 @@ export class EffectManager {
    * @param {string} eventName - Event name
    * @param {*} data - Event data
    */
+    /**
+   * Trigger effects matching the event name
+   * @param {string} eventName - Event name to match
+   * @param {*} data - Event data
+   */
   _triggerEffects(eventName, data) {
-    const matchingEffects = this._getMatchingEffects(eventName);
+    // Get matches using the advanced PatternMatcher
+    const matchingPatterns = this.patternMatcher.getMatches(eventName);
     
-    if (matchingEffects.length === 0) {
+    if (matchingPatterns.length === 0) {
       return;
     }
 
-    this._debug(`Triggering ${matchingEffects.length} effects for event '${eventName}'`);
+    this._debug(`Triggering ${matchingPatterns.length} effects for event '${eventName}'`);
 
     const toRemove = [];
 
-    for (const effect of matchingEffects) {
+    for (const patternEntry of matchingPatterns) {
       try {
-        this._executeEffect(effect, eventName, data);
+        this._executeEffect(patternEntry, eventName, data);
         
         // Mark once effects for removal
-        if (effect.once) {
-          toRemove.push(effect);
+        if (patternEntry.once) {
+          toRemove.push(patternEntry.id);
         }
       } catch (error) {
         this._debug(`Error executing effect for '${eventName}':`, error);
@@ -171,7 +187,8 @@ export class EffectManager {
         this._originalEmit('effect:execution:error', {
           eventName,
           data,
-          effect: effect.fn.name || 'anonymous',
+          effect: patternEntry.handler.name || 'anonymous',
+          pattern: patternEntry.pattern,
           error,
           timestamp: Date.now()
         });
@@ -179,16 +196,30 @@ export class EffectManager {
     }
 
     // Remove once effects
-    this._removeOnceEffects(toRemove);
+    this.patternMatcher.removeOncePatterns(toRemove);
+    
+    // Also remove from old effects Map for backward compatibility
+    toRemove.forEach(patternId => {
+      for (const [patternKey, effectEntry] of this.effects.entries()) {
+        const index = effectEntry.handlers.findIndex(h => h.id === patternId);
+        if (index !== -1) {
+          effectEntry.handlers.splice(index, 1);
+          if (effectEntry.handlers.length === 0) {
+            this.effects.delete(patternKey);
+          }
+          break;
+        }
+      }
+    });
   }
 
   /**
    * Execute a single effect
-   * @param {Object} effect - Effect handler object
+   * @param {Object} patternEntry - Pattern entry from PatternMatcher
    * @param {string} eventName - Event name
    * @param {*} data - Event data
    */
-  _executeEffect(effect, eventName, data) {
+  _executeEffect(patternEntry, eventName, data) {
     const context = new EffectContext(this, this.eventDispatcher);
     
     const action = {
@@ -198,7 +229,7 @@ export class EffectManager {
     };
 
     // Execute the effect with context
-    const effectPromise = Promise.resolve(effect.fn(action, context));
+    const effectPromise = Promise.resolve(patternEntry.handler(action, context));
     
     // Track the running effect
     this.runningEffects.add(effectPromise);

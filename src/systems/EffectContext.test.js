@@ -353,4 +353,152 @@ describe('EffectContext', () => {
       expect(effectContext.isCancelled()).toBe(true);
     });
   });
+
+  describe('race()', () => {
+    it('should return the first effect to complete', async () => {
+      const effects = {
+        fast: Promise.resolve('fast result'),
+        slow: new Promise(resolve => setTimeout(() => resolve('slow result'), 100))
+      };
+
+      const result = await effectContext.race(effects);
+      
+      expect(result).toEqual({ winner: 'fast', result: 'fast result' });
+    });
+
+    it('should throw error if effects is not an object', async () => {
+      await expect(effectContext.race('not an object')).rejects.toThrow(
+        'race() requires an object with effects'
+      );
+    });
+
+    it('should throw error if effects object is empty', async () => {
+      await expect(effectContext.race({})).rejects.toThrow(
+        'race() requires at least one effect'
+      );
+    });
+
+    it('should return resolved promise if effect is cancelled', async () => {
+      effectContext.cancel();
+      
+      const result = await effectContext.race({
+        test: Promise.resolve('test result')
+      });
+      
+      expect(result).toBeUndefined();
+    });
+
+    it('should emit error event and re-throw on effect error', async () => {
+      const effects = {
+        failing: Promise.reject(new Error('Test error'))
+      };
+
+      await expect(effectContext.race(effects)).rejects.toThrow('Test error');
+      
+      expect(mockEventDispatcher.emit).toHaveBeenCalledWith('effect:error', {
+        type: 'race',
+        effects: ['failing'],
+        error: expect.any(Error),
+        timestamp: expect.any(Number)
+      });
+    });
+
+    it('should handle mixed promise types', async () => {
+      const effects = {
+        immediate: 'immediate result',
+        promise: Promise.resolve('promise result'),
+        delayed: new Promise(resolve => setTimeout(() => resolve('delayed result'), 50))
+      };
+
+      const result = await effectContext.race(effects);
+      
+      expect(result.winner).toBe('immediate');
+      expect(result.result).toBe('immediate result');
+    });
+  });
+
+  describe('all()', () => {
+    it('should wait for all effects to complete with object input', async () => {
+      const effects = {
+        first: Promise.resolve('first result'),
+        second: Promise.resolve('second result')
+      };
+
+      const result = await effectContext.all(effects);
+      
+      expect(result).toEqual({
+        first: 'first result',
+        second: 'second result'
+      });
+    });
+
+    it('should wait for all effects to complete with array input', async () => {
+      const effects = [
+        Promise.resolve('first result'),
+        Promise.resolve('second result')
+      ];
+
+      const result = await effectContext.all(effects);
+      
+      expect(result).toEqual(['first result', 'second result']);
+    });
+
+    it('should throw error if effects is not an object or array', async () => {
+      await expect(effectContext.all('not an object')).rejects.toThrow(
+        'all() requires an object or array with effects'
+      );
+    });
+
+    it('should return empty object for empty object input', async () => {
+      const result = await effectContext.all({});
+      
+      expect(result).toEqual({});
+    });
+
+    it('should return empty array for empty array input', async () => {
+      const result = await effectContext.all([]);
+      
+      expect(result).toEqual([]);
+    });
+
+    it('should return resolved promise if effect is cancelled', async () => {
+      effectContext.cancel();
+      
+      const result = await effectContext.all({
+        test: Promise.resolve('test result')
+      });
+      
+      expect(result).toBeUndefined();
+    });
+
+    it('should emit error event and re-throw on effect error', async () => {
+      const effects = {
+        working: Promise.resolve('working result'),
+        failing: Promise.reject(new Error('Test error'))
+      };
+
+      await expect(effectContext.all(effects)).rejects.toThrow('Test error');
+      
+      expect(mockEventDispatcher.emit).toHaveBeenCalledWith('effect:error', {
+        type: 'all',
+        effects: ['working', 'failing'],
+        error: expect.any(Error),
+        timestamp: expect.any(Number)
+      });
+    });
+
+    it('should handle mixed promise types', async () => {
+      const effects = {
+        immediate: 'immediate result',
+        promise: Promise.resolve('promise result')
+      };
+
+      const result = await effectContext.all(effects);
+      
+      expect(result).toEqual({
+        immediate: 'immediate result',
+        promise: 'promise result'
+      });
+    });
+  });
 });

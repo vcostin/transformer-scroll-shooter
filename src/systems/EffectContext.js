@@ -186,6 +186,93 @@ export class EffectContext {
   }
 
   /**
+   * Race multiple effects - returns result of the first effect to complete
+   * @param {Object} effects - Object with effect names as keys and promises as values
+   * @returns {Promise} Promise that resolves with {winner, result} of the first completed effect
+   */
+  async race(effects) {
+    if (this.cancelToken.cancelled) {
+      return Promise.resolve();
+    }
+
+    if (typeof effects !== 'object' || effects === null) {
+      throw new Error('race() requires an object with effects');
+    }
+
+    const effectNames = Object.keys(effects);
+    if (effectNames.length === 0) {
+      throw new Error('race() requires at least one effect');
+    }
+
+    // Create promises with their names attached
+    const racePromises = effectNames.map(name => 
+      Promise.resolve(effects[name]).then(result => ({ winner: name, result }))
+    );
+
+    try {
+      const winner = await Promise.race(racePromises);
+      return winner;
+    } catch (error) {
+      // Emit error event for race operations
+      this.eventDispatcher.emit('effect:error', {
+        type: 'race',
+        effects: effectNames,
+        error,
+        timestamp: Date.now()
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Wait for all effects to complete
+   * @param {Object|Array} effects - Object with effect names as keys or array of effects
+   * @returns {Promise} Promise that resolves with results of all effects
+   */
+  async all(effects) {
+    if (this.cancelToken.cancelled) {
+      return Promise.resolve();
+    }
+
+    if (typeof effects !== 'object' || effects === null) {
+      throw new Error('all() requires an object or array with effects');
+    }
+
+    const isArray = Array.isArray(effects);
+    const effectKeys = isArray ? effects.map((_, index) => index) : Object.keys(effects);
+    const effectValues = isArray ? effects : Object.values(effects);
+
+    if (effectKeys.length === 0) {
+      return isArray ? [] : {};
+    }
+
+    try {
+      // Wait for all effects to complete
+      const results = await Promise.all(effectValues);
+      
+      // Return results in the same structure as input
+      if (isArray) {
+        return results;
+      } else {
+        const resultObj = {};
+        effectKeys.forEach((key, index) => {
+          resultObj[key] = results[index];
+        });
+        return resultObj;
+      }
+    } catch (error) {
+      // Emit error event for all operations
+      this.eventDispatcher.emit('effect:error', {
+        type: 'all',
+        effects: effectKeys,
+        error,
+        timestamp: Date.now()
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Cancel this effect context
    */
   cancel() {
