@@ -142,10 +142,36 @@ export class PatternMatcher {
   }
 
   /**
+   * Escape special regex characters except * and ?
+   * @param {string} pattern - Pattern to escape
+   * @returns {string} Escaped pattern
+   * @private
+   */
+  _escapeRegexChars(pattern) {
+    return pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+  }
+
+  /**
    * Compile glob pattern to regex
    * @private
    */
   _compileGlobPattern(pattern) {
+    return this._compilePatternToRegex(pattern);
+  }
+
+  /**
+   * Compile wildcard pattern to regex
+   * @private
+   */
+  _compileWildcardPattern(pattern) {
+    return this._compilePatternToRegex(pattern);
+  }
+
+  /**
+   * Shared logic to compile patterns (glob or wildcard) to regex
+   * @private
+   */
+  _compilePatternToRegex(pattern) {
     // Handle edge case: single asterisk
     if (pattern === '*') {
       return /^.*$/;
@@ -157,23 +183,14 @@ export class PatternMatcher {
     }
     
     // Escape special regex characters except * and ?
-    const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+    const escaped = this._escapeRegexChars(pattern);
     
-    // Convert glob patterns to regex
+    // Convert patterns to regex
     const regex = escaped
-      .replace(/\*/g, '.*')  // * matches any characters (don't escape first)
-      .replace(/\?/g, '.');  // ? matches single character (don't escape first)
+      .replace(/\*/g, '.*')  // * matches any characters
+      .replace(/\?/g, '.');  // ? matches a single character
     
     return new RegExp(`^${regex}$`);
-  }
-
-  /**
-   * Compile wildcard pattern to regex
-   * @private
-   */
-  _compileWildcardPattern(pattern) {
-    // Similar to glob but with different semantics if needed
-    return this._compileGlobPattern(pattern);
   }
 
   /**
@@ -199,9 +216,17 @@ export class PatternMatcher {
 
   /**
    * Generate unique ID for patterns
+   * Browser-compatible UUID generation with fallback
    * @private
    */
   _generateId() {
+    // Use crypto.randomUUID() if available (modern browsers/Node.js)
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+    
+    // Fallback for older browsers or environments without crypto.randomUUID
+    // Use pattern_ prefix in fallback to distinguish from crypto-generated UUIDs
     return `pattern_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
   }
 }
