@@ -249,6 +249,7 @@ describe('EffectManager', () => {
       
       effectManager.effect('test:event', handler, { once: true });
       expect(effectManager.effects.size).toBe(1);
+      expect(effectManager.patternMatcher.patterns.size).toBe(1);
       
       effectManager._triggerEffects('test:event', { data: 'test' });
       
@@ -258,6 +259,7 @@ describe('EffectManager', () => {
       
       expect(handler).toHaveBeenCalled();
       expect(effectManager.effects.size).toBe(0);
+      expect(effectManager.patternMatcher.patterns.size).toBe(0);
     });
 
     it('should handle effects that throw errors', async () => {
