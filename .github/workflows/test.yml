@@ -1,10 +1,12 @@
 name: Test Suite
 
 on:
-  push:
-    branches: [ develop, feature/*, fix/* ]
-    # Note: master is excluded (deploy.yml handles master)
+  # Only run on pull requests to avoid duplicate runs
+  # This ensures tests run when PRs are opened/updated, not on every push
   pull_request:
+    branches: [ master, develop ]
+  # Run on push to main branches for direct commits (not feature branches)
+  push:
     branches: [ master, develop ]
 
 jobs:
