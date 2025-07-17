@@ -142,6 +142,16 @@ export class PatternMatcher {
   }
 
   /**
+   * Escape special regex characters except * and ?
+   * @param {string} pattern - Pattern to escape
+   * @returns {string} Escaped pattern
+   * @private
+   */
+  _escapeRegexChars(pattern) {
+    return pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+  }
+
+  /**
    * Compile glob pattern to regex
    * @private
    */
@@ -157,7 +167,7 @@ export class PatternMatcher {
     }
     
     // Escape special regex characters except * and ?
-    const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+    const escaped = this._escapeRegexChars(pattern);
     
     // Convert glob patterns to regex
     const regex = escaped
@@ -183,7 +193,7 @@ export class PatternMatcher {
     }
     
     // Escape special regex characters except * and ?
-    const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+    const escaped = this._escapeRegexChars(pattern);
     
     // Convert wildcard patterns to regex
     const regex = escaped
@@ -216,10 +226,18 @@ export class PatternMatcher {
 
   /**
    * Generate unique ID for patterns
+   * Browser-compatible UUID generation with fallback
    * @private
    */
   _generateId() {
-    return `pattern_${crypto.randomUUID()}`;
+    // Use crypto.randomUUID() if available (modern browsers/Node.js)
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+    
+    // Fallback for older browsers or environments without crypto.randomUUID
+    // Using pattern_ prefix for fallback to ensure uniqueness across different ID generation methods
+    return `pattern_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
   }
 }
 
