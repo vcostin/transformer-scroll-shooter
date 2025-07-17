@@ -161,8 +161,8 @@ export class PatternMatcher {
     
     // Convert glob patterns to regex
     const regex = escaped
-      .replace(/\*/g, '.*')  // * matches any characters (don't escape first)
-      .replace(/\?/g, '.');  // ? matches single character (don't escape first)
+      .replace(/\*/g, '.*')  // Convert '*' in glob patterns to '.*' in regex, matching any sequence of characters
+      .replace(/\?/g, '.');  // Convert '?' in glob patterns to '.' in regex, matching a single character
     
     return new RegExp(`^${regex}$`);
   }
@@ -172,8 +172,25 @@ export class PatternMatcher {
    * @private
    */
   _compileWildcardPattern(pattern) {
-    // Similar to glob but with different semantics if needed
-    return this._compileGlobPattern(pattern);
+    // Handle edge case: single asterisk
+    if (pattern === '*') {
+      return /^.*$/;
+    }
+    
+    // Handle edge case: single question mark
+    if (pattern === '?') {
+      return /^.$/;
+    }
+    
+    // Escape special regex characters except * and ?
+    const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+    
+    // Convert wildcard patterns to regex
+    const regex = escaped
+      .replace(/\*/g, '.*')  // * matches any characters
+      .replace(/\?/g, '.');  // ? matches a single character
+    
+    return new RegExp(`^${regex}$`);
   }
 
   /**
@@ -202,7 +219,7 @@ export class PatternMatcher {
    * @private
    */
   _generateId() {
-    return `pattern_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+    return `pattern_${crypto.randomUUID()}`;
   }
 }
 

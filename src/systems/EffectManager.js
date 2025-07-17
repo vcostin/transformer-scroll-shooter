@@ -155,11 +155,6 @@ export class EffectManager {
    * @param {string} eventName - Event name
    * @param {*} data - Event data
    */
-    /**
-   * Trigger effects matching the event name
-   * @param {string} eventName - Event name to match
-   * @param {*} data - Event data
-   */
   _triggerEffects(eventName, data) {
     // Get matches using the advanced PatternMatcher
     const matchingPatterns = this.patternMatcher.getMatches(eventName);
