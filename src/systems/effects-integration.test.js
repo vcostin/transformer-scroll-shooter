@@ -8,6 +8,9 @@ describe('Side Effects Integration', () => {
   let effectManager;
 
   beforeEach(() => {
+    // Use fake timers for predictable timing in integration tests
+    vi.useFakeTimers();
+    
     eventDispatcher = new EventDispatcher();
     effectManager = new EffectManager(eventDispatcher);
   });
@@ -16,6 +19,8 @@ describe('Side Effects Integration', () => {
     if (effectManager.isRunning) {
       effectManager.stop();
     }
+    // Restore real timers after each test
+    vi.useRealTimers();
   });
 
   describe('Basic Integration', () => {
@@ -31,8 +36,9 @@ describe('Side Effects Integration', () => {
       // Emit event
       eventDispatcher.emit('test:event', { data: 'test' });
       
-      // Wait for effects to complete
-      await new Promise(resolve => setTimeout(resolve, 20));
+      // Wait for effects to complete using fake timers
+      vi.advanceTimersByTime(20);
+      await Promise.resolve();
       
       expect(effectHandler).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -54,8 +60,9 @@ describe('Side Effects Integration', () => {
       // Emit matching event
       eventDispatcher.emit('player:moved', { x: 100, y: 200 });
       
-      // Wait for effects to complete
-      await new Promise(resolve => setTimeout(resolve, 20));
+      // Wait for effects to complete using fake timers
+      vi.advanceTimersByTime(20);
+      await Promise.resolve();
       
       expect(effectHandler).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -76,8 +83,9 @@ describe('Side Effects Integration', () => {
       // Emit matching event
       eventDispatcher.emit('enemy:spawned', { type: 'basic' });
       
-      // Wait for effects to complete
-      await new Promise(resolve => setTimeout(resolve, 20));
+      // Wait for effects to complete using fake timers
+      vi.advanceTimersByTime(20);
+      await Promise.resolve();
       
       expect(effectHandler).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -131,8 +139,9 @@ describe('Side Effects Integration', () => {
       
       eventDispatcher.emit('task:start', { data: 'test data' });
       
-      // Wait for effect to complete
-      await new Promise(resolve => setTimeout(resolve, 20));
+      // Wait for effect to complete using fake timers
+      vi.advanceTimersByTime(20);
+      await Promise.resolve();
       
       expect(effectCompleted).toBe(true);
       expect(mockTask).toHaveBeenCalledWith('test data');
@@ -166,11 +175,9 @@ describe('Side Effects Integration', () => {
     });
 
     it('should handle delay operation in effects', async () => {
-      const start = Date.now();
-      
       const effectHandler = async (action, effects) => {
         await effects.delay(50);
-        effects.put('delayed:event', { elapsed: Date.now() - start });
+        effects.put('delayed:event', { delayed: true });
       };
       
       effectManager.effect('start:delay', effectHandler);
@@ -186,9 +193,51 @@ describe('Side Effects Integration', () => {
       // Trigger effect
       eventDispatcher.emit('start:delay');
       
+      // Fast-forward time by 50ms to trigger the delay
+      vi.advanceTimersByTime(50);
+      
       // Wait for delayed event
       const result = await delayedPromise;
-      expect(result.elapsed).toBeGreaterThanOrEqual(40);
+      expect(result.delayed).toBe(true);
+    });
+
+    it('should handle complex timing scenarios with fake timers', async () => {
+      const events = [];
+      
+      const effectHandler = async (action, effects) => {
+        events.push('start');
+        await effects.delay(100);
+        events.push('after-100ms');
+        await effects.delay(200);
+        events.push('after-300ms');
+        effects.put('timing:complete', { events });
+      };
+      
+      effectManager.effect('timing:test', effectHandler);
+      effectManager.start();
+      
+      const completePromise = new Promise((resolve) => {
+        eventDispatcher.once('timing:complete', (data) => {
+          resolve(data);
+        });
+      });
+      
+      // Trigger effect
+      eventDispatcher.emit('timing:test');
+      
+      // Initially only start should be recorded
+      expect(events).toEqual(['start']);
+      
+      // After 100ms, second event should be recorded
+      vi.advanceTimersByTime(100);
+      await Promise.resolve(); // Allow promises to settle
+      expect(events).toEqual(['start', 'after-100ms']);
+      
+      // After another 200ms (300ms total), third event should be recorded
+      vi.advanceTimersByTime(200);
+      
+      const result = await completePromise;
+      expect(result.events).toEqual(['start', 'after-100ms', 'after-300ms']);
     });
   });
 
@@ -307,8 +356,9 @@ describe('Side Effects Integration', () => {
       
       eventDispatcher.emit('priority:test');
       
-      // Wait for effects to complete
-      await new Promise(resolve => setTimeout(resolve, 20));
+      // Wait for effects to complete using fake timers
+      vi.advanceTimersByTime(20);
+      await Promise.resolve();
       
       expect(executionOrder).toEqual(['effect2', 'effect3', 'effect1']);
     });
@@ -323,8 +373,9 @@ describe('Side Effects Integration', () => {
       eventDispatcher.emit('once:test');
       eventDispatcher.emit('once:test');
       
-      // Wait for effects to complete
-      await new Promise(resolve => setTimeout(resolve, 20));
+      // Wait for effects to complete using fake timers
+      vi.advanceTimersByTime(20);
+      await Promise.resolve();
       
       expect(effectHandler).toHaveBeenCalledTimes(1);
     });

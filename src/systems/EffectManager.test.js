@@ -7,6 +7,8 @@ describe('EffectManager', () => {
   let mockEventDispatcher;
 
   beforeEach(() => {
+    // Use fake timers for deterministic testing
+    vi.useFakeTimers();
     // Create mock event dispatcher
     mockEventDispatcher = {
       emit: vi.fn().mockReturnValue(true),
@@ -23,6 +25,8 @@ describe('EffectManager', () => {
       effectManager.stop();
     }
     vi.clearAllMocks();
+    // Restore real timers after each test
+    vi.useRealTimers();
   });
 
   describe('constructor', () => {
@@ -188,8 +192,9 @@ describe('EffectManager', () => {
       
       effectManager._interceptEmit('test:event', { data: 'test' });
       
-      // Wait for effects to complete
-      await new Promise(resolve => setTimeout(resolve, 20));
+      // Wait for effects to complete using fake timers
+      vi.advanceTimersByTime(20);
+      await Promise.resolve();
       
       expect(handler).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -212,8 +217,9 @@ describe('EffectManager', () => {
       
       effectManager._triggerEffects('test:event', { data: 'test' });
       
-      // Wait for effects to complete
-      await new Promise(resolve => setTimeout(resolve, 20));
+      // Wait for effects to complete using fake timers
+      vi.advanceTimersByTime(20);
+      await Promise.resolve();
       
       expect(handler1).toHaveBeenCalled();
       expect(handler2).not.toHaveBeenCalled();
@@ -231,8 +237,9 @@ describe('EffectManager', () => {
       
       effectManager._triggerEffects('test:event', { data: 'test' });
       
-      // Wait for effects to complete
-      await new Promise(resolve => setTimeout(resolve, 20));
+      // Wait for effects to complete using fake timers
+      vi.advanceTimersByTime(20);
+      await Promise.resolve();
       
       expect(execution).toEqual(['handler2', 'handler3', 'handler1']);
     });
@@ -245,8 +252,9 @@ describe('EffectManager', () => {
       
       effectManager._triggerEffects('test:event', { data: 'test' });
       
-      // Wait for effects to complete
-      await new Promise(resolve => setTimeout(resolve, 20));
+      // Wait for effects to complete using fake timers
+      vi.advanceTimersByTime(20);
+      await Promise.resolve();
       
       expect(handler).toHaveBeenCalled();
       expect(effectManager.effects.size).toBe(0);
@@ -262,8 +270,9 @@ describe('EffectManager', () => {
       
       effectManager._triggerEffects('test:event', { data: 'test' });
       
-      // Wait for effects to complete
-      await new Promise(resolve => setTimeout(resolve, 20));
+      // Wait for effects to complete using fake timers
+      vi.advanceTimersByTime(20);
+      await Promise.resolve();
       
       expect(effectManager._originalEmit).toHaveBeenCalledWith('effect:execution:error', expect.objectContaining({
         eventName: 'test:event',
@@ -358,7 +367,8 @@ describe('EffectManager', () => {
       expect(effectManager.forkedEffects.has(promise)).toBe(true);
       
       await promise;
-      await new Promise(resolve => setTimeout(resolve, 0));
+      vi.advanceTimersByTime(0);
+      await Promise.resolve();
       
       expect(effectManager.forkedEffects.has(promise)).toBe(false);
     });
@@ -372,8 +382,9 @@ describe('EffectManager', () => {
       
       expect(effectManager.timeouts.has(timeoutId)).toBe(true);
       
-      // Wait for timeout to complete
-      await new Promise(resolve => setTimeout(resolve, 20));
+      // Wait for timeout to complete using fake timers
+      vi.advanceTimersByTime(20);
+      await Promise.resolve();
       
       expect(effectManager.timeouts.has(timeoutId)).toBe(false);
     });

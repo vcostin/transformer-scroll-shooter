@@ -7,6 +7,8 @@ describe('EffectContext', () => {
   let mockEventDispatcher;
 
   beforeEach(() => {
+    // Use fake timers for all timing-related operations
+    vi.useFakeTimers();
     // Create mock dependencies
     mockEffectManager = {
       trackForkedEffect: vi.fn(),
@@ -23,6 +25,8 @@ describe('EffectContext', () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    // Restore real timers after each test
+    vi.useRealTimers();
   });
 
   describe('constructor', () => {
@@ -129,8 +133,9 @@ describe('EffectContext', () => {
       
       await effectContext.fork(mockFn, 'arg1');
       
-      // Wait for the forked promise to complete
-      await new Promise(resolve => setTimeout(resolve, 0));
+      // Wait for the forked promise to complete using fake timers
+      vi.advanceTimersByTime(0);
+      await Promise.resolve();
       
       expect(mockEventDispatcher.emit).toHaveBeenCalledWith('effect:error', {
         type: 'fork',
@@ -182,11 +187,17 @@ describe('EffectContext', () => {
     it('should wait for event and resolve with data', async () => {
       const eventData = { test: 'data' };
       mockEventDispatcher.once.mockImplementation((eventName, handler) => {
+        // Use fake timer instead of real setTimeout
         setTimeout(() => handler(eventData), 10);
         return () => {};
       });
       
-      const result = await effectContext.take('test:event');
+      const resultPromise = effectContext.take('test:event');
+      
+      // Fast-forward time to trigger the event
+      vi.advanceTimersByTime(10);
+      
+      const result = await resultPromise;
       
       expect(result).toBe(eventData);
       expect(mockEventDispatcher.once).toHaveBeenCalledWith('test:event', expect.any(Function));
@@ -215,7 +226,12 @@ describe('EffectContext', () => {
     it('should timeout if specified', async () => {
       mockEventDispatcher.once.mockReturnValue(() => {});
       
-      await expect(effectContext.take('test:event', 100)).rejects.toThrow(
+      const takePromise = effectContext.take('test:event', 100);
+      
+      // Fast-forward time to trigger timeout
+      vi.advanceTimersByTime(100);
+      
+      await expect(takePromise).rejects.toThrow(
         'take() timeout after 100ms waiting for \'test:event\''
       );
     });
@@ -227,7 +243,12 @@ describe('EffectContext', () => {
         return () => {};
       });
       
-      const result = await effectContext.take('test:event', 100);
+      const takePromise = effectContext.take('test:event', 100);
+      
+      // Fast-forward time to trigger event (before timeout)
+      vi.advanceTimersByTime(50);
+      
+      const result = await takePromise;
       
       expect(result).toBe(eventData);
     });
@@ -259,12 +280,22 @@ describe('EffectContext', () => {
 
   describe('delay()', () => {
     it('should resolve after specified milliseconds', async () => {
-      const start = Date.now();
+      const delayPromise = effectContext.delay(100);
       
-      await effectContext.delay(100);
+      // Initially should not be resolved
+      let resolved = false;
+      delayPromise.then(() => { resolved = true; });
       
-      const elapsed = Date.now() - start;
-      expect(elapsed).toBeGreaterThanOrEqual(90); // Allow for some timing variance
+      // Fast-forward time by 50ms - should not resolve yet
+      vi.advanceTimersByTime(50);
+      await Promise.resolve(); // Allow promises to settle
+      expect(resolved).toBe(false);
+      
+      // Fast-forward time by another 50ms - should now resolve
+      vi.advanceTimersByTime(50);
+      await Promise.resolve();
+      expect(resolved).toBe(true);
+      
       expect(mockEffectManager.trackTimeout).toHaveBeenCalledWith(expect.any(Object));
     });
 
@@ -283,11 +314,21 @@ describe('EffectContext', () => {
     it('should resolve immediately if effect is cancelled', async () => {
       effectContext.cancel();
       
-      const start = Date.now();
-      await effectContext.delay(100);
-      const elapsed = Date.now() - start;
+      const result = await effectContext.delay(100);
       
-      expect(elapsed).toBeLessThan(10);
+      expect(result).toBeUndefined();
+      // Should not have created a timeout since it was cancelled
+      expect(mockEffectManager.trackTimeout).not.toHaveBeenCalled();
+    });
+
+    it('should handle zero delay correctly', async () => {
+      const delayPromise = effectContext.delay(0);
+      
+      // Should resolve immediately with 0 delay
+      vi.advanceTimersByTime(0);
+      await expect(delayPromise).resolves.toBeUndefined();
+      
+      expect(mockEffectManager.trackTimeout).toHaveBeenCalledWith(expect.any(Object));
     });
   });
 
