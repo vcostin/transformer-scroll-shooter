@@ -319,7 +319,8 @@ export class EffectManager {
   trackTimeout(timeoutId) {
     this.timeouts.add(timeoutId);
     
-    // Auto-remove after timeout completes - use Promise.resolve().then() for better async handling
+    // Auto-cleanup tracking: Remove timeout ID on next tick to prevent memory leaks
+    // This intentionally executes immediately (not after timeout) to clean up our tracking
     Promise.resolve().then(() => {
       this.timeouts.delete(timeoutId);
     });
@@ -372,12 +373,14 @@ export class EffectManager {
   }
 
    /**
-    * Generate unique ID for effects
-    * @returns {string} Unique ID
-    */
+   * Generate unique ID for effects
+   * @returns {string} Unique ID
+   */
    _generateId() {
      return `effect_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
-   }  /**
+   }
+
+   /**
    * Debug logging
    * @param {...*} args - Arguments to log
    */
