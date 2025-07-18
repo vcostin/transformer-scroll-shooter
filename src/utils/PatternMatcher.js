@@ -25,7 +25,6 @@ export class PatternMatcher {
       type: this._getPatternType(pattern),
       compiledPattern: this._compilePattern(pattern)
     };
-
     this.patterns.set(id, patternEntry);
     return id;
   }

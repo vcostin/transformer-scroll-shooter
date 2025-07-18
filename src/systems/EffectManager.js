@@ -158,11 +158,9 @@ export class EffectManager {
   _triggerEffects(eventName, data) {
     // Get matches using the advanced PatternMatcher
     const matchingPatterns = this.patternMatcher.getMatches(eventName);
-    
     if (matchingPatterns.length === 0) {
       return;
     }
-
     this._debug(`Triggering ${matchingPatterns.length} effects for event '${eventName}'`);
 
     const toRemove = [];
@@ -414,5 +412,19 @@ export class EffectManager {
     if (this.debugMode) {
       console.log('[EffectManager]', ...args);
     }
+  }
+
+  /**
+   * Initialize player state in state manager
+   * @param {Object} player - Player entity
+   */
+  initializePlayerState(player) {
+    this.effect('PLAYER_STATE_INIT', () => {
+      player.stateManager.setState('HEALTH', player.health);
+      player.stateManager.setState('POSITION', { x: player.x, y: player.y });
+      player.stateManager.setState('MODE', player.mode);
+      player.stateManager.setState('SPEED', player.speed);
+      player.stateManager.setState('SHOOT_RATE', player.currentShootRate);
+    });
   }
 }

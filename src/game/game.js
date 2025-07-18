@@ -7,7 +7,7 @@ import { GAME_CONSTANTS } from '@/constants/game-constants.js';
 import { GAME_EVENTS } from '@/constants/game-events.js';
 import { BOSS_TYPES, BOSS_MESSAGES } from '@/constants/boss-constants.js';
 import { AudioManager } from '@/systems/audio.js';
-import { OptionsMenu } from '@/ui/options.js';
+import OptionsMenu from '@/ui/options.js';
 import { Background } from '@/rendering/background.js';
 import { Explosion, PowerupEffect, MuzzleFlash } from '@/rendering/effects.js';
 import { Powerup, PowerupSpawner } from '@/systems/powerups.js';

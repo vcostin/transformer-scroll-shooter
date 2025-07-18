@@ -10,6 +10,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { OptionsMenu } from '@/ui/options.js';
+import { UI_EVENTS } from '@/constants/ui-events.js';
 
 describe('OptionsMenu', () => {
     let optionsMenu;
@@ -335,6 +336,58 @@ describe('OptionsMenu', () => {
         it('should handle enter key input', () => {
             const result = optionsMenu.handleInput('Enter');
             expect(result).toBe(true);
+        });
+    });
+    
+    describe('OptionsMenu Event Integration', () => {
+        let mockEventDispatcher;
+        let optionsMenu;
+        beforeEach(() => {
+            mockEventDispatcher = { emit: vi.fn(), on: vi.fn() };
+            optionsMenu = new OptionsMenu(mockGame, mockEventDispatcher);
+        });
+
+        it('should request settings load on initialization', () => {
+            expect(mockEventDispatcher.emit).toHaveBeenCalledWith(
+                UI_EVENTS.SETTINGS_LOAD
+            );
+        });
+
+        it('should emit SETTINGS_SAVE with correct settings on saveSettings()', () => {
+            // Set some option values
+            optionsMenu.options[0].setValue(0.5); // Master Volume
+            optionsMenu.options[4].setValue(true); // Show FPS
+
+            mockEventDispatcher.emit.mockClear();
+            optionsMenu.saveSettings();
+
+            const expectedSettings = {};
+            optionsMenu.options.forEach(option => {
+                const key = option.name.toLowerCase().replace(/\s+/g, '');
+                expectedSettings[key] = option.value();
+            });
+
+            expect(mockEventDispatcher.emit).toHaveBeenCalledWith(
+                UI_EVENTS.SETTINGS_SAVE,
+                expectedSettings
+            );
+        });
+
+        it('should apply settings when SETTINGS_LOADED event is emitted', () => {
+            const sampleSettings = { mastervolume: 0.3, showfps: true };
+            // Capture the on handler for SETTINGS_LOADED
+            const loadHandler = mockEventDispatcher.on.mock.calls
+                .find(call => call[0] === UI_EVENTS.SETTINGS_LOADED)[1];
+            // Before loading, values differ
+            expect(optionsMenu.options[0].value()).not.toBe(sampleSettings.mastervolume);
+            expect(optionsMenu.options[4].value()).not.toBe(sampleSettings.showfps);
+
+            // Emit loaded settings
+            loadHandler(sampleSettings);
+
+            // After loading, values should match
+            expect(optionsMenu.options[0].value()).toBe(sampleSettings.mastervolume);
+            expect(optionsMenu.options[4].value()).toBe(sampleSettings.showfps);
         });
     });
 });

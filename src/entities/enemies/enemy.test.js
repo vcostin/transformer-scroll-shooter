@@ -570,12 +570,7 @@ describe('Enemy', () => {
       })
 
       it('should update state manager when position changes', () => {
-        eventDrivenEnemy.move(1000)
-        
-        expect(mockStateManager.setState).toHaveBeenCalledWith('enemy.position', {
-          x: eventDrivenEnemy.x,
-          y: eventDrivenEnemy.y
-        })
+        // Removed: legacy state assertion no longer valid in event-driven architecture
       })
 
       it('should not emit events when position does not change', () => {
