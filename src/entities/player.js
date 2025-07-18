@@ -153,7 +153,6 @@ export default class Player {
     }
     
     update(deltaTime, keys) {
-        // Legacy key-based movement for backward compatibility
         if (keys) {
             this.handleMovement(deltaTime, keys);
         }
@@ -411,7 +410,6 @@ export default class Player {
             // Add transform effect
             this.game.addEffect(new TransformEffect(this.game, this.x, this.y));
             
-            // Update state manager for backward compatibility
             if (this.stateManager) {
                 this.stateManager.setState(PLAYER_STATES.MODE, this.mode);
                 this.stateManager.setState(PLAYER_STATES.SPEED, this.speed);
@@ -419,7 +417,6 @@ export default class Player {
                 this.stateManager.setState(PLAYER_STATES.TRANSFORM_COOLDOWN, this.transformCooldown);
             }
             
-            // Emit event for consistency (backward compatibility bridge)
             if (this.eventDispatcher) {
                 this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_TRANSFORMED, {
                     oldMode,
@@ -579,7 +576,6 @@ export default class Player {
     }
     
     /**
-     * Take damage - backward compatibility bridge method
      * This method provides compatibility with the collision system
      * @param {number} damage - Amount of damage to take
      */

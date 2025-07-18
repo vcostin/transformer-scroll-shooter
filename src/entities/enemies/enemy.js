@@ -32,7 +32,6 @@ export default class Enemy {
         this.aiState = AI_STATES.SPAWNING;
         this.behavior = ENEMY_BEHAVIORS.AGGRESSIVE;
         
-        // Event-driven architecture setup (optional for backward compatibility)
         this.eventDispatcher = game.eventDispatcher;
         this.stateManager = game.stateManager;
         this.eventListeners = new Set();
@@ -136,7 +135,6 @@ export default class Enemy {
                 deltaTime: deltaTime
             });
         } else {
-            // Legacy update (backward compatibility)
             this.legacyUpdate(deltaTime);
         }
         
@@ -358,7 +356,6 @@ export default class Enemy {
                 damage: damage
             });
         } else {
-            // Legacy damage handling (backward compatibility)
             this.health -= damage;
             if (this.health <= 0) {
                 this.cleanup();
@@ -527,7 +524,6 @@ export default class Enemy {
                 damage: bullet.damage || 10
             });
         } else {
-            // Fallback for backward compatibility
             this.takeDamage(bullet.damage || 10);
         }
     }
@@ -545,7 +541,6 @@ export default class Enemy {
                 damage: this.maxHealth // Self-destruct
             });
         } else {
-            // Fallback for backward compatibility
             this.takeDamage(this.maxHealth);
         }
     }
