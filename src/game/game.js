@@ -15,6 +15,7 @@ import Player from '@/entities/player.js';
 import Enemy from '@/entities/enemies/enemy.js';
 import { EventDispatcher } from '@/systems/EventDispatcher.js';
 import { stateManager } from '@/systems/StateManager.js';
+import { EffectManager } from '@/systems/EffectManager.js';
 
 export class Game {
     constructor() {
@@ -62,6 +63,7 @@ export class Game {
         this.eventDispatcher = new EventDispatcher();
         this.stateManager = stateManager;
         this.audio = new AudioManager();
+        this.effectManager = new EffectManager(this.eventDispatcher);
         this.options = new OptionsMenu(this);
         
         // Frame counter for events
@@ -131,6 +133,9 @@ export class Game {
         // Load settings
         this.options.loadSettings();
         
+        // Start EffectManager
+        this.effectManager.start();
+        
         // Initialize game objects
         this.player = new Player(this, 100, this.height / 2);
         this.background = new Background(this);
@@ -196,6 +201,11 @@ export class Game {
         // Clean up animation frame
         if (this.animationFrameId) {
             this.cancelAnimationFrame(this.animationFrameId);
+        }
+        
+        // Stop EffectManager
+        if (this.effectManager && this.effectManager.isRunning) {
+            this.effectManager.stop();
         }
         
         // Clean up event listeners

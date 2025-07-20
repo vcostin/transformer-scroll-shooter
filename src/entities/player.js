@@ -143,12 +143,23 @@ export default class Player {
      * Initialize player state using EffectManager
      */
     initializeState() {
-        if (this.stateManager) {
-            const effectManager = new EffectManager(this.eventDispatcher);
-            effectManager.initializePlayerState(this);
-            effectManager.start();
-            // Emit the PLAYER_STATE_INIT event
-            this.eventDispatcher.emit('PLAYER_STATE_INIT');
+        if (this.stateManager && this.eventDispatcher) {
+            // Use the game's EffectManager instead of creating a new one
+            const effectManager = this.game.effectManager;
+            if (effectManager) {
+                effectManager.initializeEntityState({
+                    stateManager: this.stateManager,
+                    initialState: {
+                        'HEALTH': this.health,
+                        'POSITION': { x: this.x, y: this.y },
+                        'MODE': this.mode,
+                        'SPEED': this.speed,
+                        'SHOOT_RATE': this.currentShootRate
+                    }
+                });
+                // Emit the event to trigger the effect
+                this.eventDispatcher.emit('ENTITY_STATE_INIT');
+            }
         }
     }
     

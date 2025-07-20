@@ -9,6 +9,7 @@ import Player from '@/entities/player.js'
 import { PLAYER_EVENTS, PLAYER_STATES, MOVE_DIRECTIONS } from '@/constants/player-events.js'
 import { EventDispatcher } from '@/systems/EventDispatcher.js'
 import { StateManager } from '@/systems/StateManager.js'
+import { EffectManager } from '@/systems/EffectManager.js'
 
 describe('Player', () => {
   let mockGame
@@ -239,12 +240,12 @@ describe('Player', () => {
                 deltaTime: 16
             })
             // The new architecture emits 'input.move' first, then 'player.moved'
-            expect(eventSpy).toHaveBeenCalledWith(PLAYER_EVENTS.INPUT_MOVE, expect.any(Object), expect.any(Object))
-            expect(eventSpy).toHaveBeenCalledWith(PLAYER_EVENTS.PLAYER_MOVED, expect.any(Object), expect.any(Object))
+            expect(eventSpy).toHaveBeenCalledWith(PLAYER_EVENTS.INPUT_MOVE, expect.any(Object))
+            expect(eventSpy).toHaveBeenCalledWith(PLAYER_EVENTS.PLAYER_MOVED, expect.any(Object))
             // Test shooting event
             eventSpy.mockClear()
             eventDispatcher.emit(PLAYER_EVENTS.INPUT_SHOOT, { deltaTime: 16 })
-            expect(eventSpy).toHaveBeenCalledWith(PLAYER_EVENTS.PLAYER_SHOT, expect.any(Object), expect.any(Object))
+            expect(eventSpy).toHaveBeenCalledWith(PLAYER_EVENTS.PLAYER_SHOT, expect.any(Object))
         })
 
         it('should update state manager with changes', () => {
@@ -256,7 +257,7 @@ describe('Player', () => {
             expect(eventSpy).toHaveBeenCalledWith('PLAYER_POSITION_CHANGED', expect.objectContaining({
                 x: player.x,
                 y: player.y
-            }), expect.any(Object))
+            }))
         })
 
         it('should handle damage via events', () => {
@@ -264,8 +265,8 @@ describe('Player', () => {
             eventDispatcher.emit(PLAYER_EVENTS.PLAYER_DAMAGED, { damage: 25 })
             expect(player.health).toBe(initialHealth - 25)
             // The new architecture emits 'player.damaged' first, then 'player.health.changed'
-            expect(eventSpy).toHaveBeenCalledWith(PLAYER_EVENTS.PLAYER_DAMAGED, expect.any(Object), expect.any(Object))
-            expect(eventSpy).toHaveBeenCalledWith(PLAYER_EVENTS.PLAYER_HEALTH_CHANGED, expect.any(Object), expect.any(Object))
+            expect(eventSpy).toHaveBeenCalledWith(PLAYER_EVENTS.PLAYER_DAMAGED, expect.any(Object))
+            expect(eventSpy).toHaveBeenCalledWith(PLAYER_EVENTS.PLAYER_HEALTH_CHANGED, expect.any(Object))
         })
 
         it('should clean up event listeners when destroyed', () => {
@@ -316,8 +317,7 @@ describe('Player', () => {
                     y: expect.any(Number),
                     bulletType: expect.any(String),
                     mode: expect.any(String)
-                }),
-                expect.any(Object)
+                })
             )
         })
 
@@ -334,8 +334,7 @@ describe('Player', () => {
                     oldMode: initialMode,
                     newMode: player.mode,
                     modeIndex: player.currentModeIndex
-                }),
-                expect.any(Object)
+                })
             )
         })
 
@@ -356,8 +355,7 @@ describe('Player', () => {
                     y: player.y,
                     previousX: expect.any(Number),
                     previousY: expect.any(Number)
-                }),
-                expect.any(Object)
+                })
             )
         })
 
@@ -386,8 +384,12 @@ describe('Player', () => {
     it('should initialize player state using EffectManager', async () => {
       const eventDispatcher = new EventDispatcher();
       const stateManager = new StateManager();
+      const effectManager = new EffectManager(eventDispatcher);
       mockGame.eventDispatcher = eventDispatcher;
       mockGame.stateManager = stateManager;
+      mockGame.effectManager = effectManager;
+      // Start the effect manager
+      effectManager.start();
       // Spy on setState method
       const stateSpy = vi.spyOn(stateManager, 'setState');
       const player = new Player(mockGame, 100, 300);

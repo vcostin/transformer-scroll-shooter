@@ -415,16 +415,16 @@ export class EffectManager {
   }
 
   /**
-   * Initialize player state in state manager
-   * @param {Object} player - Player entity
+   * Initialize entity state in state manager
+   * @param {Object} config - Configuration object
+   * @param {Object} config.stateManager - State manager instance
+   * @param {Object} config.initialState - Initial state values
    */
-  initializePlayerState(player) {
-    this.effect('PLAYER_STATE_INIT', () => {
-      player.stateManager.setState('HEALTH', player.health);
-      player.stateManager.setState('POSITION', { x: player.x, y: player.y });
-      player.stateManager.setState('MODE', player.mode);
-      player.stateManager.setState('SPEED', player.speed);
-      player.stateManager.setState('SHOOT_RATE', player.currentShootRate);
+  initializeEntityState({ stateManager, initialState }) {
+    this.effect('ENTITY_STATE_INIT', () => {
+      Object.entries(initialState).forEach(([key, value]) => {
+        stateManager.setState(key, value);
+      });
     });
   }
 }
