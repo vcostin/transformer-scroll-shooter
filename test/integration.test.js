@@ -12,26 +12,14 @@ import Player from '@/entities/player.js'
 import { EventDispatcher } from '@/systems/EventDispatcher.js'
 import { StateManager } from '@/systems/StateManager.js'
 import { EffectManager } from '@/systems/EffectManager.js'
+import { createMockGameObject } from '@test/game-test-utils.js'
 
 describe('Module Integration', () => {
-  // Helper function to create mock game with required event systems
-  const createMockGame = () => ({
-    width: 800,
-    height: 600,
-    ctx: { save: () => {}, restore: () => {} },
-    keys: {},
-    bullets: [],
-    effects: [],
-    canvas: { width: 800, height: 600 },
-    audio: { playSound: () => {} },
-    delta: 16,
-    addBullet: () => {},
-    addEffect: () => {},
-    // Event-driven architecture dependencies (now required)
-    eventDispatcher: new EventDispatcher(),
-    stateManager: new StateManager(),
-    effectManager: new EffectManager({ eventDispatcher: new EventDispatcher(), stateManager: new StateManager() })
-  })
+  // Helper function to create mock game with standardized setup
+  const createMockGame = () => createMockGameObject({
+    includeEffectManager: true,
+    startEffectManager: true
+  });
 
   describe('Constants Integration', () => {
     it('should have all game constants available', () => {

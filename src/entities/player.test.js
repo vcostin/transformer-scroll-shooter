@@ -1,5 +1,11 @@
 /**
- * Player Class Tests - Event-Driven Architecture
+ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import Player from '@/entities/player.js'
+import { PLAYER_EVENTS, PLAYER_STATES, MOVE_DIRECTIONS } from '@/constants/player-events.js'
+import { EventDispatcher } from '@/systems/EventDispatcher.js'
+import { StateManager } from '@/systems/StateManager.js'
+import { EffectManager } from '@/systems/EffectManager.js'
+import { createMockGameObject, createMockEventSystems } from '../../test/game-test-utils.js'er Class Tests - Event-Driven Architecture
  * Tests for both legacy and event-driven functionality
  */
 
@@ -9,6 +15,7 @@ import { PLAYER_EVENTS, PLAYER_STATES, MOVE_DIRECTIONS } from '@/constants/playe
 import { EventDispatcher } from '@/systems/EventDispatcher.js'
 import { StateManager } from '@/systems/StateManager.js'
 import { EffectManager } from '@/systems/EffectManager.js'
+import { createMockGameObject, createMockEventSystems } from '../../test/game-test-utils.js'
 
 describe('Player', () => {
   let mockGame
@@ -285,22 +292,20 @@ describe('Player', () => {
     })
 
   describe('Event-Driven Architecture Validation', () => {
-        let eventDispatcher, stateManager, eventSpy, stateSpy
+        let mockEventSystems, eventSpy, stateSpy
 
         beforeEach(() => {
-            // Setup event dispatcher and state manager
-            eventDispatcher = new EventDispatcher()
-            stateManager = new StateManager({
-                enableHistory: true,
-                enableValidation: true,
-                enableEvents: true
-            })
-            // Add event dispatcher and state manager to mock game
-            mockGame.eventDispatcher = eventDispatcher
-            mockGame.stateManager = stateManager
-            // Setup spies
-            eventSpy = vi.spyOn(eventDispatcher, 'emit')
-            stateSpy = vi.spyOn(stateManager, 'setState')
+            // Use consolidated test utilities
+            mockEventSystems = createMockEventSystems()
+            
+            // Update mock game with consolidated systems
+            mockGame.eventDispatcher = mockEventSystems.eventDispatcher
+            mockGame.stateManager = mockEventSystems.stateManager
+            mockGame.effectManager = mockEventSystems.effectManager
+            
+            // Setup spies on the consolidated systems
+            eventSpy = vi.spyOn(mockEventSystems.eventDispatcher, 'emit')
+            stateSpy = vi.spyOn(mockEventSystems.stateManager, 'setState')
             // Create new player with event-driven features
             player = new Player(mockGame, 100, 300)
             // Clear initial PLAYER_STATE_INIT event
@@ -382,17 +387,16 @@ describe('Player', () => {
 
   describe('State Initialization', () => {
     it('should initialize player state using EffectManager', async () => {
-      const eventDispatcher = new EventDispatcher();
-      const stateManager = new StateManager();
-      const effectManager = new EffectManager(eventDispatcher);
-      mockGame.eventDispatcher = eventDispatcher;
-      mockGame.stateManager = stateManager;
-      mockGame.effectManager = effectManager;
-      // Start the effect manager
-      effectManager.start();
+      const mockEventSystems = createMockEventSystems();
+      
+      mockGame.eventDispatcher = mockEventSystems.eventDispatcher;
+      mockGame.stateManager = mockEventSystems.stateManager;
+      mockGame.effectManager = mockEventSystems.effectManager;
+      
       // Spy on setState method
-      const stateSpy = vi.spyOn(stateManager, 'setState');
+      const stateSpy = vi.spyOn(mockEventSystems.stateManager, 'setState');
       const player = new Player(mockGame, 100, 300);
+      
       // Wait longer for async effects
       await new Promise((resolve) => setTimeout(resolve, 50));
       expect(stateSpy).toHaveBeenCalledWith('HEALTH', player.health);
