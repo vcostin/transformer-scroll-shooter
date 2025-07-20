@@ -695,10 +695,20 @@ export class StateManager {
     }
 
     /**
-     * Deep clone an object
+     * Optimized deep clone with structured clone fallback
      * @private
      */
     deepClone(obj) {
+        // Use native structuredClone if available (modern browsers, Node 17+)
+        if (typeof structuredClone !== 'undefined') {
+            try {
+                return structuredClone(obj);
+            } catch (error) {
+                // Fall back to manual cloning for non-cloneable objects
+            }
+        }
+
+        // Fallback manual cloning
         if (obj === null || typeof obj !== 'object') return obj;
         if (obj instanceof Date) return new Date(obj.getTime());
         if (Array.isArray(obj)) return obj.map(item => this.deepClone(item));

@@ -10,12 +10,48 @@ export class EffectManager {
   constructor(eventDispatcher) {
     this.eventDispatcher = eventDispatcher;
     this.patternMatcher = new PatternMatcher();
-    this.effects = new Map(); // Legacy effects storage
     this.runningEffects = new Set();
     this.forkedEffects = new Set();
     this.timeouts = new Set();
     this.isRunning = false;
     this.debugMode = false;
+  }
+
+  /**
+   * Get effects map (for compatibility with tests)
+   */
+  get effects() {
+    // Create a legacy-compatible effects map from PatternMatcher data
+    const effectsMap = new Map();
+    
+    for (const [id, patternEntry] of this.patternMatcher.patterns) {
+      const patternKey = patternEntry.pattern instanceof RegExp ? 
+        patternEntry.pattern.source : 
+        patternEntry.pattern.replace(/\*/g, '.*');
+      
+      if (!effectsMap.has(patternKey)) {
+        const pattern = patternEntry.pattern instanceof RegExp ? 
+          patternEntry.pattern : 
+          new RegExp(`^${patternKey}$`);
+        effectsMap.set(patternKey, { pattern, handlers: [] });
+      }
+      
+      const effectEntry = effectsMap.get(patternKey);
+      effectEntry.handlers.push({
+        fn: patternEntry.handler,
+        priority: patternEntry.priority,
+        once: patternEntry.once,
+        id: patternEntry.id,
+        pattern: patternEntry.pattern
+      });
+    }
+    
+    // Sort handlers by priority within each effect entry
+    for (const effectEntry of effectsMap.values()) {
+      effectEntry.handlers.sort((a, b) => b.priority - a.priority);
+    }
+    
+    return effectsMap;
   }
 
   /**
@@ -38,31 +74,11 @@ export class EffectManager {
 
     const { priority = 0, once = false } = options;
 
-    // Register with PatternMatcher for advanced pattern matching
+    // Register with PatternMatcher for streamlined pattern matching
     const patternId = this.patternMatcher.register(eventPattern, effectHandler, {
       priority,
       once
     });
-
-    // Maintain old effects Map structure
-    const patternKey = eventPattern instanceof RegExp ? eventPattern.source : eventPattern.replace(/\*/g, '.*');
-    const pattern = eventPattern instanceof RegExp ? eventPattern : new RegExp(`^${patternKey}$`);
-
-    if (!this.effects.has(patternKey)) {
-      this.effects.set(patternKey, { pattern, handlers: [] });
-    }
-
-    const handler = {
-      fn: effectHandler,
-      priority,
-      once,
-      id: patternId,
-      pattern: eventPattern
-    };
-
-    const effectEntry = this.effects.get(patternKey);
-    effectEntry.handlers.push(handler);
-    effectEntry.handlers.sort((a, b) => b.priority - a.priority);
 
     this._debug(`Registered effect for pattern '${eventPattern}' with priority ${priority}`);
 
@@ -70,16 +86,7 @@ export class EffectManager {
     return () => {
       // Remove from PatternMatcher
       this.patternMatcher.unregister(patternId);
-      
-      // Remove from old effects Map
-      const index = effectEntry.handlers.findIndex(h => h.id === patternId);
-      if (index !== -1) {
-        effectEntry.handlers.splice(index, 1);
-        if (effectEntry.handlers.length === 0) {
-          this.effects.delete(patternKey);
-        }
-        this._debug(`Unregistered effect for pattern '${eventPattern}'`);
-      }
+      this._debug(`Unregistered effect for pattern '${eventPattern}'`);
     };
   }
 
@@ -189,22 +196,8 @@ export class EffectManager {
       }
     }
 
-    // Remove once effects
+    // Remove once effects from PatternMatcher
     this.patternMatcher.removeOncePatterns(toRemove);
-    
-    // Also remove from old effects Map
-    toRemove.forEach(patternId => {
-      for (const [patternKey, effectEntry] of this.effects.entries()) {
-        const index = effectEntry.handlers.findIndex(h => h.id === patternId);
-        if (index !== -1) {
-          effectEntry.handlers.splice(index, 1);
-          if (effectEntry.handlers.length === 0) {
-            this.effects.delete(patternKey);
-          }
-          break;
-        }
-      }
-    });
   }
 
   /**
@@ -254,16 +247,17 @@ export class EffectManager {
    * @returns {Array} Array of matching effect handlers
    */
   _getMatchingEffects(eventName) {
-    const matchingEffects = [];
-
-    for (const [patternKey, effectEntry] of this.effects) {
-      if (effectEntry.pattern.test(eventName)) {
-        matchingEffects.push(...effectEntry.handlers);
-      }
-    }
-
-    // Sort by priority (higher priority first)
-    return matchingEffects.sort((a, b) => b.priority - a.priority);
+    // Use PatternMatcher for streamlined effect lookup
+    const matches = this.patternMatcher.getMatches(eventName);
+    
+    // Convert to legacy format for compatibility
+    return matches.map(match => ({
+      fn: match.handler,
+      priority: match.priority,
+      once: match.once,
+      id: match.id,
+      pattern: match.pattern
+    }));
   }
 
   /**
@@ -271,19 +265,10 @@ export class EffectManager {
    * @param {Array} effectsToRemove - Effects to remove
    */
   _removeOnceEffects(effectsToRemove) {
-    for (const effect of effectsToRemove) {
-      for (const [patternKey, effectEntry] of this.effects) {
-        const index = effectEntry.handlers.findIndex(h => h.id === effect.id);
-        if (index !== -1) {
-          effectEntry.handlers.splice(index, 1);
-          if (effectEntry.handlers.length === 0) {
-            this.effects.delete(patternKey);
-          }
-          this._debug(`Removed once effect for pattern '${effect.pattern}'`);
-          break;
-        }
-      }
-    }
+    // PatternMatcher handles once effect removal automatically
+    effectsToRemove.forEach(effect => {
+      this._debug(`Removed once effect for pattern '${effect.pattern}'`);
+    });
   }
 
   /**
@@ -357,7 +342,7 @@ export class EffectManager {
    */
   getStats() {
     return {
-      registeredEffects: Array.from(this.effects.entries()).reduce((sum, [, effectEntry]) => sum + effectEntry.handlers.length, 0),
+      registeredEffects: this.patternMatcher.patterns.size,
       runningEffects: this.runningEffects.size,
       forkedEffects: this.forkedEffects.size,
       activeTimeouts: this.timeouts.size,
