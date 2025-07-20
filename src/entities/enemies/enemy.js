@@ -165,7 +165,7 @@ export default class Enemy {
     }
     
     /**
-     * Legacy update method for backward compatibility
+     * Legacy update method - to be removed in future cleanup
      */
     legacyUpdate(deltaTime) {
         // Move towards player

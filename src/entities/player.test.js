@@ -137,7 +137,7 @@ describe('Player', () => {
       expect(player.maxHealth).toBeGreaterThan(0)
     })
 
-    it('should have takeDamage method for backward compatibility', () => {
+    it('should have takeDamage method functionality', () => {
       const initialHealth = player.health
       
       // Test takeDamage method
@@ -284,7 +284,7 @@ describe('Player', () => {
         })
     })
 
-  describe('Backward Compatibility Bridge', () => {
+  describe('Event-Driven Architecture Validation', () => {
         let eventDispatcher, stateManager, eventSpy, stateSpy
 
         beforeEach(() => {

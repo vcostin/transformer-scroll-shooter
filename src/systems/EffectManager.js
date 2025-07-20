@@ -10,7 +10,7 @@ export class EffectManager {
   constructor(eventDispatcher) {
     this.eventDispatcher = eventDispatcher;
     this.patternMatcher = new PatternMatcher();
-    this.effects = new Map(); // Keeping for backward compatibility
+    this.effects = new Map(); // Legacy effects storage
     this.runningEffects = new Set();
     this.forkedEffects = new Set();
     this.timeouts = new Set();
@@ -44,7 +44,7 @@ export class EffectManager {
       once
     });
 
-    // Keep backward compatibility with old effects Map
+    // Maintain old effects Map structure
     const patternKey = eventPattern instanceof RegExp ? eventPattern.source : eventPattern.replace(/\*/g, '.*');
     const pattern = eventPattern instanceof RegExp ? eventPattern : new RegExp(`^${patternKey}$`);
 
@@ -71,7 +71,7 @@ export class EffectManager {
       // Remove from PatternMatcher
       this.patternMatcher.unregister(patternId);
       
-      // Remove from old effects Map for backward compatibility
+      // Remove from old effects Map
       const index = effectEntry.handlers.findIndex(h => h.id === patternId);
       if (index !== -1) {
         effectEntry.handlers.splice(index, 1);
@@ -192,7 +192,7 @@ export class EffectManager {
     // Remove once effects
     this.patternMatcher.removeOncePatterns(toRemove);
     
-    // Also remove from old effects Map for backward compatibility
+    // Also remove from old effects Map
     toRemove.forEach(patternId => {
       for (const [patternKey, effectEntry] of this.effects.entries()) {
         const index = effectEntry.handlers.findIndex(h => h.id === patternId);

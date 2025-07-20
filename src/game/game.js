@@ -93,7 +93,7 @@ export class Game {
         this.stateManager.setState('game.bossSpawnedThisLevel', false);
     }
 
-    // Backward compatibility getters - migrate to direct StateManager access over time
+    // Game state accessors
     get score() { return this.stateManager.getState('game.score'); }
     set score(value) { this.stateManager.setState('game.score', value); }
     
@@ -176,7 +176,7 @@ export class Game {
         this.player = new Player(this, 100, this.height / 2);
         this.background = new Background(this);
         
-        // Store reference for backward compatibility
+        // Store global reference for debugging and legacy code access
         window.game = this;
         
         // Emit game start event
