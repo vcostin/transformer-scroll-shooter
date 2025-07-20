@@ -28,8 +28,6 @@ export class OptionsMenu {
                         if (settings.hasOwnProperty(key)) {
                             const newVal = settings[key];
                             option.setValue(newVal);
-                            // Ensure value() reflects loaded setting
-                            option.value = () => newVal;
                         }
                     });
                 }

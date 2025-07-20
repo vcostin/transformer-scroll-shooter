@@ -280,7 +280,7 @@ export default class Enemy {
         // Emit movement events if position changed
         if (this.x !== previousX || this.y !== previousY) {
             if (this.eventDispatcher) {
-                this.eventDispatcher.emit('ENEMY_POSITION_CHANGED', {
+                this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_POSITION_CHANGED, {
                     enemy: this,
                     x: this.x,
                     y: this.y,

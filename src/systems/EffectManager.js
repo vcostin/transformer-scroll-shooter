@@ -1,5 +1,6 @@
 import { EffectContext } from '@/systems/EffectContext.js';
 import { PatternMatcher } from '@/utils/PatternMatcher.js';
+import { GAME_EVENTS } from '@/constants/game-events.js';
 
 /**
  * EffectManager - Coordinates side effects execution
@@ -421,7 +422,7 @@ export class EffectManager {
    * @param {Object} config.initialState - Initial state values
    */
   initializeEntityState({ stateManager, initialState }) {
-    this.effect('ENTITY_STATE_INIT', () => {
+    this.effect(GAME_EVENTS.ENTITY_STATE_INIT, () => {
       Object.entries(initialState).forEach(([key, value]) => {
         stateManager.setState(key, value);
       });

@@ -9,6 +9,7 @@
 import Bullet from '@/entities/bullet.js';
 import { TransformEffect } from '@/rendering/effects.js';
 import { PLAYER_EVENTS, PLAYER_STATES, MOVE_DIRECTIONS } from '@/constants/player-events.js';
+import { GAME_EVENTS } from '@/constants/game-events.js';
 import * as MathUtils from '@/utils/math.js';
 import { EffectManager } from '@/systems/EffectManager.js';
 
@@ -158,7 +159,7 @@ export default class Player {
                     }
                 });
                 // Emit the event to trigger the effect
-                this.eventDispatcher.emit('ENTITY_STATE_INIT');
+                this.eventDispatcher.emit(GAME_EVENTS.ENTITY_STATE_INIT);
             }
         }
     }
@@ -177,8 +178,8 @@ export default class Player {
 
         // Emit events for cooldown changes (handled by EffectManager)
         if (this.eventDispatcher) {
-            this.eventDispatcher.emit('PLAYER_SHOOT_COOLDOWN_CHANGED', { value: this.shootCooldown });
-            this.eventDispatcher.emit('PLAYER_TRANSFORM_COOLDOWN_CHANGED', { value: this.transformCooldown });
+            this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_SHOOT_COOLDOWN_CHANGED, { value: this.shootCooldown });
+            this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_TRANSFORM_COOLDOWN_CHANGED, { value: this.transformCooldown });
         }
 
         // Check if dead
@@ -328,7 +329,7 @@ export default class Player {
             this.shootCooldown = this.currentShootRate;
             // Emit event for shoot cooldown change (handled by EffectManager)
             if (this.eventDispatcher) {
-                this.eventDispatcher.emit('PLAYER_SHOOT_COOLDOWN_CHANGED', { value: this.shootCooldown });
+                this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_SHOOT_COOLDOWN_CHANGED, { value: this.shootCooldown });
                 this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_SHOT, {
                     x: this.x + this.width,
                     y: this.y + this.height / 2,

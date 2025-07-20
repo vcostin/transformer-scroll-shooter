@@ -27,7 +27,7 @@ import { Explosion, PowerupEffect, MuzzleFlash, TransformEffect } from '@/render
 import { OptionsMenu } from '@/ui/options.js';
 
 // Import main game class
-import { Game } from '@/game/game.js';
+import Game from '@/game/game.js';
 
 // Export all modules for proper ES6 module usage
 export {
