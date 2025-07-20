@@ -82,58 +82,49 @@ export default class Player {
         // Event-driven architecture setup
         this.eventDispatcher = game.eventDispatcher;
         this.stateManager = game.stateManager;
-        this.eventListeners = new Set();
+        this.effectManager = game.effectManager;
         
-        // Initialize event listeners
-        this.setupEventListeners();
+        // Setup effects-based event handling
+        this.setupEffects();
         
         // Initialize state
         this.initializeState();
     }
     
     /**
-     * Setup event listeners for input and collision events
+     * Setup effects-based event handling using EffectManager
      */
-    setupEventListeners() {
-        // Input event listeners
-        const moveHandler = this.eventDispatcher.on(PLAYER_EVENTS.INPUT_MOVE, (data) => {
+    setupEffects() {
+        // Input effects
+        this.effectManager.effect(PLAYER_EVENTS.INPUT_MOVE, (data) => {
             this.handleMoveInput(data);
         });
         
-        const shootHandler = this.eventDispatcher.on(PLAYER_EVENTS.INPUT_SHOOT, (data) => {
+        this.effectManager.effect(PLAYER_EVENTS.INPUT_SHOOT, (data) => {
             this.handleShootInput(data);
         });
         
-        const transformHandler = this.eventDispatcher.on(PLAYER_EVENTS.INPUT_TRANSFORM, (data) => {
+        this.effectManager.effect(PLAYER_EVENTS.INPUT_TRANSFORM, (data) => {
             this.handleTransformInput(data);
         });
         
-        // Health event listeners
-        const damageHandler = this.eventDispatcher.on(PLAYER_EVENTS.PLAYER_DAMAGED, (data) => {
+        // Health effects
+        this.effectManager.effect(PLAYER_EVENTS.PLAYER_DAMAGED, (data) => {
             this.handleDamage(data);
         });
         
-        const healHandler = this.eventDispatcher.on(PLAYER_EVENTS.PLAYER_HEALED, (data) => {
+        this.effectManager.effect(PLAYER_EVENTS.PLAYER_HEALED, (data) => {
             this.handleHeal(data);
         });
         
-        // Collision event listeners
-        const enemyCollisionHandler = this.eventDispatcher.on(PLAYER_EVENTS.PLAYER_COLLISION_ENEMY, (data) => {
+        // Collision effects
+        this.effectManager.effect(PLAYER_EVENTS.PLAYER_COLLISION_ENEMY, (data) => {
             this.handleEnemyCollision(data);
         });
         
-        const powerupCollisionHandler = this.eventDispatcher.on(PLAYER_EVENTS.PLAYER_COLLISION_POWERUP, (data) => {
+        this.effectManager.effect(PLAYER_EVENTS.PLAYER_COLLISION_POWERUP, (data) => {
             this.handlePowerupCollision(data);
         });
-        
-        // Store unsubscribe functions for cleanup
-        this.eventListeners.add(moveHandler);
-        this.eventListeners.add(shootHandler);
-        this.eventListeners.add(transformHandler);
-        this.eventListeners.add(damageHandler);
-        this.eventListeners.add(healHandler);
-        this.eventListeners.add(enemyCollisionHandler);
-        this.eventListeners.add(powerupCollisionHandler);
     }
     
     /**
@@ -223,7 +214,9 @@ export default class Player {
      * Handle movement input events
      */
     handleMoveInput(data) {
-        const { direction, deltaTime } = data;
+        // Extract from event payload
+        const payload = data.payload || data;
+        const { direction, deltaTime } = payload;
         const previousX = this.x;
         const previousY = this.y;
         
@@ -330,6 +323,8 @@ export default class Player {
      * Handle shooting input events
      */
     handleShootInput(data) {
+        // Extract from event payload
+        const payload = data.payload || data;
         if (this.shootCooldown <= 0) {
             const props = this.modeProperties[this.mode];
             
@@ -421,6 +416,8 @@ export default class Player {
      * Handle transformation input events
      */
     handleTransformInput(data) {
+        // Extract from event payload
+        const payload = data.payload || data;
         if (this.transformCooldown <= 0) {
             const oldMode = this.mode;
             
@@ -515,7 +512,8 @@ export default class Player {
      * Handle damage events
      */
     handleDamage(data) {
-        const { damage } = data;
+        // Extract damage from event payload
+        const damage = data.payload ? data.payload.damage : data.damage;
         const oldHealth = this.health;
         
         // Apply damage (consider shield)
@@ -570,7 +568,9 @@ export default class Player {
      * Handle healing events
      */
     handleHeal(data) {
-        const { amount } = data;
+        // Extract from event payload
+        const payload = data.payload || data;
+        const { amount } = payload;
         const oldHealth = this.health;
         
         this.health = Math.min(this.maxHealth, this.health + amount);
@@ -600,7 +600,9 @@ export default class Player {
      * Handle enemy collision events
      */
     handleEnemyCollision(data) {
-        const { enemy } = data;
+        // Extract from event payload
+        const payload = data.payload || data;
+        const { enemy } = payload;
         
         // Apply damage from enemy
         if (enemy.damage) {
@@ -612,7 +614,9 @@ export default class Player {
      * Handle powerup collision events
      */
     handlePowerupCollision(data) {
-        const { powerup } = data;
+        // Extract from event payload
+        const payload = data.payload || data;
+        const { powerup } = payload;
         
         // Add powerup to active powerups
         const powerupData = {
@@ -659,13 +663,11 @@ export default class Player {
     }
     
     /**
-     * Clean up event listeners
+     * Clean up resources
      */
     destroy() {
-        if (this.eventListeners) {
-            this.eventListeners.forEach(unsubscribe => unsubscribe());
-            this.eventListeners.clear();
-        }
+        // EffectManager handles cleanup automatically when effects are unregistered
+        // No manual cleanup needed for effect-based event handling
     }
     
     render(ctx) {

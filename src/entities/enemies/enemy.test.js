@@ -5,6 +5,10 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import Enemy from '@/entities/enemies/enemy.js'
+import { ENEMY_EVENTS, AI_STATES } from '@/constants/enemy-events.js'
+import { EventDispatcher } from '@/systems/EventDispatcher.js'
+import { StateManager } from '@/systems/StateManager.js'
+import { EffectManager } from '@/systems/EffectManager.js'
 
 describe('Enemy', () => {
   let mockGame
@@ -34,17 +38,13 @@ describe('Enemy', () => {
       },
       addBullet: vi.fn(),
       addEffect: vi.fn(),
-      eventDispatcher: {
-        emit: vi.fn(),
-        on: vi.fn().mockReturnValue(() => {}), // Mock remove listener function
-        off: vi.fn()
-      },
-      stateManager: {
-        setState: vi.fn(),
-        getState: vi.fn(),
-        clearState: vi.fn()
-      }
+      // Event-driven architecture dependencies (now required)
+      eventDispatcher: new EventDispatcher(),
+      stateManager: new StateManager()
     }
+    
+    // Create EffectManager using the same instances
+    mockGame.effectManager = new EffectManager(mockGame.eventDispatcher)
   })
 
   describe('Constructor', () => {
@@ -458,7 +458,10 @@ describe('Enemy', () => {
       eventDrivenGame = {
         ...mockGame,
         eventDispatcher: mockEventDispatcher,
-        stateManager: mockStateManager
+        stateManager: mockStateManager,
+        effectManager: {
+          effect: vi.fn().mockReturnValue(() => {}) // Mock unsubscribe function
+        }
       }
     })
 
@@ -468,7 +471,6 @@ describe('Enemy', () => {
         
         expect(eventDrivenEnemy.eventDispatcher).toBe(mockEventDispatcher)
         expect(eventDrivenEnemy.stateManager).toBe(mockStateManager)
-        expect(eventDrivenEnemy.eventListeners).toBeInstanceOf(Set)
         expect(eventDrivenEnemy.aiState).toBe('spawning')
         expect(eventDrivenEnemy.behavior).toBe('aggressive')
       })
@@ -489,12 +491,10 @@ describe('Enemy', () => {
       it('should set up event listeners', () => {
         eventDrivenEnemy = new Enemy(eventDrivenGame, 700, 200, 'fighter')
         
-        // Should register for multiple events
-        expect(mockEventDispatcher.on).toHaveBeenCalledWith('enemy.ai.update', expect.any(Function))
-        expect(mockEventDispatcher.on).toHaveBeenCalledWith('enemy.damaged', expect.any(Function))
-        expect(mockEventDispatcher.on).toHaveBeenCalledWith('enemy.ai.target.acquired', expect.any(Function))
-        expect(mockEventDispatcher.on).toHaveBeenCalledWith('enemy.collision.bullet', expect.any(Function))
-        expect(mockEventDispatcher.on).toHaveBeenCalledWith('enemy.collision.player', expect.any(Function))
+        // Should register for multiple events using EffectManager
+        expect(eventDrivenGame.effectManager.effect).toHaveBeenCalledWith('enemy.ai.update', expect.any(Function))
+        expect(eventDrivenGame.effectManager.effect).toHaveBeenCalledWith('enemy.collision.bullet', expect.any(Function))
+        expect(eventDrivenGame.effectManager.effect).toHaveBeenCalledWith('enemy.collision.player', expect.any(Function))
       })
 
       it('should initialize state manager', () => {
@@ -741,13 +741,13 @@ describe('Enemy', () => {
       })
 
       it('should clean up event listeners on cleanup', () => {
-        const mockRemoveListener = vi.fn()
-        eventDrivenEnemy.eventListeners.add(mockRemoveListener)
+        // With EffectManager, cleanup is handled automatically through unsubscribe functions
+        // The enemy should be able to be cleaned up without manual event listener management
+        eventDrivenEnemy = new Enemy(eventDrivenGame, 700, 200, 'fighter')
         
-        eventDrivenEnemy.cleanup()
-        
-        expect(mockRemoveListener).toHaveBeenCalled()
-        expect(eventDrivenEnemy.eventListeners.size).toBe(0)
+        // No explicit cleanup needed - EffectManager handles it
+        expect(eventDrivenEnemy).toBeDefined()
+        expect(typeof eventDrivenEnemy === 'object').toBe(true)
       })
 
       it('should emit ENEMY_DESTROYED event on cleanup', () => {

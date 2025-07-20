@@ -437,13 +437,15 @@ describe('UI Event Integration System', () => {
 
     describe('UIManager State Change Events', () => {
         let mockEventDispatcher;
+        let mockGame;
         beforeEach(() => {
             // Use UIManager imported above
             mockEventDispatcher = { emit: vi.fn(), on: vi.fn(), off: vi.fn() };
+            mockGame = { effectManager: { effect: vi.fn().mockReturnValue(() => {}) } };
         });
 
         it('should emit STATE_CHANGED when menu is opened', () => {
-            const uiManager = new UIManager(null, mockEventDispatcher, null);
+            const uiManager = new UIManager(mockGame, mockEventDispatcher, null);
             uiManager.displayManager = null; // avoid display code
             const data = { menuType: 'options' };
             uiManager.handleMenuOpened(data);
@@ -458,7 +460,7 @@ describe('UI Event Integration System', () => {
         });
 
         it('should emit STATE_CHANGED when menu is closed', () => {
-            const uiManager = new UIManager(null, mockEventDispatcher, null);
+            const uiManager = new UIManager(mockGame, mockEventDispatcher, null);
             uiManager.displayManager = null;
             const data = { menuType: 'options' };
             uiManager.handleMenuClosed(data);

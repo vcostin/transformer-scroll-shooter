@@ -44,10 +44,10 @@ export default class Enemy {
         
         this.eventDispatcher = game.eventDispatcher;
         this.stateManager = game.stateManager;
-        this.eventListeners = new Set();
+        this.effectManager = game.effectManager;
         
-        // Initialize event listeners
-        this.setupEventListeners();
+        // Setup effects-based event handling
+        this.setupEffects();
         
         // Initialize state
         this.initializeState();
@@ -391,27 +391,39 @@ export default class Enemy {
     }
     
     /**
-     * Setup event listeners for AI updates and collision events
+     * Setup effects-based event handling using EffectManager
      */
-    setupEventListeners() {
-        // Define event-to-handler mapping for cleaner registration
-        const eventHandlerMapping = {
-            [ENEMY_EVENTS.ENEMY_AI_UPDATE]: this.handleAIUpdate.bind(this),
-            [ENEMY_EVENTS.ENEMY_DAMAGED]: this.handleDamage.bind(this),
-            [ENEMY_EVENTS.ENEMY_AI_TARGET_ACQUIRED]: this.handleTargetAcquisition.bind(this),
-            [ENEMY_EVENTS.ENEMY_COLLISION_BULLET]: this.handleBulletCollision.bind(this),
-            [ENEMY_EVENTS.ENEMY_COLLISION_PLAYER]: this.handlePlayerCollision.bind(this),
-        };
+    setupEffects() {
+        // Register effects with instance-specific filtering
+        this.effectManager.effect(ENEMY_EVENTS.ENEMY_AI_UPDATE, (data) => {
+            if (data.enemy === this) {
+                this.handleAIUpdate(data);
+            }
+        });
         
-        // Register all event listeners with instance-specific filtering
-        for (const [event, handler] of Object.entries(eventHandlerMapping)) {
-            const listener = this.eventDispatcher.on(event, (data) => {
-                if (data.enemy === this) {
-                    handler(data);
-                }
-            });
-            this.eventListeners.add(listener);
-        }
+        this.effectManager.effect(ENEMY_EVENTS.ENEMY_DAMAGED, (data) => {
+            if (data.enemy === this) {
+                this.handleDamage(data);
+            }
+        });
+        
+        this.effectManager.effect(ENEMY_EVENTS.ENEMY_AI_TARGET_ACQUIRED, (data) => {
+            if (data.enemy === this) {
+                this.handleTargetAcquisition(data);
+            }
+        });
+        
+        this.effectManager.effect(ENEMY_EVENTS.ENEMY_COLLISION_BULLET, (data) => {
+            if (data.enemy === this) {
+                this.handleBulletCollision(data);
+            }
+        });
+        
+        this.effectManager.effect(ENEMY_EVENTS.ENEMY_COLLISION_PLAYER, (data) => {
+            if (data.enemy === this) {
+                this.handlePlayerCollision(data);
+            }
+        });
     }
     
     /**
@@ -577,18 +589,11 @@ export default class Enemy {
     }
     
     /**
-     * Cleanup event listeners and emit destroy event
+     * Cleanup resources and emit destroy event
      */
     cleanup() {
-        // Clean up event listeners
-        if (this.eventDispatcher && this.eventListeners) {
-            this.eventListeners.forEach(removeListener => {
-                if (typeof removeListener === 'function') {
-                    removeListener();
-                }
-            });
-            this.eventListeners.clear();
-        }
+        // EffectManager handles cleanup automatically when effects are unregistered
+        // No manual cleanup needed for effect-based event handling
         
         // Emit destruction event
         this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_DESTROYED, {

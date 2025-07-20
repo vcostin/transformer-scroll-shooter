@@ -14,30 +14,15 @@ export class OptionsMenu {
         this.game = game;
         this.eventDispatcher = eventDispatcher;
         this.stateManager = stateManager;
+        this.effectManager = game.effectManager;
         this.isOpen = false;
         this.selectedOption = 0;
-        this.eventListeners = new Set();
-        // Subscribe to loaded settings
-        const unsubscribe = this.eventDispatcher.on(
-            UI_EVENTS.SETTINGS_LOADED,
-            (settings) => {
-                // Apply loaded settings
-                this.options.forEach(option => {
-                    const key = option.name.toLowerCase().replace(/\s+/g, '');
-                    if (settings.hasOwnProperty(key)) {
-                        const newVal = settings[key];
-                        option.setValue(newVal);
-                    }
-                });
-            }
-        );
-        this.eventListeners.add(unsubscribe);
+        
+        // Setup effects-based event handling
+        this.setupEffects();
         
         // Initialize options configuration
         this.initializeOptions();
-        
-        // Set up event listeners
-        this.setupEventListeners();
         
         // Create UI overlay
         this.overlay = null;
@@ -131,33 +116,44 @@ export class OptionsMenu {
     }
     
     /**
-     * Set up event listeners
+     * Setup effects-based event handling using EffectManager
      */
-    setupEventListeners() {
-        if (!this.eventDispatcher) return;
+    setupEffects() {
+        // Settings management effects
+        this.effectManager.effect(UI_EVENTS.SETTINGS_LOADED, (action) => {
+            const settings = action.payload;
+            // Apply loaded settings
+            this.options.forEach(option => {
+                const key = option.name.toLowerCase().replace(/\s+/g, '');
+                if (settings.hasOwnProperty(key)) {
+                    const newVal = settings[key];
+                    option.setValue(newVal);
+                }
+            });
+        });
         
-        // Listen for menu events
-        const menuOpenListener = this.eventDispatcher.on(UI_EVENTS.MENU_OPENED, (data) => {
+        // Menu control effects
+        this.effectManager.effect(UI_EVENTS.MENU_OPENED, (action) => {
+            const data = action.payload;
             if (data.menuType === MENU_TYPES.OPTIONS) {
                 this.open();
             }
         });
-        this.eventListeners.add(menuOpenListener);
         
-        const menuCloseListener = this.eventDispatcher.on(UI_EVENTS.MENU_CLOSED, (data) => {
+        this.effectManager.effect(UI_EVENTS.MENU_CLOSED, (action) => {
+            const data = action.payload;
             if (data.menuType === MENU_TYPES.OPTIONS) {
                 this.close();
             }
         });
-        this.eventListeners.add(menuCloseListener);
         
-        // Listen for navigation events
-        const navigationListener = this.eventDispatcher.on(UI_EVENTS.MENU_NAVIGATION, (data) => {
+        // Navigation effects
+        this.effectManager.effect(UI_EVENTS.MENU_NAVIGATION, (action) => {
+            const data = action.payload;
             if (this.isOpen) {
                 this.handleNavigation(data);
             }
         });
-        this.eventListeners.add(navigationListener);
     }
     
     /**

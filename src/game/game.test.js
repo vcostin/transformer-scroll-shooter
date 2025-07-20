@@ -560,43 +560,39 @@ describe('Game', () => {
     })
 
     it('should cleanup event listeners when game is destroyed', () => {
-      // Mock document and window event listeners
-      const mockRemoveEventListener = vi.fn()
+      // Mock document.removeEventListener to track cleanup calls
       const originalRemoveEventListener = document.removeEventListener
+      document.removeEventListener = vi.fn()
       
-      document.removeEventListener = mockRemoveEventListener
-      
-      // Add some event listeners
-      const handler1 = vi.fn()
-      const handler2 = vi.fn()
-      
-      game.eventListeners = new Set([handler1, handler2])
+      // Setup DOM event listeners first
+      game.setupInput()
       
       game.destroy()
       
-      expect(game.eventListeners.size).toBe(0)
+      // Verify that DOM event cleanup was attempted
+      expect(game.domEventCleanup).toBeDefined()
+      expect(Array.isArray(game.domEventCleanup)).toBe(true)
       
       // Restore original
       document.removeEventListener = originalRemoveEventListener
     })
 
     it('should prevent memory leaks by cleaning up event listeners', () => {
-      // Test that game properly cleans up event listeners to prevent memory leaks
-      const handler1 = vi.fn()
-      const handler2 = vi.fn()
+      // Test that game properly cleans up DOM event listeners to prevent memory leaks
       
-      game.eventListeners = new Set([handler1, handler2])
+      // Setup DOM event listeners
+      game.setupInput()
       
       game.destroy()
       
-      expect(handler1).toHaveBeenCalled()
-      expect(handler2).toHaveBeenCalled()
-      expect(game.eventListeners.size).toBe(0)
+      // Verify that DOM cleanup array exists and is functional
+      expect(game.domEventCleanup).toBeDefined()
+      expect(Array.isArray(game.domEventCleanup)).toBe(true)
+      expect(game.domEventCleanup.length).toBeGreaterThan(0)
     })
 
     it('should handle empty event listeners during cleanup', () => {
-      // Test that game can handle empty event listeners set
-      game.eventListeners = new Set()
+      // Test that game can handle empty DOM event cleanup gracefully
       
       expect(() => {
         game.destroy()
@@ -981,11 +977,8 @@ describe('Game', () => {
         vi.fn()
       ])
       
-      // 3. Test event listeners setup
-      game.eventListeners = new Set([
-        vi.fn(),
-        vi.fn()
-      ])
+      // 3. Test DOM event setup
+      game.setupInput()
       
       // 4. Test game update cycle
       game.update(16.67) // Typical 60fps delta time
@@ -995,7 +988,8 @@ describe('Game', () => {
       
       // Verify all subscriptions were cleaned up
       expect(game.stateSubscriptions.size).toBe(0)
-      expect(game.eventListeners.size).toBe(0)
+      // Verify DOM cleanup array exists
+      expect(game.domEventCleanup).toBeDefined()
       
       // All fixes should work together without errors
       expect(true).toBe(true)

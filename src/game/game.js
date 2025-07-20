@@ -60,12 +60,6 @@ export class Game {
         // Frame counter for events
         this.frameNumber = 0;
         
-        // Event listeners cleanup tracking
-        this.eventListeners = new Set();
-        
-        // State manager subscriptions cleanup tracking
-        this.stateSubscriptions = new Set();
-        
         // Input handling
         this.keys = {};
         this.setupInput();
@@ -73,8 +67,8 @@ export class Game {
         // Initialize pure event-driven architecture after StateManager is ready
         this.initializeGameState();
         
-        // Setup event listeners
-        this.setupEventListeners();
+        // Setup effects-based event handling
+        this.setupEffects();
         
         this.init();
     }
@@ -121,26 +115,26 @@ export class Game {
     get bossSpawnedThisLevel() { return this.stateManager.getState('game.bossSpawnedThisLevel'); }
     set bossSpawnedThisLevel(value) { this.stateManager.setState('game.bossSpawnedThisLevel', value); }
     
-    setupEventListeners() {
-        // Core game state event listeners
-        this.addEventListener(GAME_EVENTS.GAME_START, () => {
+    setupEffects() {
+        // Core game state effects
+        this.effectManager.effect(GAME_EVENTS.GAME_START, () => {
             this.stateManager.setState('game.state', 'running');
         });
         
-        this.addEventListener(GAME_EVENTS.GAME_PAUSE, () => {
+        this.effectManager.effect(GAME_EVENTS.GAME_PAUSE, () => {
             this.stateManager.setState('game.state', 'paused');
         });
         
-        this.addEventListener(GAME_EVENTS.GAME_RESUME, () => {
+        this.effectManager.effect(GAME_EVENTS.GAME_RESUME, () => {
             this.stateManager.setState('game.state', 'running');
         });
         
-        this.addEventListener(GAME_EVENTS.GAME_OVER, (data) => {
+        this.effectManager.effect(GAME_EVENTS.GAME_OVER, (data) => {
             this.stateManager.setState('game.state', 'gameOver');
             this.stateManager.setState('game.finalScore', data.score);
         });
         
-        this.addEventListener(GAME_EVENTS.UI_SCORE_UPDATE, (data) => {
+        this.effectManager.effect(GAME_EVENTS.UI_SCORE_UPDATE, (data) => {
             this.stateManager.setState('game.score', data.score);
         });
         
@@ -155,14 +149,9 @@ export class Game {
             }
         });
         
-        // Store subscription for cleanup
+        // Store subscription for cleanup (StateManager subscriptions still need manual cleanup)
+        this.stateSubscriptions = new Set();
         this.stateSubscriptions.add(unsubscribeScore);
-    }
-    
-    addEventListener(eventName, handler) {
-        const unsubscribe = this.eventDispatcher.on(eventName, handler);
-        this.eventListeners.add(unsubscribe);
-        return unsubscribe;
     }
     
     init() {
@@ -244,13 +233,12 @@ export class Game {
             this.effectManager.stop();
         }
         
-        // Clean up event listeners
-        if (this.eventListeners) {
-            this.eventListeners.forEach(unsubscribe => unsubscribe());
-            this.eventListeners.clear();
+        // Clean up DOM event listeners
+        if (this.domEventCleanup) {
+            this.domEventCleanup.forEach(cleanup => cleanup());
         }
         
-        // Clean up state manager subscriptions
+        // Clean up state manager subscriptions (EffectManager handles event cleanup)
         if (this.stateSubscriptions) {
             this.stateSubscriptions.forEach(unsubscribe => unsubscribe());
             this.stateSubscriptions.clear();
@@ -314,22 +302,12 @@ export class Game {
         document.addEventListener('keyup', this.handleKeyUp);
         document.addEventListener('click', this.handleClick, { once: true });
         
-        // Store cleanup functions
-        this.eventListeners.add(() => {
-            if (document && document.removeEventListener) {
-                document.removeEventListener('keydown', this.handleKeyDown);
-            }
-        });
-        this.eventListeners.add(() => {
-            if (document && document.removeEventListener) {
-                document.removeEventListener('keyup', this.handleKeyUp);
-            }
-        });
-        this.eventListeners.add(() => {
-            if (document && document.removeEventListener) {
-                document.removeEventListener('click', this.handleClick);
-            }
-        });
+        // Store cleanup references for DOM events
+        this.domEventCleanup = [
+            () => document.removeEventListener && document.removeEventListener('keydown', this.handleKeyDown),
+            () => document.removeEventListener && document.removeEventListener('keyup', this.handleKeyUp),
+            () => document.removeEventListener && document.removeEventListener('click', this.handleClick)
+        ];
     }
     
     /**
