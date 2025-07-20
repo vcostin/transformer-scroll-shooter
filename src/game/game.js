@@ -88,6 +88,8 @@ export class Game {
     }
 
     // Game state accessors
+    // Note: Always fetch from StateManager to ensure consistency and reactive behavior
+    // StateManager is internally optimized, caching here would break event-driven patterns
     get score() { return this.stateManager.getState('game.score'); }
     set score(value) { this.stateManager.setState('game.score', value); }
     

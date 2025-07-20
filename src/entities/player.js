@@ -95,7 +95,17 @@ export default class Player {
      * Setup effects-based event handling using EffectManager
      */
     setupEffects() {
-        // Input effects
+        this.setupInputEffects();
+        this.setupHealthEffects();
+        this.setupStateEffects();
+        this.setupCollisionEffects();
+        this.setupPowerupEffects();
+    }
+
+    /**
+     * Setup input-related effect handlers
+     */
+    setupInputEffects() {
         this.effectManager.effect(PLAYER_EVENTS.INPUT_MOVE, (data) => {
             this.handleMoveInput(data);
         });
@@ -107,8 +117,12 @@ export default class Player {
         this.effectManager.effect(PLAYER_EVENTS.INPUT_TRANSFORM, (data) => {
             this.handleTransformInput(data);
         });
-        
-        // Health effects
+    }
+
+    /**
+     * Setup health and damage effect handlers
+     */
+    setupHealthEffects() {
         this.effectManager.effect(PLAYER_EVENTS.PLAYER_DAMAGED, (data) => {
             this.handleDamage(data);
         });
@@ -116,8 +130,12 @@ export default class Player {
         this.effectManager.effect(PLAYER_EVENTS.PLAYER_HEALED, (data) => {
             this.handleHeal(data);
         });
-        
-        // State synchronization effects - automatic state management
+    }
+
+    /**
+     * Setup state synchronization effect handlers
+     */
+    setupStateEffects() {
         this.effectManager.effect(PLAYER_EVENTS.PLAYER_SHOOT_COOLDOWN_CHANGED, (data) => {
             this.stateManager.setState(PLAYER_STATES.SHOOT_COOLDOWN, data.value);
         });
@@ -144,8 +162,12 @@ export default class Player {
         this.effectManager.effect(PLAYER_EVENTS.PLAYER_POWERUP_ACTIVATED, (data) => {
             this.stateManager.setState(PLAYER_STATES.POWERUPS, this.activePowerups);
         });
-        
-        // Collision effects
+    }
+
+    /**
+     * Setup collision effect handlers
+     */
+    setupCollisionEffects() {
         this.effectManager.effect(PLAYER_EVENTS.PLAYER_COLLISION_ENEMY, (data) => {
             this.handleEnemyCollision(data);
         });
@@ -153,6 +175,14 @@ export default class Player {
         this.effectManager.effect(PLAYER_EVENTS.PLAYER_COLLISION_POWERUP, (data) => {
             this.handlePowerupCollision(data);
         });
+    }
+
+    /**
+     * Setup powerup effect handlers
+     */
+    setupPowerupEffects() {
+        // Add any powerup-specific effects here if needed
+        // Currently handled through collision effects
     }
     
     /**

@@ -11,6 +11,14 @@ import {
 
 export class OptionsMenu {
     constructor(game, eventDispatcher, stateManager) {
+        // Validate required dependencies
+        if (!eventDispatcher) {
+            throw new Error("OptionsMenu: 'eventDispatcher' is required and cannot be null or undefined.");
+        }
+        if (!stateManager) {
+            throw new Error("OptionsMenu: 'stateManager' is required and cannot be null or undefined.");
+        }
+        
         this.game = game;
         this.eventDispatcher = eventDispatcher;
         this.stateManager = stateManager;

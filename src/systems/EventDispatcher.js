@@ -335,9 +335,14 @@ export class EventDispatcher {
 
   _cacheWildcardPattern(pattern) {
     if (!this.wildcardPatterns.has(pattern)) {
-      const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
+      const escapedPattern = this._escapeRegex(pattern).replace(/\\\*/g, '.*');
+      const regex = new RegExp('^' + escapedPattern + '$');
       this.wildcardPatterns.set(pattern, regex);
     }
+  }
+
+  _escapeRegex(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   _debug(message) {
