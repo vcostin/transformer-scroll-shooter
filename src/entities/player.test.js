@@ -399,11 +399,11 @@ describe('Player', () => {
       
       // Wait longer for async effects
       await new Promise((resolve) => setTimeout(resolve, 50));
-      expect(stateSpy).toHaveBeenCalledWith('HEALTH', player.health);
-      expect(stateSpy).toHaveBeenCalledWith('POSITION', { x: player.x, y: player.y });
-      expect(stateSpy).toHaveBeenCalledWith('MODE', player.mode);
-      expect(stateSpy).toHaveBeenCalledWith('SPEED', player.speed);
-      expect(stateSpy).toHaveBeenCalledWith('SHOOT_RATE', player.currentShootRate);
+      expect(stateSpy).toHaveBeenCalledWith(PLAYER_STATES.HEALTH, player.health);
+      expect(stateSpy).toHaveBeenCalledWith(PLAYER_STATES.POSITION, { x: player.x, y: player.y });
+      expect(stateSpy).toHaveBeenCalledWith(PLAYER_STATES.MODE, player.mode);
+      expect(stateSpy).toHaveBeenCalledWith(PLAYER_STATES.SPEED, player.speed);
+      expect(stateSpy).toHaveBeenCalledWith(PLAYER_STATES.SHOOT_RATE, player.currentShootRate);
     });
   });
 })

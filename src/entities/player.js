@@ -117,6 +117,34 @@ export default class Player {
             this.handleHeal(data);
         });
         
+        // State synchronization effects - automatic state management
+        this.effectManager.effect(PLAYER_EVENTS.PLAYER_SHOOT_COOLDOWN_CHANGED, (data) => {
+            this.stateManager.setState(PLAYER_STATES.SHOOT_COOLDOWN, data.value);
+        });
+        
+        this.effectManager.effect(PLAYER_EVENTS.PLAYER_TRANSFORM_COOLDOWN_CHANGED, (data) => {
+            this.stateManager.setState(PLAYER_STATES.TRANSFORM_COOLDOWN, data.value);
+        });
+        
+        this.effectManager.effect(PLAYER_EVENTS.PLAYER_TRANSFORMED, (data) => {
+            this.stateManager.setState(PLAYER_STATES.MODE, data.newMode);
+            this.stateManager.setState(PLAYER_STATES.SPEED, this.speed);
+            this.stateManager.setState(PLAYER_STATES.SHOOT_RATE, this.currentShootRate);
+        });
+        
+        this.effectManager.effect(PLAYER_EVENTS.PLAYER_MOVED, (data) => {
+            this.stateManager.setState(PLAYER_STATES.POSITION, { x: data.x, y: data.y });
+        });
+        
+        this.effectManager.effect(PLAYER_EVENTS.PLAYER_HEALTH_CHANGED, (data) => {
+            this.stateManager.setState(PLAYER_STATES.HEALTH, data.health);
+            this.stateManager.setState(PLAYER_STATES.SHIELD, data.shield || this.shield);
+        });
+        
+        this.effectManager.effect(PLAYER_EVENTS.PLAYER_POWERUP_ACTIVATED, (data) => {
+            this.stateManager.setState(PLAYER_STATES.POWERUPS, this.activePowerups);
+        });
+        
         // Collision effects
         this.effectManager.effect(PLAYER_EVENTS.PLAYER_COLLISION_ENEMY, (data) => {
             this.handleEnemyCollision(data);
@@ -137,11 +165,11 @@ export default class Player {
             effectManager.initializeEntityState({
                 stateManager: this.stateManager,
                 initialState: {
-                    'HEALTH': this.health,
-                    'POSITION': { x: this.x, y: this.y },
-                    'MODE': this.mode,
-                    'SPEED': this.speed,
-                    'SHOOT_RATE': this.currentShootRate
+                    [PLAYER_STATES.HEALTH]: this.health,
+                    [PLAYER_STATES.POSITION]: { x: this.x, y: this.y },
+                    [PLAYER_STATES.MODE]: this.mode,
+                    [PLAYER_STATES.SPEED]: this.speed,
+                    [PLAYER_STATES.SHOOT_RATE]: this.currentShootRate
                 }
             });
             // Emit the event to trigger the effect
@@ -337,10 +365,7 @@ export default class Player {
             
             this.shootCooldown = this.currentShootRate;
             
-            // Update state manager
-            this.stateManager.setState(PLAYER_STATES.SHOOT_COOLDOWN, this.shootCooldown);
-            
-            // Emit shot event
+            // Emit shot event - state synchronization handled by effects
             this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_SHOT, {
                 x: this.x + this.width,
                 y: this.y + this.height / 2,
@@ -399,11 +424,7 @@ export default class Player {
             // Add transform effect
             this.game.addEffect(new TransformEffect(this.game, this.x, this.y));
             
-            this.stateManager.setState(PLAYER_STATES.MODE, this.mode);
-            this.stateManager.setState(PLAYER_STATES.SPEED, this.speed);
-            this.stateManager.setState(PLAYER_STATES.SHOOT_RATE, this.currentShootRate);
-            this.stateManager.setState(PLAYER_STATES.TRANSFORM_COOLDOWN, this.transformCooldown);
-            
+            // Emit transformation event - state synchronization handled by effects
             this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_TRANSFORMED, {
                 oldMode,
                 newMode: this.mode,
@@ -432,13 +453,7 @@ export default class Player {
             // Add transform effect
             this.game.addEffect(new TransformEffect(this.game, this.x, this.y));
             
-            // Update state manager
-            this.stateManager.setState(PLAYER_STATES.MODE, this.mode);
-            this.stateManager.setState(PLAYER_STATES.SPEED, this.speed);
-            this.stateManager.setState(PLAYER_STATES.SHOOT_RATE, this.currentShootRate);
-            this.stateManager.setState(PLAYER_STATES.TRANSFORM_COOLDOWN, this.transformCooldown);
-            
-            // Emit transformation event
+            // Emit transformation event - state synchronization handled by effects
             this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_TRANSFORMED, {
                 oldMode,
                 newMode: this.mode,
@@ -525,17 +540,14 @@ export default class Player {
         
         this.health = Math.max(0, this.health - actualDamage);
         
-        // Update state manager
-        this.stateManager.setState(PLAYER_STATES.HEALTH, this.health);
-        this.stateManager.setState(PLAYER_STATES.SHIELD, this.shield);
-        
-        // Emit health changed event
+        // Emit health changed event - state synchronization handled by effects
         this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_HEALTH_CHANGED, {
             health: this.health,
             maxHealth: this.maxHealth,
             percentage: this.health / this.maxHealth,
             previousHealth: oldHealth,
-            damageDealt: actualDamage
+            damageDealt: actualDamage,
+            shield: this.shield
         });
         
         // Emit critical health event if health is low
@@ -575,16 +587,14 @@ export default class Player {
         
         this.health = Math.min(this.maxHealth, this.health + amount);
         
-        // Update state manager
-        this.stateManager.setState(PLAYER_STATES.HEALTH, this.health);
-        
-        // Emit health changed event
+        // Emit health changed event - state synchronization handled by effects
         this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_HEALTH_CHANGED, {
             health: this.health,
             maxHealth: this.maxHealth,
             percentage: this.health / this.maxHealth,
             previousHealth: oldHealth,
-            healAmount: amount
+            healAmount: amount,
+            shield: this.shield
         });
         
         // Emit full health event if at max health
@@ -630,14 +640,12 @@ export default class Player {
         // Apply powerup effects
         this.applyPowerupEffects(powerupData);
         
-        // Update state manager
-        this.stateManager.setState(PLAYER_STATES.POWERUPS, this.activePowerups);
-        
-        // Emit powerup activated event
+        // Emit powerup activated event - state synchronization handled by effects
         this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_POWERUP_ACTIVATED, {
             type: powerup.type,
             duration: powerup.duration,
-            player: this
+            player: this,
+            activePowerups: this.activePowerups
         });
     }
     

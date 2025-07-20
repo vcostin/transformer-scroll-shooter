@@ -193,10 +193,42 @@ export function createMockEventSystems(options = {}) {
 
     const mockEffectManager = options.includeEffectManager !== false ? {
         isRunning: false,
+        effects: new Map(),
         start: vi.fn(),
         stop: vi.fn(),
         register: vi.fn(),
-        effect: vi.fn(),
+        effect: vi.fn((pattern, handler) => {
+            // Make functional mock - store the handler and wire it to the event dispatcher
+            if (!mockEventDispatcher._effectHandlers) {
+                mockEventDispatcher._effectHandlers = new Map();
+                
+                // Override emit only once to avoid infinite recursion
+                const originalEmit = mockEventDispatcher.emit;
+                mockEventDispatcher.emit = vi.fn((eventName, data) => {
+                    // Call original emit spy
+                    if (originalEmit) {
+                        originalEmit.call(mockEventDispatcher, eventName, data);
+                    }
+                    
+                    // Trigger matching effects synchronously and safely
+                    const handlers = mockEventDispatcher._effectHandlers.get(eventName) || [];
+                    handlers.forEach(effectHandler => {
+                        try {
+                            effectHandler(data);
+                        } catch (error) {
+                            // Silently handle effect errors to prevent test pollution
+                        }
+                    });
+                });
+            }
+            
+            // For simple string patterns, wire directly to event dispatcher
+            if (typeof pattern === 'string') {
+                const currentHandlers = mockEventDispatcher._effectHandlers.get(pattern) || [];
+                currentHandlers.push(handler);
+                mockEventDispatcher._effectHandlers.set(pattern, currentHandlers);
+            }
+        }),
         initializeEntityState: vi.fn((config) => {
             // Mock the functionality to call setState for testing
             const { stateManager, initialState } = config;

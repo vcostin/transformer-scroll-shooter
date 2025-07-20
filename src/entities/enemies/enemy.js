@@ -5,7 +5,19 @@
  * Provides common function        // Check for off-screen or death conditions
         if (this.x < OFF_SCREEN_BOUNDARY || this.health <= 0) {
             if (this.x < OFF_SCREEN_BOUNDARY) {
-                this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_OFF_SCREEN, {
+                this.eventDispatcher.emit(            // Emit shot event
+            this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_SHOT, {
+                enemy: this,
+                bullet: bullet,
+                x: this.x,
+                y: this.y + this.height / 2,
+                velocityX,
+                velocityY,
+                target: player,
+                type: this.type
+            });
+        }
+    }MY_OFF_SCREEN, {
                     enemy: this,
                     x: this.x,
                     y: this.y
@@ -357,16 +369,13 @@ export default class Enemy {
         // Apply damage directly
         this.health -= damage;
         
-        // Update state manager
-        this.stateManager.setState(ENEMY_STATES.HEALTH, this.health);
-        
         // Emit damage event
         this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_DAMAGED, {
             enemy: this,
             damage: damage
         });
         
-        // Emit health changed event
+        // Emit health changed event - state synchronization handled by effects
         this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_HEALTH_CHANGED, {
             enemy: this,
             health: this.health,
@@ -424,6 +433,31 @@ export default class Enemy {
                 this.handlePlayerCollision(data);
             }
         });
+        
+        // State synchronization effects - automatic state management
+        this.effectManager.effect(ENEMY_EVENTS.ENEMY_SHOT, (data) => {
+            if (data.enemy === this) {
+                this.stateManager.setState(ENEMY_STATES.SHOOT_TIMER, this.shootTimer);
+            }
+        });
+        
+        this.effectManager.effect(ENEMY_EVENTS.ENEMY_HEALTH_CHANGED, (data) => {
+            if (data.enemy === this) {
+                this.stateManager.setState(ENEMY_STATES.HEALTH, data.health);
+            }
+        });
+        
+        this.effectManager.effect(ENEMY_EVENTS.ENEMY_AI_BEHAVIOR_CHANGE, (data) => {
+            if (data.enemy === this) {
+                this.stateManager.setState(ENEMY_STATES.AI_STATE, data.behavior);
+            }
+        });
+        
+        this.effectManager.effect(ENEMY_EVENTS.ENEMY_AI_TARGET_ACQUIRED, (data) => {
+            if (data.enemy === this) {
+                this.stateManager.setState(ENEMY_STATES.TARGET, data.target);
+            }
+        });
     }
     
     /**
@@ -445,6 +479,7 @@ export default class Enemy {
      */
     handleAIUpdate(data) {
         const { deltaTime } = data;
+        const oldAiState = this.aiState;
         
         // Update AI behavior based on current state
         switch (this.aiState) {
@@ -485,8 +520,14 @@ export default class Enemy {
             this.move(deltaTime);
         }
         
-        // Update state manager
-        this.stateManager.setState(ENEMY_STATES.AI_STATE, this.aiState);
+        // Emit AI state change event if state changed - state synchronization handled by effects
+        if (this.aiState !== oldAiState) {
+            this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_AI_BEHAVIOR_CHANGE, {
+                enemy: this,
+                behavior: this.aiState,
+                previousBehavior: oldAiState
+            });
+        }
     }
     
     /**
@@ -498,10 +539,7 @@ export default class Enemy {
         
         this.health -= damage;
         
-        // Update state manager
-        this.stateManager.setState(ENEMY_STATES.HEALTH, this.health);
-        
-        // Emit health changed event
+        // Emit health changed event - state synchronization handled by effects
         this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_HEALTH_CHANGED, {
             enemy: this,
             health: this.health,
@@ -531,13 +569,18 @@ export default class Enemy {
     handleTargetAcquisition(data) {
         const { target } = data;
         
-        // Update state manager
-        this.stateManager.setState(ENEMY_STATES.TARGET, target);
-        
         // Change AI state to attacking if we have a target
         if (target) {
             this.aiState = AI_STATES.ATTACKING;
+            
+            // Emit target acquisition event - state synchronization handled by effects
+            this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_AI_TARGET_ACQUIRED, {
+                enemy: this,
+                target: target
+            });
         }
+        
+        // State synchronization handled by effects in setupEffects method
     }
     
     /**
