@@ -33,7 +33,17 @@ describe('Enemy', () => {
         height: 30
       },
       addBullet: vi.fn(),
-      addEffect: vi.fn()
+      addEffect: vi.fn(),
+      eventDispatcher: {
+        emit: vi.fn(),
+        on: vi.fn().mockReturnValue(() => {}), // Mock remove listener function
+        off: vi.fn()
+      },
+      stateManager: {
+        setState: vi.fn(),
+        getState: vi.fn(),
+        clearState: vi.fn()
+      }
     }
   })
 
@@ -496,16 +506,6 @@ describe('Enemy', () => {
         expect(mockStateManager.setState).toHaveBeenCalledWith('enemy.behavior', 'aggressive')
         expect(mockStateManager.setState).toHaveBeenCalledWith('enemy.aiState', 'spawning')
       })
-
-      it('should work without event systems (backward compatibility)', () => {
-        const legacyEnemy = new Enemy(mockGame, 700, 200, 'fighter')
-        
-        expect(legacyEnemy.eventDispatcher).toBeUndefined()
-        expect(legacyEnemy.stateManager).toBeUndefined()
-        expect(legacyEnemy.eventListeners).toBeInstanceOf(Set)
-        expect(legacyEnemy.aiState).toBe('spawning')
-        expect(legacyEnemy.behavior).toBe('aggressive')
-      })
     })
 
     describe('Event-Driven Update', () => {
@@ -523,25 +523,14 @@ describe('Enemy', () => {
         })
       })
 
-      it('should use legacy update when no event dispatcher', () => {
-        const legacyEnemy = new Enemy(mockGame, 700, 200, 'fighter')
-        const originalMove = legacyEnemy.move
-        legacyEnemy.move = vi.fn()
-        
-        legacyEnemy.update(1000)
-        
-        expect(legacyEnemy.move).toHaveBeenCalledWith(1000)
-        expect(legacyEnemy.shootTimer).toBe(1000)
-      })
-
       it('should emit OFF_SCREEN event when enemy goes off screen', () => {
         eventDrivenEnemy.x = -150
         eventDrivenEnemy.update(1000)
         
         expect(mockEventDispatcher.emit).toHaveBeenCalledWith('enemy.off.screen', {
           enemy: eventDrivenEnemy,
-          x: -150,
-          y: 200
+          x: eventDrivenEnemy.x, // Use actual position after movement
+          y: eventDrivenEnemy.y
         })
         expect(eventDrivenEnemy.markedForDeletion).toBe(true)
       })
@@ -769,37 +758,6 @@ describe('Enemy', () => {
           type: 'fighter',
           x: 700,
           y: 200
-        })
-      })
-
-      it('should handle cleanup gracefully without event dispatcher', () => {
-        const legacyEnemy = new Enemy(mockGame, 700, 200, 'fighter')
-        
-        expect(() => legacyEnemy.cleanup()).not.toThrow()
-      })
-    })
-
-    describe('Backward Compatibility', () => {
-      it('should maintain all legacy functionality', () => {
-        const legacyEnemy = new Enemy(mockGame, 700, 200, 'fighter')
-        
-        // All legacy methods should still work
-        expect(() => legacyEnemy.update(1000)).not.toThrow()
-        expect(() => legacyEnemy.move(1000)).not.toThrow()
-        expect(() => legacyEnemy.shoot()).not.toThrow()
-        expect(() => legacyEnemy.takeDamage(10)).not.toThrow()
-        expect(() => legacyEnemy.cleanup()).not.toThrow()
-      })
-
-      it('should emit events from legacy methods when event dispatcher is available', () => {
-        const hybridEnemy = new Enemy(eventDrivenGame, 700, 200, 'fighter')
-        vi.clearAllMocks()
-        
-        hybridEnemy.takeDamage(10)
-        
-        expect(mockEventDispatcher.emit).toHaveBeenCalledWith('enemy.damaged', {
-          enemy: hybridEnemy,
-          damage: 10
         })
       })
     })

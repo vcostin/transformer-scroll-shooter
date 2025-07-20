@@ -2,7 +2,17 @@
  * Enemy Base Class - Event-Driven Architecture
  * 
  * Base class for all enemy types in the game.
- * Provides common functionality for movement, shooting, and rendering.
+ * Provides common function        // Check for off-screen or death conditions
+        if (this.x < OFF_SCREEN_BOUNDARY || this.health <= 0) {
+            if (this.x < OFF_SCREEN_BOUNDARY) {
+                this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_OFF_SCREEN, {
+                    enemy: this,
+                    x: this.x,
+                    y: this.y
+                });
+            }
+            this.markedForDeletion = true;
+        }ent, shooting, and rendering.
  * Uses event-driven architecture for AI updates, state management, and communication.
  */
 
@@ -36,27 +46,21 @@ export default class Enemy {
         this.stateManager = game.stateManager;
         this.eventListeners = new Set();
         
-        // Initialize event listeners if event dispatcher is available
-        if (this.eventDispatcher) {
-            this.setupEventListeners();
-        }
+        // Initialize event listeners
+        this.setupEventListeners();
         
-        // Initialize state if state manager is available
-        if (this.stateManager) {
-            this.initializeState();
-        }
+        // Initialize state
+        this.initializeState();
         
         // Emit creation event
-        if (this.eventDispatcher) {
-            this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_CREATED, {
-                enemy: this,
-                type: this.type,
-                x: this.x,
-                y: this.y,
-                health: this.health,
-                maxHealth: this.maxHealth
-            });
-        }
+        this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_CREATED, {
+            enemy: this,
+            type: this.type,
+            x: this.x,
+            y: this.y,
+            health: this.health,
+            maxHealth: this.maxHealth
+        });
     }
     
     setupType() {
@@ -128,30 +132,35 @@ export default class Enemy {
     }
     
     update(deltaTime) {
-        // Event-driven update (preferred)
-        if (this.eventDispatcher) {
-            this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_AI_UPDATE, {
-                enemy: this,
-                deltaTime: deltaTime
-            });
-        } else {
-            this.legacyUpdate(deltaTime);
+        // Move towards player
+        this.move(deltaTime);
+        
+        // Update timers
+        this.shootTimer += deltaTime;
+        this.moveTimer += deltaTime;
+        
+        // Handle shooting
+        if (this.shootTimer > this.shootRate) {
+            this.shoot();
+            this.shootTimer = 0;
         }
+        
+        // Event-driven update
+        this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_AI_UPDATE, {
+            enemy: this,
+            deltaTime: deltaTime
+        });
         
         // Check for off-screen or death conditions
         if (this.x < OFF_SCREEN_BOUNDARY || this.health <= 0) {
-            if (this.eventDispatcher) {
-                if (this.x < OFF_SCREEN_BOUNDARY) {
-                    this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_OFF_SCREEN, {
-                        enemy: this,
-                        x: this.x,
-                        y: this.y
-                    });
-                }
-                this.markedForDeletion = true;
-            } else {
-                this.markedForDeletion = true;
+            if (this.x < OFF_SCREEN_BOUNDARY) {
+                this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_OFF_SCREEN, {
+                    enemy: this,
+                    x: this.x,
+                    y: this.y
+                });
             }
+            this.markedForDeletion = true;
         }
     }
     
@@ -279,24 +288,22 @@ export default class Enemy {
         
         // Emit movement events if position changed
         if (this.x !== previousX || this.y !== previousY) {
-            if (this.eventDispatcher) {
-                this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_POSITION_CHANGED, {
-                    enemy: this,
-                    x: this.x,
-                    y: this.y,
-                    previousX,
-                    previousY,
-                    type: this.type
-                });
-                this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_MOVED, {
-                    enemy: this,
-                    x: this.x,
-                    y: this.y,
-                    previousX,
-                    previousY,
-                    type: this.type
-                });
-            }
+            this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_POSITION_CHANGED, {
+                enemy: this,
+                x: this.x,
+                y: this.y,
+                previousX,
+                previousY,
+                type: this.type
+            });
+            this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_MOVED, {
+                enemy: this,
+                x: this.x,
+                y: this.y,
+                previousX,
+                previousY,
+                type: this.type
+            });
         }
     }
     
@@ -328,38 +335,58 @@ export default class Enemy {
             this.game.addBullet(bullet);
             
             // Emit shooting event
-            if (this.eventDispatcher) {
-                this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_SHOT, {
-                    enemy: this,
-                    bullet: bullet,
-                    x: this.x,
-                    y: this.y + this.height / 2,
-                    velocityX,
-                    velocityY,
-                    target: player,
-                    type: this.type
-                });
-            }
+            this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_SHOT, {
+                enemy: this,
+                bullet: bullet,
+                x: this.x,
+                y: this.y + this.height / 2,
+                velocityX,
+                velocityY,
+                target: player,
+                type: this.type
+            });
             
             // Update state manager
-            if (this.stateManager) {
-                this.stateManager.setState(ENEMY_STATES.SHOOT_TIMER, this.shootTimer);
-            }
+            this.stateManager.setState(ENEMY_STATES.SHOOT_TIMER, this.shootTimer);
         }
     }
     
     takeDamage(damage) {
-        // Event-driven damage handling (preferred)
-        if (this.eventDispatcher) {
-            this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_DAMAGED, {
+        const oldHealth = this.health;
+        
+        // Apply damage directly
+        this.health -= damage;
+        
+        // Update state manager
+        this.stateManager.setState(ENEMY_STATES.HEALTH, this.health);
+        
+        // Emit damage event
+        this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_DAMAGED, {
+            enemy: this,
+            damage: damage
+        });
+        
+        // Emit health changed event
+        this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_HEALTH_CHANGED, {
+            enemy: this,
+            health: this.health,
+            maxHealth: this.maxHealth,
+            previousHealth: oldHealth,
+            damage: damage
+        });
+        
+        // Check for critical health
+        if (this.health <= this.maxHealth * CRITICAL_HEALTH_THRESHOLD && this.health > 0) {
+            this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_HEALTH_CRITICAL, {
                 enemy: this,
-                damage: damage
+                health: this.health,
+                maxHealth: this.maxHealth
             });
-        } else {
-            this.health -= damage;
-            if (this.health <= 0) {
-                this.cleanup();
-            }
+        }
+        
+        // Check for death
+        if (this.health <= 0) {
+            this.die();
         }
     }
     
@@ -391,16 +418,14 @@ export default class Enemy {
      * Initialize state in state manager
      */
     initializeState() {
-        if (this.stateManager) {
-            this.stateManager.setState(ENEMY_STATES.HEALTH, this.health);
-            this.stateManager.setState(ENEMY_STATES.POSITION, { x: this.x, y: this.y });
-            this.stateManager.setState(ENEMY_STATES.VELOCITY, { x: 0, y: 0 });
-            this.stateManager.setState(ENEMY_STATES.TARGET, null);
-            this.stateManager.setState(ENEMY_STATES.BEHAVIOR, this.behavior);
-            this.stateManager.setState(ENEMY_STATES.SHOOT_TIMER, this.shootTimer);
-            this.stateManager.setState(ENEMY_STATES.MOVE_TIMER, this.moveTimer);
-            this.stateManager.setState(ENEMY_STATES.AI_STATE, this.aiState);
-        }
+        this.stateManager.setState(ENEMY_STATES.HEALTH, this.health);
+        this.stateManager.setState(ENEMY_STATES.POSITION, { x: this.x, y: this.y });
+        this.stateManager.setState(ENEMY_STATES.VELOCITY, { x: 0, y: 0 });
+        this.stateManager.setState(ENEMY_STATES.TARGET, null);
+        this.stateManager.setState(ENEMY_STATES.BEHAVIOR, this.behavior);
+        this.stateManager.setState(ENEMY_STATES.SHOOT_TIMER, this.shootTimer);
+        this.stateManager.setState(ENEMY_STATES.MOVE_TIMER, this.moveTimer);
+        this.stateManager.setState(ENEMY_STATES.AI_STATE, this.aiState);
     }
     
     /**
@@ -449,9 +474,7 @@ export default class Enemy {
         }
         
         // Update state manager
-        if (this.stateManager) {
-            this.stateManager.setState(ENEMY_STATES.AI_STATE, this.aiState);
-        }
+        this.stateManager.setState(ENEMY_STATES.AI_STATE, this.aiState);
     }
     
     /**
@@ -464,23 +487,19 @@ export default class Enemy {
         this.health -= damage;
         
         // Update state manager
-        if (this.stateManager) {
-            this.stateManager.setState(ENEMY_STATES.HEALTH, this.health);
-        }
+        this.stateManager.setState(ENEMY_STATES.HEALTH, this.health);
         
         // Emit health changed event
-        if (this.eventDispatcher) {
-            this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_HEALTH_CHANGED, {
-                enemy: this,
-                health: this.health,
-                maxHealth: this.maxHealth,
-                previousHealth: oldHealth,
-                damage: damage
-            });
-        }
+        this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_HEALTH_CHANGED, {
+            enemy: this,
+            health: this.health,
+            maxHealth: this.maxHealth,
+            previousHealth: oldHealth,
+            damage: damage
+        });
         
         // Check for critical health
-        if (this.health <= this.maxHealth * CRITICAL_HEALTH_THRESHOLD && this.health > 0 && this.eventDispatcher) {
+        if (this.health <= this.maxHealth * CRITICAL_HEALTH_THRESHOLD && this.health > 0) {
             this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_HEALTH_CRITICAL, {
                 enemy: this,
                 health: this.health,
@@ -501,9 +520,7 @@ export default class Enemy {
         const { target } = data;
         
         // Update state manager
-        if (this.stateManager) {
-            this.stateManager.setState(ENEMY_STATES.TARGET, target);
-        }
+        this.stateManager.setState(ENEMY_STATES.TARGET, target);
         
         // Change AI state to attacking if we have a target
         if (target) {
@@ -518,14 +535,10 @@ export default class Enemy {
         const { bullet } = data;
         
         // Apply damage from bullet
-        if (this.eventDispatcher) {
-            this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_DAMAGED, {
-                enemy: this,
-                damage: bullet.damage || 10
-            });
-        } else {
-            this.takeDamage(bullet.damage || 10);
-        }
+        this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_DAMAGED, {
+            enemy: this,
+            damage: bullet.damage || 10
+        });
     }
     
     /**
@@ -535,14 +548,10 @@ export default class Enemy {
         const { player } = data;
         
         // Deal damage to player and self-destruct
-        if (this.eventDispatcher) {
-            this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_DAMAGED, {
-                enemy: this,
-                damage: this.maxHealth // Self-destruct
-            });
-        } else {
-            this.takeDamage(this.maxHealth);
-        }
+        this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_DAMAGED, {
+            enemy: this,
+            damage: this.maxHealth // Self-destruct
+        });
     }
     
     /**
@@ -552,15 +561,13 @@ export default class Enemy {
         this.aiState = AI_STATES.DYING;
         
         // Emit death event
-        if (this.eventDispatcher) {
-            this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_DIED, {
-                enemy: this,
-                type: this.type,
-                x: this.x,
-                y: this.y,
-                points: this.points
-            });
-        }
+        this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_DIED, {
+            enemy: this,
+            type: this.type,
+            x: this.x,
+            y: this.y,
+            points: this.points
+        });
         
         // Mark for deletion
         this.markedForDeletion = true;
@@ -584,14 +591,12 @@ export default class Enemy {
         }
         
         // Emit destruction event
-        if (this.eventDispatcher) {
-            this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_DESTROYED, {
-                enemy: this,
-                type: this.type,
-                x: this.x,
-                y: this.y
-            });
-        }
+        this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_DESTROYED, {
+            enemy: this,
+            type: this.type,
+            x: this.x,
+            y: this.y
+        });
     }
 
     render(ctx) {
