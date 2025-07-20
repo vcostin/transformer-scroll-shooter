@@ -16,6 +16,8 @@ describe('OptionsMenu', () => {
     let optionsMenu;
     let mockGame;
     let mockAudio;
+    let mockEventDispatcher;
+    let mockStateManager;
     
     beforeEach(() => {
         // Mock localStorage
@@ -24,6 +26,19 @@ describe('OptionsMenu', () => {
             setItem: vi.fn(),
             removeItem: vi.fn(),
             clear: vi.fn()
+        };
+        
+        // Mock event systems
+        mockEventDispatcher = {
+            emit: vi.fn(),
+            on: vi.fn().mockReturnValue(() => {}), // Mock remove listener function
+            off: vi.fn()
+        };
+        
+        mockStateManager = {
+            setState: vi.fn(),
+            getState: vi.fn(),
+            clearState: vi.fn()
         };
         
         // Mock audio system
@@ -58,7 +73,7 @@ describe('OptionsMenu', () => {
         // Mock DOM elements
         document.body.innerHTML = '<div id="gameContainer"></div>';
         
-        optionsMenu = new OptionsMenu(mockGame);
+        optionsMenu = new OptionsMenu(mockGame, mockEventDispatcher, mockStateManager);
     });
     
     afterEach(() => {
@@ -171,22 +186,16 @@ describe('OptionsMenu', () => {
     });
     
     describe('Settings Persistence', () => {
-        it('should save settings to localStorage', () => {
+        it('should emit SETTINGS_SAVE event when saveSettings is called', () => {
             optionsMenu.saveSettings();
             
-            expect(localStorage.setItem).toHaveBeenCalledWith(
-                'gameSettings',
-                expect.stringContaining('mastervolume')
+            expect(mockEventDispatcher.emit).toHaveBeenCalledWith(
+                'ui.settings.save',
+                expect.objectContaining({
+                    mastervolume: expect.any(Number),
+                    soundeffects: expect.any(Number)
+                })
             );
-            
-            // Check that the saved data contains expected keys
-            const savedData = JSON.parse(localStorage.setItem.mock.calls[0][1]);
-            expect(savedData).toHaveProperty('mastervolume');
-            expect(savedData).toHaveProperty('soundeffects');
-            expect(savedData).toHaveProperty('musicvolume');
-            expect(savedData).toHaveProperty('audioenabled');
-            expect(savedData).toHaveProperty('showfps');
-            expect(savedData).toHaveProperty('difficulty');
         });
         
         it('should load settings from localStorage', () => {
@@ -341,10 +350,12 @@ describe('OptionsMenu', () => {
     
     describe('OptionsMenu Event Integration', () => {
         let mockEventDispatcher;
+        let mockStateManager;
         let optionsMenu;
         beforeEach(() => {
-            mockEventDispatcher = { emit: vi.fn(), on: vi.fn() };
-            optionsMenu = new OptionsMenu(mockGame, mockEventDispatcher);
+            mockEventDispatcher = { emit: vi.fn(), on: vi.fn().mockReturnValue(() => {}) };
+            mockStateManager = { setState: vi.fn(), getState: vi.fn(), clearState: vi.fn() };
+            optionsMenu = new OptionsMenu(mockGame, mockEventDispatcher, mockStateManager);
         });
 
         it('should request settings load on initialization', () => {

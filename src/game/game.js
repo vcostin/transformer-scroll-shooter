@@ -52,7 +52,7 @@ export class Game {
         this.stateManager = stateManager;
         this.audio = new AudioManager();
         this.effectManager = new EffectManager(this.eventDispatcher);
-        this.options = new OptionsMenu(this);
+        this.options = new OptionsMenu(this, this.eventDispatcher, this.stateManager);
         
         // Additional properties that need to be available
         this.enemiesPerLevel = GAME_CONSTANTS.ENEMIES_PER_LEVEL;
