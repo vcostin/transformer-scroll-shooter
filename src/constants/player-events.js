@@ -28,6 +28,8 @@ export const PLAYER_EVENTS = {
     // Mode-specific events
     PLAYER_MODE_CHANGED: 'player.mode.changed',
     PLAYER_MODE_COOLDOWN_READY: 'player.mode.cooldown.ready',
+    PLAYER_SHOOT_COOLDOWN_CHANGED: 'player.shoot.cooldown.changed',
+    PLAYER_TRANSFORM_COOLDOWN_CHANGED: 'player.transform.cooldown.changed',
     
     // Health events
     PLAYER_HEALTH_CHANGED: 'player.health.changed',

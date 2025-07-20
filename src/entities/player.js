@@ -9,7 +9,9 @@
 import Bullet from '@/entities/bullet.js';
 import { TransformEffect } from '@/rendering/effects.js';
 import { PLAYER_EVENTS, PLAYER_STATES, MOVE_DIRECTIONS } from '@/constants/player-events.js';
+import { GAME_EVENTS } from '@/constants/game-events.js';
 import * as MathUtils from '@/utils/math.js';
+import { EffectManager } from '@/systems/EffectManager.js';
 
 export default class Player {
     constructor(game, x, y) {
@@ -139,41 +141,47 @@ export default class Player {
     }
     
     /**
-     * Initialize player state in state manager
+     * Initialize player state using EffectManager
      */
     initializeState() {
-        if (this.stateManager) {
-            this.stateManager.setState(PLAYER_STATES.HEALTH, this.health);
-            this.stateManager.setState(PLAYER_STATES.POSITION, { x: this.x, y: this.y });
-            this.stateManager.setState(PLAYER_STATES.MODE, this.mode);
-            this.stateManager.setState(PLAYER_STATES.SPEED, this.speed);
-            this.stateManager.setState(PLAYER_STATES.SHOOT_RATE, this.currentShootRate);
-            this.stateManager.setState(PLAYER_STATES.POWERUPS, this.activePowerups);
-            this.stateManager.setState(PLAYER_STATES.SHIELD, this.shield);
-            this.stateManager.setState(PLAYER_STATES.TRANSFORM_COOLDOWN, this.transformCooldown);
-            this.stateManager.setState(PLAYER_STATES.SHOOT_COOLDOWN, this.shootCooldown);
+        if (this.stateManager && this.eventDispatcher) {
+            // Use the game's EffectManager instead of creating a new one
+            const effectManager = this.game.effectManager;
+            if (effectManager) {
+                effectManager.initializeEntityState({
+                    stateManager: this.stateManager,
+                    initialState: {
+                        'HEALTH': this.health,
+                        'POSITION': { x: this.x, y: this.y },
+                        'MODE': this.mode,
+                        'SPEED': this.speed,
+                        'SHOOT_RATE': this.currentShootRate
+                    }
+                });
+                // Emit the event to trigger the effect
+                this.eventDispatcher.emit(GAME_EVENTS.ENTITY_STATE_INIT);
+            }
         }
     }
     
     update(deltaTime, keys) {
-        // Legacy key-based movement for backward compatibility
         if (keys) {
             this.handleMovement(deltaTime, keys);
         }
-        
+
         // Update cooldowns
         this.shootCooldown = Math.max(0, this.shootCooldown - deltaTime);
         this.transformCooldown = Math.max(0, this.transformCooldown - deltaTime);
-        
+
         // Update power-ups
         this.updatePowerups(deltaTime);
-        
-        // Update state manager with cooldown changes
-        if (this.stateManager) {
-            this.stateManager.setState(PLAYER_STATES.SHOOT_COOLDOWN, this.shootCooldown);
-            this.stateManager.setState(PLAYER_STATES.TRANSFORM_COOLDOWN, this.transformCooldown);
+
+        // Emit events for cooldown changes (handled by EffectManager)
+        if (this.eventDispatcher) {
+            this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_SHOOT_COOLDOWN_CHANGED, { value: this.shootCooldown });
+            this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_TRANSFORM_COOLDOWN_CHANGED, { value: this.transformCooldown });
         }
-        
+
         // Check if dead
         if (this.health <= 0) {
             this.game.gameOver = true;
@@ -207,15 +215,10 @@ export default class Player {
         this.x = MathUtils.clamp(this.x, 0, this.game.width - this.width);
         this.y = MathUtils.clamp(this.y, 0, this.game.height - this.height);
         
-        // Emit events and update state
+        // Emit events for movement and position (handled by EffectManager)
         if (this.x !== previousX || this.y !== previousY) {
-            // Update state manager
-            if (this.stateManager) {
-                this.stateManager.setState(PLAYER_STATES.POSITION, { x: this.x, y: this.y });
-            }
-            
-            // Emit movement event
             if (this.eventDispatcher) {
+                this.eventDispatcher.emit('PLAYER_POSITION_CHANGED', { x: this.x, y: this.y });
                 this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_MOVED, {
                     x: this.x,
                     y: this.y,
@@ -304,6 +307,7 @@ export default class Player {
         // Only emit moved event if position actually changed
         if (this.x !== previousX || this.y !== previousY) {
             if (this.eventDispatcher) {
+                this.eventDispatcher.emit('PLAYER_POSITION_CHANGED', { x: this.x, y: this.y });
                 this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_MOVED, {
                     x: this.x,
                     y: this.y,
@@ -311,34 +315,21 @@ export default class Player {
                     previousY
                 });
             }
-            
-            // Update state manager
-            if (this.stateManager) {
-                this.stateManager.setState(PLAYER_STATES.POSITION, { x: this.x, y: this.y });
-            }
         }
     }
     
     shoot() {
         if (this.shootCooldown <= 0) {
             const props = this.modeProperties[this.mode];
-            
             // Play shoot sound
             this.game.audio.playSound('shoot', 0.6);
-            
             // Create bullets based on current mode and power-ups
             const bullets = this.createBullets();
             bullets.forEach(bullet => this.game.addBullet(bullet));
-            
             this.shootCooldown = this.currentShootRate;
-            
-            // Update state manager for backward compatibility
-            if (this.stateManager) {
-                this.stateManager.setState(PLAYER_STATES.SHOOT_COOLDOWN, this.shootCooldown);
-            }
-            
-            // Emit event for consistency (backward compatibility bridge)
+            // Emit event for shoot cooldown change (handled by EffectManager)
             if (this.eventDispatcher) {
+                this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_SHOOT_COOLDOWN_CHANGED, { value: this.shootCooldown });
                 this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_SHOT, {
                     x: this.x + this.width,
                     y: this.y + this.height / 2,
@@ -431,7 +422,6 @@ export default class Player {
             // Add transform effect
             this.game.addEffect(new TransformEffect(this.game, this.x, this.y));
             
-            // Update state manager for backward compatibility
             if (this.stateManager) {
                 this.stateManager.setState(PLAYER_STATES.MODE, this.mode);
                 this.stateManager.setState(PLAYER_STATES.SPEED, this.speed);
@@ -439,7 +429,6 @@ export default class Player {
                 this.stateManager.setState(PLAYER_STATES.TRANSFORM_COOLDOWN, this.transformCooldown);
             }
             
-            // Emit event for consistency (backward compatibility bridge)
             if (this.eventDispatcher) {
                 this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_TRANSFORMED, {
                     oldMode,
@@ -599,7 +588,6 @@ export default class Player {
     }
     
     /**
-     * Take damage - backward compatibility bridge method
      * This method provides compatibility with the collision system
      * @param {number} damage - Amount of damage to take
      */

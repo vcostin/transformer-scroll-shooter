@@ -26,6 +26,7 @@ export const GAME_EVENTS = {
     ENTITY_SPAWN: 'entity:spawn',
     ENTITY_UPDATE: 'entity:update',
     ENTITY_DESTROY: 'entity:destroy',
+    ENTITY_STATE_INIT: 'entity:state:init',
     
     // Player events
     PLAYER_MOVE: 'player:move',

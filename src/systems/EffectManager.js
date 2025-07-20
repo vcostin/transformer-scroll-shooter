@@ -1,5 +1,6 @@
 import { EffectContext } from '@/systems/EffectContext.js';
 import { PatternMatcher } from '@/utils/PatternMatcher.js';
+import { GAME_EVENTS } from '@/constants/game-events.js';
 
 /**
  * EffectManager - Coordinates side effects execution
@@ -158,11 +159,9 @@ export class EffectManager {
   _triggerEffects(eventName, data) {
     // Get matches using the advanced PatternMatcher
     const matchingPatterns = this.patternMatcher.getMatches(eventName);
-    
     if (matchingPatterns.length === 0) {
       return;
     }
-
     this._debug(`Triggering ${matchingPatterns.length} effects for event '${eventName}'`);
 
     const toRemove = [];
@@ -414,5 +413,19 @@ export class EffectManager {
     if (this.debugMode) {
       console.log('[EffectManager]', ...args);
     }
+  }
+
+  /**
+   * Initialize entity state in state manager
+   * @param {Object} config - Configuration object
+   * @param {Object} config.stateManager - State manager instance
+   * @param {Object} config.initialState - Initial state values
+   */
+  initializeEntityState({ stateManager, initialState }) {
+    this.effect(GAME_EVENTS.ENTITY_STATE_INIT, () => {
+      Object.entries(initialState).forEach(([key, value]) => {
+        stateManager.setState(key, value);
+      });
+    });
   }
 }

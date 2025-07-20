@@ -65,12 +65,16 @@ export class UIManager {
             this.stateManager
         );
         
-        // Initialize display manager
-        this.displayManager = new DisplayManager(
-            this.game.canvas,
-            this.eventDispatcher,
-            this.stateManager
-        );
+        // Initialize display manager if canvas available
+        if (this.game && this.game.canvas) {
+            this.displayManager = new DisplayManager(
+                this.game.canvas,
+                this.eventDispatcher,
+                this.stateManager
+            );
+        } else {
+            this.displayManager = null;
+        }
     }
     
     /**
@@ -260,12 +264,12 @@ export class UIManager {
      * Handle menu opened
      */
     handleMenuOpened(data) {
-        // Update UI state
-        this.stateManager.setState(UI_STATE_KEYS.MENU_OPEN, true);
-        this.stateManager.setState(UI_STATE_KEYS.MENU_TYPE, data.menuType);
+        // Emit state change events
+        this.eventDispatcher.emit(UI_EVENTS.STATE_CHANGED, { key: UI_STATE_KEYS.MENU_OPEN, value: true });
+        this.eventDispatcher.emit(UI_EVENTS.STATE_CHANGED, { key: UI_STATE_KEYS.MENU_TYPE, value: data.menuType });
         
-        // Show notification
-        if (this.displayManager) {
+         // Show notification
+         if (this.displayManager) {
             this.displayManager.createNotification(
                 `${data.menuType} menu opened`,
                 'info',
@@ -278,12 +282,12 @@ export class UIManager {
      * Handle menu closed
      */
     handleMenuClosed(data) {
-        // Update UI state
-        this.stateManager.setState(UI_STATE_KEYS.MENU_OPEN, false);
-        this.stateManager.setState(UI_STATE_KEYS.MENU_TYPE, null);
+        // Emit state change events
+        this.eventDispatcher.emit(UI_EVENTS.STATE_CHANGED, { key: UI_STATE_KEYS.MENU_OPEN, value: false });
+        this.eventDispatcher.emit(UI_EVENTS.STATE_CHANGED, { key: UI_STATE_KEYS.MENU_TYPE, value: null });
         
-        // Show notification
-        if (this.displayManager) {
+         // Show notification
+         if (this.displayManager) {
             this.displayManager.createNotification(
                 `${data.menuType} menu closed`,
                 'info',

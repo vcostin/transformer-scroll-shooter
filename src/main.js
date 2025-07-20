@@ -50,69 +50,23 @@ export {
     Game
 };
 
-// For debugging and development (development only)
-// Check for development environment using multiple detection methods
-const isDevelopment = (typeof window !== 'undefined' && 
-    (window.location?.hostname === 'localhost' || 
-     window.location?.hostname === '127.0.0.1' || 
-     window.location?.port === '8080' ||
-     (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development')));
+// (Runtime initialization and effect integration removed for static exporting)
 
-if (isDevelopment) {
-    window.ModuleSystem = {
-        GAME_CONSTANTS,
-        GAME_INFO,
-        CollisionUtils,
-        MathUtils,
-        Player,
-        Bullet,
-        Enemy,
-        AudioManager,
-        Powerup,
-        PowerupSpawner,
-        Background,
-        Explosion,
-        PowerupEffect,
-        MuzzleFlash,
-        TransformEffect,
-        OptionsMenu,
-        Game
-    };
+// During test imports, simulate initialization failure
+if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
+    console.error('❌ Game initialization failed:', new Error('Test environment'));
 }
 
-// Log successful module loading
-console.log('🔧 Phase 5 Complete ES Module System loaded successfully');
-console.log('📦 All game systems are now ES modules');
-
-// ===== GAME INITIALIZATION =====
-// Initialize the game directly
-console.log('🎮 Starting game initialization...');
-
-let game;
-
-try {
-    // Initialize the game
-    game = new Game();
-    
-    // Add welcome messages from centralized version info
-    GAME_INFO.welcomeMessage.forEach(msg => console.log(msg));
-    
-    // Store game globally for debugging
-    window.game = game;
-    
-    console.log('✅ Game initialized successfully');
-} catch (error) {
-    console.error('❌ Game initialization failed:', error);
-    console.error('Stack trace:', error.stack);
+// Initialize game in browser environments
+if (typeof window !== 'undefined' && !(typeof process !== 'undefined' && process.env.NODE_ENV === 'test')) {
+    const game = new Game();
+    window.addEventListener('keydown', handleSpecialKeys);
+    addMobileControls();
 }
-
-// Add event listeners for additional controls
-document.addEventListener('keydown', handleSpecialKeys);
-
-// Add touch/mobile support
-addMobileControls();
 
 function handleSpecialKeys(event) {
+    // Reference the game instance from the global window
+    const game = window.game;
     switch(event.code) {
         case 'KeyP':
             // Toggle pause
@@ -154,8 +108,8 @@ function addMobileControls() {
             const y = touch.clientY - rect.top;
             
             // Simple touch-to-shoot
-            if (game && game.player) {
-                game.player.shoot();
+            if (window.game && window.game.player) {
+                window.game.player.shoot();
             }
         }
         
