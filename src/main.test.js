@@ -154,7 +154,17 @@ describe('Main Entry Point', () => {
                 height: 600,
                 bullets: [],
                 effects: [],
-                player: { x: 400, y: 300, width: 30, height: 30 }
+                player: { x: 400, y: 300, width: 30, height: 30 },
+                audio: { playSound: () => {} },
+                addBullet: () => {},
+                addEffect: () => {},
+                // Event-driven architecture dependencies (now required)
+                eventDispatcher: new mainModule.EventDispatcher(),
+                stateManager: new mainModule.StateManager(),
+                effectManager: new mainModule.EffectManager({ 
+                    eventDispatcher: new mainModule.EventDispatcher(), 
+                    stateManager: new mainModule.StateManager() 
+                })
             };
             
             // Test entity creation

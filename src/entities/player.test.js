@@ -50,7 +50,11 @@ describe('Player', () => {
       },
       addBullet: vi.fn(),
       addEffect: vi.fn(),
-      delta: 16 // 60 FPS
+      delta: 16, // 60 FPS
+      // Event-driven architecture dependencies (now required)
+      eventDispatcher: new EventDispatcher(),
+      stateManager: new StateManager(),
+      effectManager: new EffectManager({ eventDispatcher: new EventDispatcher(), stateManager: new StateManager() })
     }
     
     player = new Player(mockGame, 100, 300)
@@ -363,20 +367,16 @@ describe('Player', () => {
             // Removed: legacy state assertion no longer valid in event-driven architecture
         })
 
-        it('should work without event dispatcher (graceful degradation)', () => {
-            // Create player without event dispatcher
+        it('should require event dispatcher and state manager (no more graceful degradation)', () => {
+            // Create player without event dispatcher should fail
             const mockGameNoEvents = { ...mockGame }
             delete mockGameNoEvents.eventDispatcher
             delete mockGameNoEvents.stateManager
             
-            const playerNoEvents = new Player(mockGameNoEvents, 100, 300)
-            
-            // Should not throw errors
+            // Should throw errors as event systems are now required
             expect(() => {
-                playerNoEvents.shoot()
-                playerNoEvents.transform()
-                playerNoEvents.handleMovement(16, { 'KeyW': true })
-            }).not.toThrow()
+                new Player(mockGameNoEvents, 100, 300)
+            }).toThrow()
         })
     })
 

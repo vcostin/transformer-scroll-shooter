@@ -24,18 +24,6 @@ export class Game {
         this.width = this.canvas.width;
         this.height = this.canvas.height;
         
-        // Game state
-        this.score = 0;
-        this.gameOver = false;
-        this.paused = false;
-        this.showFPS = false;
-        this.difficulty = 'Normal';
-        this.level = 1;
-        this.enemiesKilled = 0;
-        this.enemiesPerLevel = GAME_CONSTANTS.ENEMIES_PER_LEVEL;
-        this.bossActive = false;
-        this.bossSpawnedThisLevel = false;
-        
         // Game objects
         this.player = null;
         this.enemies = [];
@@ -66,6 +54,9 @@ export class Game {
         this.effectManager = new EffectManager(this.eventDispatcher);
         this.options = new OptionsMenu(this);
         
+        // Additional properties that need to be available
+        this.enemiesPerLevel = GAME_CONSTANTS.ENEMIES_PER_LEVEL;
+        
         // Frame counter for events
         this.frameNumber = 0;
         
@@ -79,11 +70,56 @@ export class Game {
         this.keys = {};
         this.setupInput();
         
+        // Initialize pure event-driven architecture after StateManager is ready
+        this.initializeGameState();
+        
         // Setup event listeners
         this.setupEventListeners();
         
         this.init();
     }
+
+    initializeGameState() {
+        // Initialize all game state through StateManager
+        this.stateManager.setState('game.score', 0);
+        this.stateManager.setState('game.gameOver', false);
+        this.stateManager.setState('game.paused', false);
+        this.stateManager.setState('game.showFPS', false);
+        this.stateManager.setState('game.difficulty', 'Normal');
+        this.stateManager.setState('game.level', 1);
+        this.stateManager.setState('game.enemiesKilled', 0);
+        this.stateManager.setState('game.enemiesPerLevel', GAME_CONSTANTS.ENEMIES_PER_LEVEL);
+        this.stateManager.setState('game.bossActive', false);
+        this.stateManager.setState('game.bossSpawnedThisLevel', false);
+    }
+
+    // Backward compatibility getters - migrate to direct StateManager access over time
+    get score() { return this.stateManager.getState('game.score'); }
+    set score(value) { this.stateManager.setState('game.score', value); }
+    
+    get gameOver() { return this.stateManager.getState('game.gameOver'); }
+    set gameOver(value) { this.stateManager.setState('game.gameOver', value); }
+    
+    get paused() { return this.stateManager.getState('game.paused'); }
+    set paused(value) { this.stateManager.setState('game.paused', value); }
+    
+    get level() { return this.stateManager.getState('game.level'); }
+    set level(value) { this.stateManager.setState('game.level', value); }
+    
+    get enemiesKilled() { return this.stateManager.getState('game.enemiesKilled'); }
+    set enemiesKilled(value) { this.stateManager.setState('game.enemiesKilled', value); }
+    
+    get showFPS() { return this.stateManager.getState('game.showFPS'); }
+    set showFPS(value) { this.stateManager.setState('game.showFPS', value); }
+    
+    get difficulty() { return this.stateManager.getState('game.difficulty'); }
+    set difficulty(value) { this.stateManager.setState('game.difficulty', value); }
+    
+    get bossActive() { return this.stateManager.getState('game.bossActive'); }
+    set bossActive(value) { this.stateManager.setState('game.bossActive', value); }
+    
+    get bossSpawnedThisLevel() { return this.stateManager.getState('game.bossSpawnedThisLevel'); }
+    set bossSpawnedThisLevel(value) { this.stateManager.setState('game.bossSpawnedThisLevel', value); }
     
     setupEventListeners() {
         // Core game state event listeners

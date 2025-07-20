@@ -18,6 +18,9 @@ import Enemy from '@/entities/enemies/enemy.js';
 // Import game systems
 import { AudioManager } from '@/systems/audio.js';
 import { Powerup, PowerupSpawner } from '@/systems/powerups.js';
+import { EventDispatcher } from '@/systems/EventDispatcher.js';
+import { StateManager } from '@/systems/StateManager.js';
+import { EffectManager } from '@/systems/EffectManager.js';
 
 // Import rendering systems
 import { Background } from '@/rendering/background.js';
@@ -41,6 +44,9 @@ export {
     AudioManager,
     Powerup,
     PowerupSpawner,
+    EventDispatcher,
+    StateManager,
+    EffectManager,
     Background,
     Explosion,
     PowerupEffect,
