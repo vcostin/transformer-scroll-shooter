@@ -165,7 +165,7 @@ export class Game {
         this.player = new Player(this, 100, this.height / 2);
         this.background = new Background(this);
         
-        // Store global reference for debugging and legacy code access
+        // Store global reference for debugging and development tools
         window.game = this;
         
         // Emit game start event
