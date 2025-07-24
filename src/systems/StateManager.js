@@ -24,6 +24,7 @@ import {
 } from './StateUtils.js';
 import { validateValue as validateValueUtil } from './StateValidation.js';
 import { StateHistory } from './StateHistory.js';
+import { StateSubscriptions } from './StateSubscriptions.js';
 
 /**
  * StateManager class for centralized state management
@@ -68,11 +69,12 @@ export class StateManager {
             }
         });
 
-        // Subscriptions for state changes
-        this.subscriptions = new Map();
-        
-        // Subscription index for O(1) unsubscribe performance
-        this.subscriptionIndex = new Map();
+        // State subscriptions management
+        this.stateSubscriptions = new StateSubscriptions({
+            enableDebug: this.options.enableDebug
+        }, {
+            onGetState: (path) => this.getState(path)
+        });
 
         // Performance tracking
         this.stats = {
@@ -197,7 +199,7 @@ export class StateManager {
 
             // Trigger subscriptions
             if (!updateOptions.silent) {
-                this.triggerSubscriptions(path, value, oldValue);
+                this.stateSubscriptions.triggerSubscriptions(path, value, oldValue);
             }
 
             if (this.options.enableDebug) {
@@ -325,7 +327,7 @@ export class StateManager {
 
                 // Trigger subscriptions for all changed paths
                 for (const change of changes) {
-                    this.triggerSubscriptions(change.path, change.value, change.oldValue);
+                    this.stateSubscriptions.triggerSubscriptions(change.path, change.value, change.oldValue);
                 }
             }
 
@@ -401,49 +403,7 @@ export class StateManager {
      * @returns {Function} Unsubscribe function
      */
     subscribe(path, callback, options = {}) {
-        if (typeof callback !== 'function') {
-            throw new Error('Callback must be a function');
-        }
-
-        const subscriptionOptions = {
-            immediate: false,
-            deep: true,
-            ...options
-        };
-
-        const subscriptionId = `${path}_${Date.now()}_${Math.random()}`;
-        const subscription = {
-            id: subscriptionId,
-            path,
-            callback,
-            options: subscriptionOptions
-        };
-
-        // Add to subscriptions map
-        if (!this.subscriptions.has(path)) {
-            this.subscriptions.set(path, []);
-        }
-        const subscriptions = this.subscriptions.get(path);
-        subscriptions.push(subscription);
-        
-        // Add to subscription index for O(1) unsubscribe
-        this.subscriptionIndex.set(subscriptionId, {
-            path,
-            index: subscriptions.length - 1
-        });
-
-        // Call immediately if requested
-        if (subscriptionOptions.immediate) {
-            const currentValue = this.getState(path);
-            callback(currentValue, undefined, path);
-        }
-
-        if (this.options.enableDebug) {
-            console.log(`📡 StateManager: Subscribed to '${path}'`, subscription);
-        }
-
-        // Return unsubscribe function
-        return () => this.unsubscribe(subscriptionId);
+        return this.stateSubscriptions.subscribe(path, callback, options);
     }
 
     /**
@@ -452,43 +412,7 @@ export class StateManager {
      * @returns {boolean} True if subscription was removed
      */
     unsubscribe(subscriptionId) {
-        const subscriptionInfo = this.subscriptionIndex.get(subscriptionId);
-        if (!subscriptionInfo) {
-            return false;
-        }
-        
-        const { path, index } = subscriptionInfo;
-        const subscriptions = this.subscriptions.get(path);
-        
-        if (!subscriptions || index >= subscriptions.length) {
-            return false;
-        }
-        
-        // Remove from subscriptions array (swap with last element to avoid shifting)
-        const lastIndex = subscriptions.length - 1;
-        if (index < lastIndex) {
-            subscriptions[index] = subscriptions[lastIndex];
-            // Update index for the swapped subscription
-            this.subscriptionIndex.set(subscriptions[index].id, {
-                path,
-                index
-            });
-        }
-        subscriptions.pop();
-        
-        // Remove from subscription index
-        this.subscriptionIndex.delete(subscriptionId);
-        
-        // Clean up empty subscription paths
-        if (subscriptions.length === 0) {
-            this.subscriptions.delete(path);
-        }
-        
-        if (this.options.enableDebug) {
-            console.log(`📡 StateManager: Unsubscribed from '${path}'`, subscriptionId);
-        }
-        
-        return true;
+        return this.stateSubscriptions.unsubscribe(subscriptionId);
     }
 
     /**
@@ -558,11 +482,12 @@ export class StateManager {
      */
     getStats() {
         const historyStats = this.stateHistory.getHistoryStats();
+        const subscriptionStats = this.stateSubscriptions.getSubscriptionStats();
         return {
             ...this.stats,
             historySize: historyStats.historySize,
             historyIndex: historyStats.historyIndex,
-            subscriptionCount: Array.from(this.subscriptions.values()).reduce((sum, subs) => sum + subs.length, 0),
+            subscriptionCount: subscriptionStats.totalSubscriptions,
             memoryUsage: this.getMemoryUsage()
         };
     }
@@ -603,7 +528,7 @@ export class StateManager {
         
         // Invalidate memory cache since state changed
         this.invalidateMemoryCache();
-        this.subscriptions.clear();
+        this.stateSubscriptions.clearAll();
         this.stats = {
             totalUpdates: 0,
             totalGets: 0,
@@ -641,41 +566,6 @@ export class StateManager {
             oldValue,
             timestamp: Date.now()
         });
-    }
-
-    /**
-     * Trigger subscriptions for a path change
-     * @private
-     */
-    triggerSubscriptions(path, newValue, oldValue) {
-        // Direct path subscriptions
-        if (this.subscriptions.has(path)) {
-            for (const subscription of this.subscriptions.get(path)) {
-                try {
-                    subscription.callback(newValue, oldValue, path);
-                } catch (error) {
-                    console.error(`StateManager subscription error for '${path}':`, error);
-                }
-            }
-        }
-
-        // Parent path subscriptions (for deep watching)
-        const pathParts = path.split('.');
-        for (let i = pathParts.length - 1; i > 0; i--) {
-            const parentPath = pathParts.slice(0, i).join('.');
-            if (this.subscriptions.has(parentPath)) {
-                for (const subscription of this.subscriptions.get(parentPath)) {
-                    if (subscription.options.deep) {
-                        const currentParentValue = this.getState(parentPath);
-                        try {
-                            subscription.callback(currentParentValue, undefined, parentPath);
-                        } catch (error) {
-                            console.error(`StateManager subscription error for '${parentPath}':`, error);
-                        }
-                    }
-                }
-            }
-        }
     }
 
     /**

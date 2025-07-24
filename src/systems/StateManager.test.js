@@ -538,7 +538,7 @@ describe('StateManager', () => {
             
             // Verify error was logged
             expect(console.error).toHaveBeenCalledWith(
-                expect.stringContaining("StateManager subscription error for 'player.health':"),
+                expect.stringContaining("StateSubscriptions callback error for 'player.health':"),
                 expect.any(Error)
             );
             
