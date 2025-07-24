@@ -25,6 +25,7 @@ import {
 import { validateValue as validateValueUtil } from './StateValidation.js';
 import { StateHistory } from './StateHistory.js';
 import { StateSubscriptions } from './StateSubscriptions.js';
+import { StatePerformance } from './StatePerformance.js';
 
 /**
  * StateManager class for centralized state management
@@ -56,7 +57,7 @@ export class StateManager {
             enableDebug: this.options.enableDebug,
             enableEvents: this.options.enableEvents
         }, {
-            onInvalidateCache: () => this.invalidateMemoryCache(),
+            onInvalidateCache: () => this.statePerformance.invalidateMemoryCache(),
             onEmitEvent: (eventName, payload) => {
                 if (this.options.enableEvents) {
                     this.eventDispatcher.emit(eventName, payload);
@@ -64,7 +65,7 @@ export class StateManager {
             },
             onUpdateStats: (operation) => {
                 if (operation === 'historyOperations') {
-                    this.stats.historyOperations++;
+                    this.statePerformance.recordHistoryOperation();
                 }
             }
         });
@@ -76,19 +77,16 @@ export class StateManager {
             onGetState: (path) => this.getState(path)
         });
 
-        // Performance tracking
-        this.stats = {
-            totalUpdates: 0,
-            totalGets: 0,
-            validationErrors: 0,
-            historyOperations: 0,
-            averageUpdateTime: 0,
-            lastUpdateTime: 0
-        };
-
-        // Cached memory usage tracking
-        this.cachedStateSize = 0;
-        this.memoryCacheValid = false;
+        // Performance tracking and monitoring
+        this.statePerformance = new StatePerformance({
+            enablePerformanceTracking: this.options.enablePerformanceTracking !== false,
+            enableMemoryTracking: this.options.enableMemoryTracking !== false,
+            enableDebug: this.options.enableDebug,
+            memoryUpdateThreshold: this.options.memoryUpdateThreshold || 1000
+        }, {
+            onGetState: () => this.currentState,
+            onGetHistoryMemoryUsage: () => this.stateHistory.getHistoryMemoryUsage()
+        });
 
         // Event dispatcher reference
         this.eventDispatcher = eventDispatcher;
@@ -110,11 +108,7 @@ export class StateManager {
      * @returns {*} State value or undefined if not found
      */
     getState(path = '', options = {}) {
-        const startTime = performance.now();
-        
-        if (!options.skipStats) {
-            this.stats.totalGets++;
-        }
+        this.statePerformance.recordGet(options.skipStats);
 
         try {
             if (!path) {
@@ -131,8 +125,11 @@ export class StateManager {
             }
 
             return result;
-        } finally {
-            this.stats.lastUpdateTime = performance.now() - startTime;
+        } catch (error) {
+            if (this.options.enableDebug) {
+                console.error('StateManager: getState error:', error);
+            }
+            throw error;
         }
     }
 
@@ -163,7 +160,7 @@ export class StateManager {
             if (this.options.enableValidation && !updateOptions.skipValidation) {
                 const validationError = validateValueUtil(path, value, this.currentState);
                 if (validationError) {
-                    this.stats.validationErrors++;
+                    this.statePerformance.recordValidationError();
                     throw new Error(`Validation error for '${path}': ${validationError}`);
                 }
             }
@@ -182,10 +179,7 @@ export class StateManager {
 
             // Update current state
             this.currentState = newState;
-            this.stats.totalUpdates++;
-            
-            // Invalidate memory cache since state changed
-            this.invalidateMemoryCache();
+            this.statePerformance.recordUpdate(startTime);
 
             // Add new state to history after updating
             if (!updateOptions.skipHistory) {
@@ -209,9 +203,6 @@ export class StateManager {
                     updateTime: performance.now() - startTime
                 });
             }
-
-            // Update average time only for successful updates
-            this.updateAverageTime(performance.now() - startTime);
 
             return true;
         } catch (error) {
@@ -333,8 +324,7 @@ export class StateManager {
 
             // Update performance stats
             if (hasChanges) {
-                this.stats.totalUpdates++;
-                this.updateAverageTime(performance.now() - startTime);
+                this.statePerformance.recordUpdate(startTime);
             }
 
             return hasChanges;
@@ -342,7 +332,7 @@ export class StateManager {
         } catch (error) {
             // Rollback on error
             this.currentState = originalState;
-            this.invalidateMemoryCache();
+            this.statePerformance.invalidateMemoryCache();
             
             if (this.options.enableDebug) {
                 console.error('🚨 StateManager: Batch update failed, rolled back', error);
@@ -385,7 +375,7 @@ export class StateManager {
         } catch (error) {
             // Rollback entire transaction
             this.currentState = originalState;
-            this.invalidateMemoryCache();
+            this.statePerformance.invalidateMemoryCache();
             
             if (this.options.enableDebug) {
                 console.error('🚨 StateManager: Transaction failed, rolled back', error);
@@ -455,7 +445,7 @@ export class StateManager {
             this.currentState = deepClone(DEFAULT_STATE);
             
             // Invalidate memory cache since state changed
-            this.invalidateMemoryCache();
+            this.statePerformance.invalidateMemoryCache();
             
             this.stateHistory.clearHistory();
             this.stateHistory.addStateToHistory(this.currentState);
@@ -483,13 +473,20 @@ export class StateManager {
     getStats() {
         const historyStats = this.stateHistory.getHistoryStats();
         const subscriptionStats = this.stateSubscriptions.getSubscriptionStats();
-        return {
-            ...this.stats,
+        
+        return this.statePerformance.getStats({
             historySize: historyStats.historySize,
             historyIndex: historyStats.historyIndex,
-            subscriptionCount: subscriptionStats.totalSubscriptions,
-            memoryUsage: this.getMemoryUsage()
-        };
+            subscriptionCount: subscriptionStats.totalSubscriptions
+        });
+    }
+
+    /**
+     * Get estimated memory usage
+     * @returns {number} Total memory usage in bytes (estimated)
+     */
+    getMemoryUsage() {
+        return this.statePerformance.getMemoryUsage();
     }
 
     /**
@@ -526,17 +523,10 @@ export class StateManager {
     clearAll() {
         this.currentState = deepClone(DEFAULT_STATE);
         
-        // Invalidate memory cache since state changed
-        this.invalidateMemoryCache();
+        // Reset all modules
+        this.statePerformance.invalidateMemoryCache();
+        this.statePerformance.resetStats();
         this.stateSubscriptions.clearAll();
-        this.stats = {
-            totalUpdates: 0,
-            totalGets: 0,
-            validationErrors: 0,
-            historyOperations: 0,
-            averageUpdateTime: 0,
-            lastUpdateTime: 0
-        };
 
         this.stateHistory.clearHistory();
         this.stateHistory.addStateToHistory(this.currentState);
@@ -568,45 +558,6 @@ export class StateManager {
         });
     }
 
-    /**
-     * Update average update time
-     * @private
-     */
-    updateAverageTime(time) {
-        if (this.stats.totalUpdates === 0) {
-            this.stats.averageUpdateTime = time;
-        } else {
-            this.stats.averageUpdateTime = (this.stats.averageUpdateTime * (this.stats.totalUpdates - 1) + time) / this.stats.totalUpdates;
-        }
-    }
-
-    /**
-     * Get estimated memory usage
-     * @private
-     */
-    getMemoryUsage() {
-        if (!this.memoryCacheValid) {
-            this.updateMemoryCache();
-        }
-        return this.cachedStateSize + this.stateHistory.getHistoryMemoryUsage();
-    }
-
-    /**
-     * Update memory cache with current state size
-     * @private
-     */
-    updateMemoryCache() {
-        this.cachedStateSize = JSON.stringify(this.currentState).length;
-        this.memoryCacheValid = true;
-    }
-
-    /**
-     * Invalidate memory cache (called when state or history changes)
-     * @private
-     */
-    invalidateMemoryCache() {
-        this.memoryCacheValid = false;
-    }
 }
 
 // Create singleton instance
