@@ -23,8 +23,8 @@ Complete technical specifications and examples of the implemented event-driven a
 ### 📊 [Performance Guide](./PERFORMANCE_GUIDE.md)
 Performance optimizations and benchmarking results for the event-driven systems.
 
-### 🔄 [State Management (Legacy)](./STATE_MANAGEMENT.md)
-Original state management guide (superseded by new State Management Documentation above).
+### 🔄 [Legacy State Management](./archive/STATE_MANAGEMENT.md)
+Original state management guide (archived - superseded by new State Management Documentation above).
 
 ### ⚡ [Side Effects Architecture](./SIDE_EFFECTS_ARCHITECTURE.md)
 Documentation of the EffectManager system for coordinating side effects.
@@ -95,7 +95,7 @@ Enemy system implementation using event-driven patterns.
 ## 🎯 Usage Guide
 
 ### 🔧 **For Developers**
-1. **Review [State Management](./STATE_MANAGEMENT.md)** for StateManager patterns
+1. **Review [State Management Guide](./STATE_MANAGEMENT_GUIDE.md)** for comprehensive StateManager documentation
 2. **Check [Side Effects Architecture](./SIDE_EFFECTS_ARCHITECTURE.md)** for EffectManager usage
 3. **Reference [Implementation Guide](./IMPLEMENTATION_REFERENCE.md)** for technical details
 4. **Study [Performance Guide](./PERFORMANCE_GUIDE.md)** for optimization patterns
@@ -112,7 +112,7 @@ Enemy system implementation using event-driven patterns.
 ### Core Documentation
 - **[Development Plan](./DEVELOPMENT_PLAN.md)** - Project overview, features, and roadmap
 - **[Implementation Reference](./IMPLEMENTATION_REFERENCE.md)** - Technical specifications and examples
-- **[State Management](./STATE_MANAGEMENT.md)** - StateManager system documentation
+- **[State Management Guide](./STATE_MANAGEMENT_GUIDE.md)** - Comprehensive StateManager system documentation
 - **[Side Effects Architecture](./SIDE_EFFECTS_ARCHITECTURE.md)** - EffectManager coordination patterns
 - **[Enemy Event-Driven Architecture](./ENEMY_EVENT_DRIVEN_ARCHITECTURE.md)** - Enemy system implementation
 
