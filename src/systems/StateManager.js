@@ -22,6 +22,7 @@ import {
     resolveReference as resolveReferenceUtil,
     isValidPath
 } from './StateUtils.js';
+import { validateValue as validateValueUtil } from './StateValidation.js';
 
 /**
  * StateManager class for centralized state management
@@ -144,7 +145,7 @@ export class StateManager {
 
             // Validate value if validation is enabled
             if (this.options.enableValidation && !updateOptions.skipValidation) {
-                const validationError = this.validateValue(path, value);
+                const validationError = validateValueUtil(path, value, this.currentState);
                 if (validationError) {
                     this.stats.validationErrors++;
                     throw new Error(`Validation error for '${path}': ${validationError}`);
@@ -652,55 +653,6 @@ export class StateManager {
     }
 
     // Private methods
-
-    /**
-     * Validate value against schema
-     * @private
-     */
-    validateValue(path, value) {
-        const rules = getValidationRules(path);
-        if (!rules) return null;
-
-        // Type validation
-        if (rules.type) {
-            if (rules.type === 'any') return null;
-            if (rules.nullable && value === null) return null;
-
-            const valueType = Array.isArray(value) ? 'array' : typeof value;
-            if (valueType !== rules.type) {
-                return `Expected ${rules.type}, got ${valueType}`;
-            }
-        }
-
-        // Enum validation
-        if (rules.enum && !rules.enum.includes(value)) {
-            return `Value must be one of: ${rules.enum.join(', ')}`;
-        }
-
-        // Number range validation
-        if (typeof value === 'number') {
-            if (rules.min !== undefined && value < this.resolveReference(rules.min, path)) {
-                return `Value must be >= ${this.resolveReference(rules.min, path)}`;
-            }
-            if (rules.max !== undefined && value > this.resolveReference(rules.max, path)) {
-                return `Value must be <= ${this.resolveReference(rules.max, path)}`;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Resolve validation rule references
-     * @param {*} value - The value to resolve (could be string reference or actual value)
-     * @param {string} path - Current path being validated
-     * @returns {*} Resolved value
-     * @private
-     */
-    resolveReference(value, path) {
-        // Use the utility function but with our state
-        return resolveReferenceUtil(value, path, this.currentState);
-    }
 
     /**
      * Add current state to history

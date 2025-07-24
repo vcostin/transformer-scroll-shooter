@@ -201,7 +201,10 @@ describe('StateUtils', () => {
     describe('resolveReference', () => {
         const state = {
             player: { maxHealth: 100 },
-            game: { difficulty: 'normal' }
+            game: { 
+                difficulty: 'normal',
+                settings: { difficulty: 'hard' }
+            }
         };
 
         it('should return non-string values unchanged', () => {
@@ -220,9 +223,16 @@ describe('StateUtils', () => {
             expect(resolveReference('hello', 'test', state)).toBe('hello');
         });
 
+        it('should resolve schema-style references relative to parent path', () => {
+            expect(resolveReference('maxHealth', 'player.health', state)).toBe(100);
+            // For game.settings.volume path, resolve 'difficulty' to game.settings.difficulty
+            expect(resolveReference('difficulty', 'game.settings.volume', state)).toBe('hard');
+        });
+
         it('should return original string for unresolvable references', () => {
             expect(resolveReference('$nonexistent', 'test', state)).toBe('$nonexistent');
             expect(resolveReference('$player.nonexistent', 'test', state)).toBe('$player.nonexistent');
+            expect(resolveReference('nonexistent', 'player.health', state)).toBe('nonexistent');
         });
     });
 

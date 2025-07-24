@@ -148,14 +148,22 @@ export function resolveReference(value, path, state) {
         return value;
     }
 
-    // Check if it's a reference (starts with $)
+    // Check if it's a $ reference (starts with $)
     if (value.startsWith('$')) {
         const refPath = value.substring(1);
         const resolvedValue = getValueByPath(state, refPath);
         return resolvedValue !== undefined ? resolvedValue : value;
     }
 
-    return value;
+    // Handle schema-style references (relative to parent object)
+    // For example, if path is 'player.health' and value is 'maxHealth',
+    // resolve to 'player.maxHealth'
+    const pathParts = path.split('.');
+    const parentPath = pathParts.slice(0, -1).join('.');
+    const referencePath = parentPath ? `${parentPath}.${value}` : value;
+    
+    const resolvedValue = getValueByPath(state, referencePath);
+    return resolvedValue !== undefined ? resolvedValue : value;
 }
 
 /**
