@@ -503,7 +503,10 @@ describe('StateManager', () => {
             
             testStateManager.clearAll();
             
-            expect(eventSpy).toHaveBeenCalledWith({ timestamp: expect.any(Number) }, 'state:clearAll');
+            expect(eventSpy).toHaveBeenCalledWith({ 
+                timestamp: expect.any(Number),
+                resetModules: ['async', 'subscriptions', 'performance', 'history']
+            }, 'state:clearAll');
         });
 
         it('should provide comprehensive statistics', () => {
@@ -518,6 +521,59 @@ describe('StateManager', () => {
             expect(stats).toHaveProperty('subscriptionCount');
             expect(stats).toHaveProperty('memoryUsage');
             expect(stats).toHaveProperty('averageUpdateTime');
+            expect(stats).toHaveProperty('moduleErrors');
+            expect(stats).toHaveProperty('totalModuleErrors');
+        });
+    });
+
+    describe('Phase 7: Integration Features', () => {
+        it('should track module errors', () => {
+            const initialErrors = testStateManager.getModuleErrors();
+            expect(initialErrors).toEqual({
+                history: 0,
+                subscriptions: 0,
+                performance: 0,
+                async: 0,
+                validation: 0
+            });
+        });
+
+        it('should reset module errors', () => {
+            testStateManager.resetModuleErrors();
+            const errors = testStateManager.getModuleErrors();
+            expect(Object.values(errors).every(count => count === 0)).toBe(true);
+        });
+
+        it('should perform health check', () => {
+            const healthCheck = testStateManager.performHealthCheck();
+            
+            expect(healthCheck).toHaveProperty('timestamp');
+            expect(healthCheck).toHaveProperty('healthy');
+            expect(healthCheck).toHaveProperty('modules');
+            expect(healthCheck).toHaveProperty('summary');
+            expect(healthCheck).toHaveProperty('integration');
+            
+            expect(healthCheck.modules).toHaveProperty('history');
+            expect(healthCheck.modules).toHaveProperty('subscriptions');
+            expect(healthCheck.modules).toHaveProperty('performance');
+            expect(healthCheck.modules).toHaveProperty('async');
+            expect(healthCheck.modules).toHaveProperty('validation');
+            
+            expect(healthCheck.integration).toHaveProperty('getStateWorking');
+            expect(healthCheck.integration).toHaveProperty('getStatsWorking');
+            expect(healthCheck.integration).toHaveProperty('eventDispatcherAvailable');
+        });
+
+        it('should handle safe module calls', () => {
+            // Test that safe module calls work without errors
+            const state = testStateManager.getState();
+            expect(state).toBeDefined();
+            
+            const result = testStateManager.setState('test.value', 42);
+            expect(result).toBe(true);
+            
+            const stats = testStateManager.getStats();
+            expect(stats).toBeDefined();
         });
     });
 

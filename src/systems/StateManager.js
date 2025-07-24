@@ -97,16 +97,21 @@ export class StateManager {
             retryAttempts: this.options.asyncRetryAttempts || 0,
             retryDelay: this.options.asyncRetryDelay || 1000
         }, {
-            onSetState: (path, value, options) => this.setState(path, value, options),
-            onEmitEvent: (eventName, payload) => {
-                if (this.options.enableEvents) {
-                    this.eventDispatcher.emit(eventName, payload);
-                }
-            }
+            onSetState: (path, value, options) => this._safeCallModule('setState', () => this.setState(path, value, options)),
+            onEmitEvent: (eventName, payload) => this._safeEmitEvent(eventName, payload)
         });
 
         // Event dispatcher reference
         this.eventDispatcher = eventDispatcher;
+
+        // Error tracking
+        this.moduleErrors = {
+            history: 0,
+            subscriptions: 0,
+            performance: 0,
+            async: 0,
+            validation: 0
+        };
 
         // Initialize history with current state
         this.stateHistory.initialize(this.currentState);
@@ -196,21 +201,21 @@ export class StateManager {
 
             // Update current state
             this.currentState = newState;
-            this.statePerformance.recordUpdate(startTime);
+            this._safeCallModule('performance', () => this.statePerformance.recordUpdate(startTime));
 
             // Add new state to history after updating
             if (!updateOptions.skipHistory) {
-                this.stateHistory.addStateToHistory(this.currentState);
+                this._safeCallModule('history', () => this.stateHistory.addStateToHistory(this.currentState));
             }
 
             // Emit events
             if (this.options.enableEvents && !updateOptions.skipEvents) {
-                this.emitStateChange(path, value, oldValue);
+                this._safeCallModule('events', () => this.emitStateChange(path, value, oldValue));
             }
 
             // Trigger subscriptions
             if (!updateOptions.silent) {
-                this.stateSubscriptions.triggerSubscriptions(path, value, oldValue);
+                this._safeCallModule('subscriptions', () => this.stateSubscriptions.triggerSubscriptions(path, value, oldValue));
             }
 
             if (this.options.enableDebug) {
@@ -446,16 +451,23 @@ export class StateManager {
      * @returns {Object} Statistics object
      */
     getStats() {
-        const historyStats = this.stateHistory.getHistoryStats();
-        const subscriptionStats = this.stateSubscriptions.getSubscriptionStats();
-        const asyncStats = this.stateAsync.getAsyncStats();
+        const historyStats = this._safeCallModule('history', () => this.stateHistory.getHistoryStats()) || {};
+        const subscriptionStats = this._safeCallModule('subscriptions', () => this.stateSubscriptions.getSubscriptionStats()) || {};
+        const asyncStats = this._safeCallModule('async', () => this.stateAsync.getAsyncStats()) || {};
         
-        return this.statePerformance.getStats({
+        const performanceStats = this._safeCallModule('performance', () => this.statePerformance.getStats({
             historySize: historyStats.historySize,
             historyIndex: historyStats.historyIndex,
             subscriptionCount: subscriptionStats.totalSubscriptions,
             ...asyncStats
-        });
+        })) || {};
+
+        // Add module error statistics
+        return {
+            ...performanceStats,
+            moduleErrors: this.getModuleErrors(),
+            totalModuleErrors: Object.values(this.moduleErrors).reduce((sum, count) => sum + count, 0)
+        };
     }
 
     /**
@@ -492,6 +504,70 @@ export class StateManager {
     }
 
     /**
+     * Perform integration health check across all modules
+     * @returns {Object} Health check results
+     */
+    performHealthCheck() {
+        const healthCheck = {
+            timestamp: Date.now(),
+            healthy: true,
+            modules: {},
+            summary: {
+                totalErrors: 0,
+                modulesHealthy: 0,
+                modulesWithErrors: 0
+            }
+        };
+
+        // Check each module
+        const modules = ['history', 'subscriptions', 'performance', 'async', 'validation'];
+        
+        modules.forEach(moduleName => {
+            const moduleErrors = this.moduleErrors[moduleName] || 0;
+            const isHealthy = moduleErrors === 0;
+            
+            healthCheck.modules[moduleName] = {
+                healthy: isHealthy,
+                errorCount: moduleErrors,
+                status: isHealthy ? 'OK' : 'ERRORS'
+            };
+
+            if (isHealthy) {
+                healthCheck.summary.modulesHealthy++;
+            } else {
+                healthCheck.summary.modulesWithErrors++;
+                healthCheck.healthy = false;
+            }
+
+            healthCheck.summary.totalErrors += moduleErrors;
+        });
+
+        // Test basic integration
+        try {
+            const testState = this.getState();
+            const testStats = this.getStats();
+            
+            healthCheck.integration = {
+                getStateWorking: !!testState,
+                getStatsWorking: !!testStats,
+                eventDispatcherAvailable: !!this.eventDispatcher
+            };
+        } catch (error) {
+            healthCheck.healthy = false;
+            healthCheck.integration = {
+                error: error.message,
+                working: false
+            };
+        }
+
+        if (this.options.enableDebug) {
+            console.log(`🏥 StateManager: Health check ${healthCheck.healthy ? 'PASSED' : 'FAILED'}`, healthCheck);
+        }
+
+        return healthCheck;
+    }
+
+    /**
      * Enable debug mode with enhanced logging
      */
     enableDebugMode() {
@@ -523,31 +599,128 @@ export class StateManager {
      * Clear all state and reset to defaults
      */
     clearAll() {
-        this.currentState = deepClone(DEFAULT_STATE);
-        
-        // Reset all modules
-        this.statePerformance.invalidateMemoryCache();
-        this.statePerformance.resetStats();
-        this.stateSubscriptions.clearAll();
-        this.stateAsync.cancelAllOperations();
-        this.stateAsync.resetStats();
+        try {
+            // Reset current state first
+            this.currentState = deepClone(DEFAULT_STATE);
+            
+            // Cancel async operations first to prevent interference
+            this._safeCallModule('async', () => {
+                this.stateAsync.cancelAllOperations();
+                this.stateAsync.resetStats();
+            });
 
-        this.stateHistory.clearHistory();
-        this.stateHistory.addStateToHistory(this.currentState);
+            // Clear subscriptions to prevent unwanted triggers
+            this._safeCallModule('subscriptions', () => this.stateSubscriptions.clearAll());
 
-        if (this.options.enableEvents) {
-            this.eventDispatcher.emit('state:clearAll', { timestamp: Date.now() });
+            // Reset performance tracking
+            this._safeCallModule('performance', () => {
+                this.statePerformance.invalidateMemoryCache();
+                this.statePerformance.resetStats();
+            });
+
+            // Reset history last (after other modules are clean)
+            this._safeCallModule('history', () => {
+                this.stateHistory.clearHistory();
+                this.stateHistory.addStateToHistory(this.currentState);
+            });
+
+            // Reset module error counters
+            this.resetModuleErrors();
+
+            // Emit clearAll event
+            this._safeEmitEvent('state:clearAll', { 
+                timestamp: Date.now(),
+                resetModules: ['async', 'subscriptions', 'performance', 'history']
+            });
+
+            if (this.options.enableDebug) {
+                console.log('🧹 StateManager: Successfully cleared all state and reset modules');
+            }
+        } catch (error) {
+            if (this.options.enableDebug) {
+                console.error('❌ StateManager: Error during clearAll operation:', error);
+            }
+            throw error;
         }
     }
 
     // Private methods
 
     /**
+     * Safely call a module method with error tracking
+     * @private
+     * @param {string} moduleName - Name of the module for error tracking
+     * @param {Function} operation - Operation to execute
+     * @returns {*} Result of the operation
+     */
+    _safeCallModule(moduleName, operation) {
+        try {
+            return operation();
+        } catch (error) {
+            this.moduleErrors[moduleName] = (this.moduleErrors[moduleName] || 0) + 1;
+            
+            if (this.options.enableDebug) {
+                console.error(`❌ StateManager: ${moduleName} module error:`, error);
+            }
+
+            // Emit error event for monitoring
+            this._safeEmitEvent('state:moduleError', {
+                module: moduleName,
+                error: error.message,
+                timestamp: Date.now()
+            });
+
+            throw error;
+        }
+    }
+
+    /**
+     * Safely emit an event with error handling
+     * @private
+     * @param {string} eventName - Name of the event
+     * @param {*} payload - Event payload
+     */
+    _safeEmitEvent(eventName, payload) {
+        try {
+            if (this.options.enableEvents) {
+                this.eventDispatcher.emit(eventName, payload);
+            }
+        } catch (error) {
+            if (this.options.enableDebug) {
+                console.error(`❌ StateManager: Event emission error for '${eventName}':`, error);
+            }
+            // Don't re-throw event errors to prevent cascading failures
+        }
+    }
+
+    /**
+     * Get module error statistics
+     * @returns {Object} Error statistics by module
+     */
+    getModuleErrors() {
+        return { ...this.moduleErrors };
+    }
+
+    /**
+     * Reset module error counters
+     */
+    resetModuleErrors() {
+        this.moduleErrors = {
+            history: 0,
+            subscriptions: 0,
+            performance: 0,
+            async: 0,
+            validation: 0
+        };
+    }
+
+    /**
      * Emit state change event
      * @private
      */
     emitStateChange(path, newValue, oldValue) {
-        this.eventDispatcher.emit('state:change', {
+        // Emit general state change event
+        this._safeEmitEvent('state:change', {
             path,
             newValue,
             oldValue,
@@ -555,7 +728,7 @@ export class StateManager {
         });
 
         // Emit specific path event
-        this.eventDispatcher.emit(`state:change:${path}`, {
+        this._safeEmitEvent(`state:change:${path}`, {
             newValue,
             oldValue,
             timestamp: Date.now()
