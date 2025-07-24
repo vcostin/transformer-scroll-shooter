@@ -3,7 +3,7 @@
  * Testing pathOr and safeResolveReference functionality
  */
 
-import { pathOr, safeResolveReference } from './StateUtils.js';
+import { pathOr, safeResolveReference } from '@/systems/StateUtils.js';
 
 describe('Enhanced StateUtils', () => {
     const testState = {

@@ -20,7 +20,7 @@ vi.spyOn(console, 'warn').mockImplementation((...args) => {
 
 // Mock canvas and 2D context for testing
 // Import canvas context from shared mocks to avoid duplication
-import { createMockCanvasContext } from './mocks/canvas-mock.js'
+import { createMockCanvasContext } from '@test/mocks/canvas-mock.js'
 
 global.HTMLCanvasElement.prototype.getContext = vi.fn(() => createMockCanvasContext())
 

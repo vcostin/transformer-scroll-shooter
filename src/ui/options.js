@@ -7,7 +7,7 @@ import {
     UI_EVENTS, 
     UI_STATE_KEYS, 
     MENU_TYPES 
-} from '../constants/ui-events.js';
+} from '@/constants/ui-events.js';
 
 export class OptionsMenu {
     constructor(game, eventDispatcher, stateManager) {

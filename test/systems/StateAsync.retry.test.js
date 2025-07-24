@@ -3,7 +3,7 @@
  * Testing promise factory approach to prevent single-use promise issues
  */
 
-import { StateAsync } from '../systems/StateAsync.js';
+import { StateAsync } from '@test/systems/StateAsync.js';
 
 describe('StateAsync Retry Logic', () => {
     let stateAsync;

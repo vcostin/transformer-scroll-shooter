@@ -6,7 +6,7 @@
  * - EffectManager: Side effects coordination system
  * - EffectContext: Controlled operations for side effects
  */
-export { EventDispatcher, eventDispatcher } from './EventDispatcher.js';
-export { StateManager, stateManager } from './StateManager.js';
-export { EffectManager } from './EffectManager.js';
-export { EffectContext } from './EffectContext.js';
+export { EventDispatcher, eventDispatcher } from '@/systems/EventDispatcher.js';
+export { StateManager, stateManager } from '@/systems/StateManager.js';
+export { EffectManager } from '@/systems/EffectManager.js';
+export { EffectContext } from '@/systems/EffectContext.js';

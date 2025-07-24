@@ -3,7 +3,7 @@
  * Comprehensive testing for secure ID generation with collision resistance
  */
 
-import { generateId, generateCounterId, generateSubscriptionId } from '../utils/IdGenerator.js';
+import { generateId, generateCounterId, generateSubscriptionId } from '@test/utils/IdGenerator.js';
 
 describe('IdGenerator', () => {
     describe('generateId()', () => {
