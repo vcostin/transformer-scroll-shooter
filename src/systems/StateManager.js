@@ -23,6 +23,7 @@ import {
     isValidPath
 } from './StateUtils.js';
 import { validateValue as validateValueUtil } from './StateValidation.js';
+import { StateHistory } from './StateHistory.js';
 
 /**
  * StateManager class for centralized state management
@@ -47,9 +48,25 @@ export class StateManager {
         // Current state (deep clone of default state)
         this.currentState = deepClone(DEFAULT_STATE);
 
-        // State history for undo/redo functionality
-        this.history = [];
-        this.historyIndex = -1;
+        // State history management
+        this.stateHistory = new StateHistory({
+            maxHistorySize: this.options.maxHistorySize,
+            enableHistory: this.options.enableHistory,
+            enableDebug: this.options.enableDebug,
+            enableEvents: this.options.enableEvents
+        }, {
+            onInvalidateCache: () => this.invalidateMemoryCache(),
+            onEmitEvent: (eventName, payload) => {
+                if (this.options.enableEvents) {
+                    this.eventDispatcher.emit(eventName, payload);
+                }
+            },
+            onUpdateStats: (operation) => {
+                if (operation === 'historyOperations') {
+                    this.stats.historyOperations++;
+                }
+            }
+        });
 
         // Subscriptions for state changes
         this.subscriptions = new Map();
@@ -69,16 +86,13 @@ export class StateManager {
 
         // Cached memory usage tracking
         this.cachedStateSize = 0;
-        this.cachedHistorySize = 0;
         this.memoryCacheValid = false;
 
         // Event dispatcher reference
         this.eventDispatcher = eventDispatcher;
 
         // Initialize history with current state
-        if (this.options.enableHistory) {
-            this.addCurrentStateToHistory();
-        }
+        this.stateHistory.initialize(this.currentState);
 
         // Debug mode setup
         if (this.options.enableDebug) {
@@ -172,8 +186,8 @@ export class StateManager {
             this.invalidateMemoryCache();
 
             // Add new state to history after updating
-            if (this.options.enableHistory && !updateOptions.skipHistory) {
-                this.addCurrentStateToHistory();
+            if (!updateOptions.skipHistory) {
+                this.stateHistory.addStateToHistory(this.currentState);
             }
 
             // Emit events
@@ -297,8 +311,8 @@ export class StateManager {
             // If we have changes, handle events and history
             if (hasChanges && !batchOptions.skipEvents) {
                 // Add to history as a single operation
-                if (this.options.enableHistory && !batchOptions.skipHistory) {
-                    this.addCurrentStateToHistory();
+                if (!batchOptions.skipHistory) {
+                    this.stateHistory.addStateToHistory(this.currentState);
                 }
 
                 // Emit batch event
@@ -350,9 +364,7 @@ export class StateManager {
             const result = transactionFn(this);
             
             // Add to history as single operation
-            if (this.options.enableHistory) {
-                this.addCurrentStateToHistory();
-            }
+            this.stateHistory.addStateToHistory(this.currentState);
             
             // Emit transaction event
             if (this.options.enableEvents) {
@@ -484,34 +496,14 @@ export class StateManager {
      * @returns {boolean} True if undo was successful
      */
     undo() {
-        if (!this.options.enableHistory) {
-            throw new Error('History is disabled');
-        }
-
-        if (this.historyIndex <= 0) {
-            return false;
-        }
-
-        this.historyIndex--;
-        this.currentState = deepClone(this.history[this.historyIndex]);
-        this.stats.historyOperations++;
+        const previousState = this.stateHistory.undo();
         
-        // Invalidate memory cache since state changed
-        this.invalidateMemoryCache();
-
-        // Emit undo event
-        if (this.options.enableEvents) {
-            this.eventDispatcher.emit('state:undo', {
-                state: this.currentState,
-                historyIndex: this.historyIndex
-            });
+        if (previousState !== null) {
+            this.currentState = previousState;
+            return true;
         }
-
-        if (this.options.enableDebug) {
-            console.log(`↶ StateManager: Undo to history index ${this.historyIndex}`);
-        }
-
-        return true;
+        
+        return false;
     }
 
     /**
@@ -519,34 +511,14 @@ export class StateManager {
      * @returns {boolean} True if redo was successful
      */
     redo() {
-        if (!this.options.enableHistory) {
-            throw new Error('History is disabled');
-        }
-
-        if (this.historyIndex >= this.history.length - 1) {
-            return false;
-        }
-
-        this.historyIndex++;
-        this.currentState = deepClone(this.history[this.historyIndex]);
-        this.stats.historyOperations++;
+        const nextState = this.stateHistory.redo();
         
-        // Invalidate memory cache since state changed
-        this.invalidateMemoryCache();
-
-        // Emit redo event
-        if (this.options.enableEvents) {
-            this.eventDispatcher.emit('state:redo', {
-                state: this.currentState,
-                historyIndex: this.historyIndex
-            });
+        if (nextState !== null) {
+            this.currentState = nextState;
+            return true;
         }
-
-        if (this.options.enableDebug) {
-            console.log(`↷ StateManager: Redo to history index ${this.historyIndex}`);
-        }
-
-        return true;
+        
+        return false;
     }
 
     /**
@@ -561,10 +533,8 @@ export class StateManager {
             // Invalidate memory cache since state changed
             this.invalidateMemoryCache();
             
-            if (this.options.enableHistory) {
-                this.clearHistory();
-                this.addCurrentStateToHistory();
-            }
+            this.stateHistory.clearHistory();
+            this.stateHistory.addStateToHistory(this.currentState);
         } else {
             // Reset specific path to default value
             const defaultValue = getDefaultValue(path);
@@ -587,10 +557,11 @@ export class StateManager {
      * @returns {Object} Statistics object
      */
     getStats() {
+        const historyStats = this.stateHistory.getHistoryStats();
         return {
             ...this.stats,
-            historySize: this.history.length,
-            historyIndex: this.historyIndex,
+            historySize: historyStats.historySize,
+            historyIndex: historyStats.historyIndex,
             subscriptionCount: Array.from(this.subscriptions.values()).reduce((sum, subs) => sum + subs.length, 0),
             memoryUsage: this.getMemoryUsage()
         };
@@ -632,7 +603,6 @@ export class StateManager {
         
         // Invalidate memory cache since state changed
         this.invalidateMemoryCache();
-        this.clearHistory();
         this.subscriptions.clear();
         this.stats = {
             totalUpdates: 0,
@@ -643,9 +613,8 @@ export class StateManager {
             lastUpdateTime: 0
         };
 
-        if (this.options.enableHistory) {
-            this.addCurrentStateToHistory();
-        }
+        this.stateHistory.clearHistory();
+        this.stateHistory.addStateToHistory(this.currentState);
 
         if (this.options.enableEvents) {
             this.eventDispatcher.emit('state:clearAll', { timestamp: Date.now() });
@@ -653,43 +622,6 @@ export class StateManager {
     }
 
     // Private methods
-
-    /**
-     * Add current state to history
-     * @private
-     */
-    addCurrentStateToHistory() {
-        // Remove any history after current index (when we're in the middle of history)
-        if (this.historyIndex < this.history.length - 1) {
-            this.history = this.history.slice(0, this.historyIndex + 1);
-        }
-
-        // Add current state
-        this.history.push(deepClone(this.currentState));
-        this.historyIndex = this.history.length - 1;
-
-        // Trim history if it exceeds max size
-        if (this.history.length > this.options.maxHistorySize) {
-            const removeCount = this.history.length - this.options.maxHistorySize;
-            this.history.splice(0, removeCount);
-            this.historyIndex -= removeCount;
-        }
-        
-        // Invalidate memory cache since history changed
-        this.invalidateMemoryCache();
-    }
-
-    /**
-     * Clear state history
-     * @private
-     */
-    clearHistory() {
-        this.history = [];
-        this.historyIndex = -1;
-        
-        // Invalidate memory cache since history changed
-        this.invalidateMemoryCache();
-    }
 
     /**
      * Emit state change event
@@ -766,16 +698,15 @@ export class StateManager {
         if (!this.memoryCacheValid) {
             this.updateMemoryCache();
         }
-        return this.cachedStateSize + this.cachedHistorySize;
+        return this.cachedStateSize + this.stateHistory.getHistoryMemoryUsage();
     }
 
     /**
-     * Update memory cache with current state and history sizes
+     * Update memory cache with current state size
      * @private
      */
     updateMemoryCache() {
         this.cachedStateSize = JSON.stringify(this.currentState).length;
-        this.cachedHistorySize = JSON.stringify(this.history).length;
         this.memoryCacheValid = true;
     }
 
