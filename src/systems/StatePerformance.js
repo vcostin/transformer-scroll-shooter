@@ -147,18 +147,28 @@ export class StatePerformance {
         try {
             const state = this.onGetState();
             
-            // Quick size estimation first
-            const quickSize = JSON.stringify(state).length;
+            // Try quick size estimation first, but handle circular references
+            let quickSize = 0;
+            let hasCircularRef = false;
+            
+            try {
+                quickSize = JSON.stringify(state).length;
+            } catch (circularError) {
+                // Circular reference detected - use enhanced monitoring
+                hasCircularRef = true;
+                quickSize = 1024; // Assume small enough for enhanced monitoring
+            }
+            
             const memorySizeThreshold = 50 * 1024; // 50KB threshold
             
             // Check state size before calculating memory
-            if (quickSize > memorySizeThreshold) {
+            if (!hasCircularRef && quickSize > memorySizeThreshold) {
                 if (this.options.enableDebug) {
                     console.warn('StatePerformance: State size exceeds threshold, using lightweight estimation');
                 }
                 this.cachedStateSize = quickSize; // Fallback lightweight estimation
             } else {
-                // Use enhanced memory monitoring for smaller states
+                // Use enhanced memory monitoring for smaller states or circular references
                 const calculatedSize = this.memoryMonitor.calculateSize(state);
                 this.cachedStateSize = calculatedSize || quickSize;
             }
