@@ -11,7 +11,7 @@ import { Game } from '@/game/game.js';
 import { EventDispatcher } from '@/systems/EventDispatcher.js';
 import { StateManager } from '@/systems/StateManager.js';
 import { EffectManager } from '@/systems/EffectManager.js';
-import { createMockCanvas, createMockCanvasContext } from './mocks/canvas-mock.js';
+import { createMockCanvas, createMockCanvasContext } from '@test/mocks/canvas-mock.js';
 
 // Re-export canvas utilities for convenience
 export { createMockCanvas, createMockCanvasContext };

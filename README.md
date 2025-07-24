@@ -81,7 +81,7 @@ Power-ups can combine for enhanced effects:
 - **⚡ Performance Optimized**: Streamlined state management and event handling
 
 ### Architecture Highlights
-- **StateManager**: Centralized immutable state management with event integration
+- **StateManager**: Enhanced immutable state management with **10x faster memory tracking**, **Ramda-style utilities**, and **robust async operations**
 - **EventDispatcher**: High-performance event system with wildcard pattern matching
 - **EffectManager**: Side effects coordination using pattern-based event handling
 - **Entity System**: Pure event-driven entities with consistent effect registration patterns
@@ -106,7 +106,7 @@ Power-ups can combine for enhanced effects:
 
 ### Core Systems
 - **🎯 EventDispatcher**: Central event routing with optimized wildcard pattern matching
-- **🗂️ StateManager**: Immutable state management with deep cloning and history
+- **🗂️ StateManager**: Enhanced immutable state management with **pathOr**, **safeResolveReference**, **MemoryMonitor**, and **collision-resistant IDs**
 - **⚡ EffectManager**: Pattern-based side effects coordination and execution
 - **🎮 Entity System**: Standardized event-driven entity lifecycle management
 - **🔧 PatternMatcher**: Advanced pattern matching for events and effects

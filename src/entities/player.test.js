@@ -9,7 +9,7 @@ import { PLAYER_EVENTS, PLAYER_STATES, MOVE_DIRECTIONS } from '@/constants/playe
 import { EventDispatcher } from '@/systems/EventDispatcher.js'
 import { StateManager } from '@/systems/StateManager.js'
 import { EffectManager } from '@/systems/EffectManager.js'
-import { createMockGameObject, createMockEventSystems } from '../../test/game-test-utils.js'
+import { createMockGameObject, createMockEventSystems } from '@test/game-test-utils.js'
 
 describe('Player', () => {
   let mockGame
