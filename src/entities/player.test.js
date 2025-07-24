@@ -1,11 +1,5 @@
 /**
- import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import Player from '@/entities/player.js'
-import { PLAYER_EVENTS, PLAYER_STATES, MOVE_DIRECTIONS } from '@/constants/player-events.js'
-import { EventDispatcher } from '@/systems/EventDispatcher.js'
-import { StateManager } from '@/systems/StateManager.js'
-import { EffectManager } from '@/systems/EffectManager.js'
-import { createMockGameObject, createMockEventSystems } from '../../test/game-test-utils.js'er Class Tests - Event-Driven Architecture
+ * Player Class Tests - Event-Driven Architecture
  * Tests for both legacy and event-driven functionality
  */
 

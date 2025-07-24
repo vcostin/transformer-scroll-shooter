@@ -1,13 +1,7 @@
 /**
  * Options Menu Tests
  * 
- *         // Mock event systems  
-        mockEventDispatcher = new EventDispatcher();
-        mockStateManager = new StateManager();
-        
-        // Mock game object
-        mockGame = {
-            effectManager: new EffectManager(mockEventDispatcher),options menu system including:
+ * This file contains tests for the options menu system including:
  * - Open/close behavior
  * - Input handling
  * - Settings persistence

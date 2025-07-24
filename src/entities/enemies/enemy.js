@@ -2,29 +2,7 @@
  * Enemy Base Class - Event-Driven Architecture
  * 
  * Base class for all enemy types in the game.
- * Provides common function        // Check for off-screen or death conditions
-        if (this.x < OFF_SCREEN_BOUNDARY || this.health <= 0) {
-            if (this.x < OFF_SCREEN_BOUNDARY) {
-                this.eventDispatcher.emit(            // Emit shot event
-            this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_SHOT, {
-                enemy: this,
-                bullet: bullet,
-                x: this.x,
-                y: this.y + this.height / 2,
-                velocityX,
-                velocityY,
-                target: player,
-                type: this.type
-            });
-        }
-    }MY_OFF_SCREEN, {
-                    enemy: this,
-                    x: this.x,
-                    y: this.y
-                });
-            }
-            this.markedForDeletion = true;
-        }ent, shooting, and rendering.
+ * Provides common functionality for movement, shooting, and rendering.
  * Uses event-driven architecture for AI updates, state management, and communication.
  */
 
