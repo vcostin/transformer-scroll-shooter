@@ -14,6 +14,14 @@
 
 import { eventDispatcher } from './EventDispatcher.js';
 import { DEFAULT_STATE, STATE_SCHEMA, getValidationRules, getDefaultValue } from '../constants/state-schema.js';
+import { 
+    getValueByPath, 
+    setValueByPath, 
+    deepClone, 
+    deepEqual, 
+    resolveReference as resolveReferenceUtil,
+    isValidPath
+} from './StateUtils.js';
 
 /**
  * StateManager class for centralized state management
@@ -36,7 +44,7 @@ export class StateManager {
         };
 
         // Current state (deep clone of default state)
-        this.currentState = this.deepClone(DEFAULT_STATE);
+        this.currentState = deepClone(DEFAULT_STATE);
 
         // State history for undo/redo functionality
         this.history = [];
@@ -93,12 +101,12 @@ export class StateManager {
 
         try {
             if (!path) {
-                return this.options.immutable ? this.deepClone(this.currentState) : this.currentState;
+                return this.options.immutable ? deepClone(this.currentState) : this.currentState;
             }
 
-            const value = this.getValueByPath(this.currentState, path);
+            const value = getValueByPath(this.currentState, path);
             const result = this.options.immutable && typeof value === 'object' && value !== null 
-                ? this.deepClone(value) 
+                ? deepClone(value) 
                 : value;
 
             if (this.options.enableDebug) {
@@ -130,7 +138,7 @@ export class StateManager {
 
         try {
             // Validate path
-            if (!path || typeof path !== 'string') {
+            if (!isValidPath(path)) {
                 throw new Error('State path must be a non-empty string');
             }
 
@@ -144,11 +152,11 @@ export class StateManager {
             }
 
             // Create new state with immutable update
-            const oldValue = this.getValueByPath(this.currentState, path);
-            const newState = this.setValueByPath(this.currentState, path, value, updateOptions.merge);
+            const oldValue = getValueByPath(this.currentState, path);
+            const newState = setValueByPath(this.currentState, path, value, updateOptions.merge);
 
             // Check if state actually changed
-            if (this.deepEqual(oldValue, value)) {
+            if (deepEqual(oldValue, value)) {
                 if (this.options.enableDebug) {
                     console.log(`⚠️ StateManager: setState('${path}') - No change, skipping update`);
                 }
@@ -266,7 +274,7 @@ export class StateManager {
         const changes = [];
         
         // Store original state for rollback
-        const originalState = this.deepClone(this.currentState);
+        const originalState = deepClone(this.currentState);
 
         try {
             // Apply all updates without triggering events/history
@@ -281,7 +289,7 @@ export class StateManager {
                 
                 if (result) {
                     hasChanges = true;
-                    changes.push({ path, value, oldValue: this.getValueByPath(originalState, path) });
+                    changes.push({ path, value, oldValue: getValueByPath(originalState, path) });
                 }
             }
 
@@ -333,7 +341,7 @@ export class StateManager {
      * @returns {*} Result of transaction function
      */
     transaction(transactionFn) {
-        const originalState = this.deepClone(this.currentState);
+        const originalState = deepClone(this.currentState);
         const startTime = performance.now();
         
         try {
@@ -484,7 +492,7 @@ export class StateManager {
         }
 
         this.historyIndex--;
-        this.currentState = this.deepClone(this.history[this.historyIndex]);
+        this.currentState = deepClone(this.history[this.historyIndex]);
         this.stats.historyOperations++;
         
         // Invalidate memory cache since state changed
@@ -519,7 +527,7 @@ export class StateManager {
         }
 
         this.historyIndex++;
-        this.currentState = this.deepClone(this.history[this.historyIndex]);
+        this.currentState = deepClone(this.history[this.historyIndex]);
         this.stats.historyOperations++;
         
         // Invalidate memory cache since state changed
@@ -547,7 +555,7 @@ export class StateManager {
     resetState(path = '') {
         if (!path) {
             // Reset entire state
-            this.currentState = this.deepClone(DEFAULT_STATE);
+            this.currentState = deepClone(DEFAULT_STATE);
             
             // Invalidate memory cache since state changed
             this.invalidateMemoryCache();
@@ -619,7 +627,7 @@ export class StateManager {
      * Clear all state and reset to defaults
      */
     clearAll() {
-        this.currentState = this.deepClone(DEFAULT_STATE);
+        this.currentState = deepClone(DEFAULT_STATE);
         
         // Invalidate memory cache since state changed
         this.invalidateMemoryCache();
@@ -644,112 +652,6 @@ export class StateManager {
     }
 
     // Private methods
-
-    /**
-     * Get value from object by dot-notation path
-     * @private
-     */
-    getValueByPath(obj, path) {
-        const parts = path.split('.');
-        let current = obj;
-
-        for (const part of parts) {
-            if (current === null || current === undefined || !(part in current)) {
-                return undefined;
-            }
-            current = current[part];
-        }
-
-        return current;
-    }
-
-    /**
-     * Set value in object by dot-notation path (immutable)
-     * @private
-     */
-    setValueByPath(obj, path, value, merge = false) {
-        const parts = path.split('.');
-        const newObj = this.deepClone(obj);
-        let current = newObj;
-
-        // Navigate to the parent of the target property
-        for (let i = 0; i < parts.length - 1; i++) {
-            const part = parts[i];
-            if (current[part] === undefined || current[part] === null) {
-                current[part] = {};
-            } else if (typeof current[part] !== 'object') {
-                current[part] = {};
-            }
-            current = current[part];
-        }
-
-        // Set the final value
-        const finalKey = parts[parts.length - 1];
-        if (merge && typeof current[finalKey] === 'object' && typeof value === 'object') {
-            current[finalKey] = { ...current[finalKey], ...value };
-        } else {
-            current[finalKey] = value;
-        }
-
-        return newObj;
-    }
-
-    /**
-     * Optimized deep clone with structured clone fallback
-     * @private
-     */
-    deepClone(obj) {
-        // Use native structuredClone if available (modern browsers, Node 17+)
-        if (typeof structuredClone !== 'undefined') {
-            try {
-                return structuredClone(obj);
-            } catch (error) {
-                // Fall back to manual cloning for non-cloneable objects
-            }
-        }
-
-        // Fallback manual cloning
-        if (obj === null || typeof obj !== 'object') return obj;
-        if (obj instanceof Date) return new Date(obj.getTime());
-        if (Array.isArray(obj)) return obj.map(item => this.deepClone(item));
-        if (typeof obj === 'object') {
-            const cloned = {};
-            for (const key in obj) {
-                if (obj.hasOwnProperty(key)) {
-                    cloned[key] = this.deepClone(obj[key]);
-                }
-            }
-            return cloned;
-        }
-        return obj;
-    }
-
-    /**
-     * Deep equality check
-     * @private
-     */
-    deepEqual(a, b) {
-        if (a === b) return true;
-        if (a == null || b == null) return false;
-        if (Array.isArray(a) && Array.isArray(b)) {
-            if (a.length !== b.length) return false;
-            for (let i = 0; i < a.length; i++) {
-                if (!this.deepEqual(a[i], b[i])) return false;
-            }
-            return true;
-        }
-        if (typeof a === 'object' && typeof b === 'object') {
-            const keysA = Object.keys(a);
-            const keysB = Object.keys(b);
-            if (keysA.length !== keysB.length) return false;
-            for (const key of keysA) {
-                if (!keysB.includes(key)) return false;
-                if (!this.deepEqual(a[key], b[key])) return false;
-            }
-            return true;
-        }
-        return false;
-    }
 
     /**
      * Validate value against schema
@@ -796,18 +698,8 @@ export class StateManager {
      * @private
      */
     resolveReference(value, path) {
-        if (typeof value !== 'string') {
-            return value;
-        }
-        
-        // Handle relative references within the same object
-        const pathParts = path.split('.');
-        const parentPath = pathParts.slice(0, -1).join('.');
-        const referencePath = parentPath ? `${parentPath}.${value}` : value;
-        
-        // Get value without incrementing stats (direct state access)
-        const state = this.getState(referencePath, { skipStats: true });
-        return state !== undefined ? state : value;
+        // Use the utility function but with our state
+        return resolveReferenceUtil(value, path, this.currentState);
     }
 
     /**
@@ -821,7 +713,7 @@ export class StateManager {
         }
 
         // Add current state
-        this.history.push(this.deepClone(this.currentState));
+        this.history.push(deepClone(this.currentState));
         this.historyIndex = this.history.length - 1;
 
         // Trim history if it exceeds max size
