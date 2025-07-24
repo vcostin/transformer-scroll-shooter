@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { StateAsync } from './StateAsync.js';
+import { StateAsync } from '@/systems/StateAsync.js';
 
 describe('StateAsync', () => {
     let stateAsync;

@@ -9,7 +9,7 @@ import { ENEMY_EVENTS, AI_STATES } from '@/constants/enemy-events.js'
 import { EventDispatcher } from '@/systems/EventDispatcher.js'
 import { StateManager } from '@/systems/StateManager.js'
 import { EffectManager } from '@/systems/EffectManager.js'
-import { createMockGameObject, createMockEventSystems } from '../../../test/game-test-utils.js'
+import { createMockGameObject, createMockEventSystems } from '@test/game-test-utils.js'
 
 describe('Enemy', () => {
   let mockGame

@@ -14,7 +14,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { StateSubscriptions } from './StateSubscriptions.js';
+import { StateSubscriptions } from '@/systems/StateSubscriptions.js';
 
 describe('StateSubscriptions', () => {
     let stateSubscriptions;

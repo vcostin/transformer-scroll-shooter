@@ -15,7 +15,7 @@ import {
     validateEnum,
     validateNumberRange,
     createValidationError
-} from './StateValidation.js';
+} from '@/systems/StateValidation.js';
 
 describe('StateValidation', () => {
     let mockState;

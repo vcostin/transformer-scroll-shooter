@@ -12,8 +12,8 @@
  * - Memory management and cleanup
  */
 
-import { eventDispatcher } from './EventDispatcher.js';
-import { DEFAULT_STATE, STATE_SCHEMA, getValidationRules, getDefaultValue } from '../constants/state-schema.js';
+import { eventDispatcher } from '@/systems/EventDispatcher.js';
+import { DEFAULT_STATE, STATE_SCHEMA, getValidationRules, getDefaultValue } from '@/constants/state-schema.js';
 import { 
     getValueByPath, 
     setValueByPath, 
@@ -21,12 +21,12 @@ import {
     deepEqual, 
     resolveReference as resolveReferenceUtil,
     isValidPath
-} from './StateUtils.js';
-import { validateValue as validateValueUtil } from './StateValidation.js';
-import { StateHistory } from './StateHistory.js';
-import { StateSubscriptions } from './StateSubscriptions.js';
-import { StatePerformance } from './StatePerformance.js';
-import { StateAsync } from './StateAsync.js';
+} from '@/systems/StateUtils.js';
+import { validateValue as validateValueUtil } from '@/systems/StateValidation.js';
+import { StateHistory } from '@/systems/StateHistory.js';
+import { StateSubscriptions } from '@/systems/StateSubscriptions.js';
+import { StatePerformance } from '@/systems/StatePerformance.js';
+import { StateAsync } from '@/systems/StateAsync.js';
 
 /**
  * StateManager class for centralized state management

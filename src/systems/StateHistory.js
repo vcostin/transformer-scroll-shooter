@@ -15,7 +15,7 @@
  * @module StateHistory
  */
 
-import { deepClone } from './StateUtils.js';
+import { deepClone } from '@/systems/StateUtils.js';
 
 /**
  * StateHistory class for managing state history and undo/redo functionality

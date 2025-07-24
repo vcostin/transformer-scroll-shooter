@@ -4,8 +4,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { StateManager, stateManager } from './StateManager.js';
-import { DEFAULT_STATE, STATE_PATHS } from '../constants/state-schema.js';
+import { StateManager, stateManager } from '@/systems/StateManager.js';
+import { DEFAULT_STATE, STATE_PATHS } from '@/constants/state-schema.js';
 
 describe('StateManager', () => {
     let testStateManager;

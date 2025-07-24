@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import PatternMatcher from './PatternMatcher.js';
+import PatternMatcher from '@/utils/PatternMatcher.js';
 
 describe('PatternMatcher', () => {
   let patternMatcher;

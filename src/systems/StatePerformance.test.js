@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { StatePerformance } from './StatePerformance.js';
+import { StatePerformance } from '@/systems/StatePerformance.js';
 
 describe('StatePerformance', () => {
     let performance;

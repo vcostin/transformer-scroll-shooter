@@ -10,8 +10,8 @@
  * All functions work with external schema definitions and are stateless.
  */
 
-import { getValidationRules } from '../constants/state-schema.js';
-import { resolveReference } from './StateUtils.js';
+import { getValidationRules } from '@/constants/state-schema.js';
+import { resolveReference } from '@/systems/StateUtils.js';
 
 /**
  * Validate a value against schema rules for a given path

@@ -15,7 +15,7 @@ import {
     isValidPath,
     getParentPath,
     getPathLeaf
-} from './StateUtils.js';
+} from '@/systems/StateUtils.js';
 
 describe('StateUtils', () => {
     describe('getValueByPath', () => {
