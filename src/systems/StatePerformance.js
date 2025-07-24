@@ -1,14 +1,18 @@
 /**
- * StatePerformance - Performance monitoring and statistics module for StateManager
+ * StatePerformance - Performance monitoring and optimization for StateManager
  * 
  * Handles:
- * - Performance statistics tracking (updates, gets, errors)
- * - Memory usage monitoring and caching
- * - Timing measurements and averages
- * - Performance metrics aggregation
- * - Cache invalidation management
- * - Statistics reporting and debugging
+ * - Performance metrics tracking
+ * - Memory usage monitoring
+ * - Operation timing
+ * - Optimization suggestions
+ * - Batch operation coordination
+ * 
+ * @author Development Team
+ * @version 1.0.0
  */
+
+import { MemoryMonitor } from '@/utils/MemoryUtils.js';
 
 export class StatePerformance {
     constructor(options = {}) {
@@ -22,7 +26,15 @@ export class StatePerformance {
             lastUpdateTime: 0
         };
 
-        // Memory tracking
+        // Initialize memory monitoring with enhanced utilities
+        this.memoryMonitor = new MemoryMonitor({
+            sampleRate: options.memorySampleRate || 1.0, // Default to 100% for reliable testing
+            throttleMs: options.memoryThrottleMs || 0, // Default to no throttling for tests
+            useEstimation: options.useMemoryEstimation !== false,
+            maxSize: options.memoryWarningThreshold || 1024 * 1024
+        });
+        
+        // Legacy memory tracking for backward compatibility
         this.cachedStateSize = 0;
         this.memoryCacheValid = false;
 
@@ -134,11 +146,20 @@ export class StatePerformance {
 
         try {
             const state = this.onGetState();
-            this.cachedStateSize = JSON.stringify(state).length;
+            
+            // Use enhanced memory monitoring
+            const calculatedSize = this.memoryMonitor.calculateSize(state);
+            this.cachedStateSize = calculatedSize || 0;
             this.memoryCacheValid = true;
             this.lastMemoryUpdate = now;
+            
+            if (this.options.enableDebug && calculatedSize === 0) {
+                console.warn('StatePerformance: Memory calculation returned 0, using fallback');
+                // Fallback to JSON.stringify if estimation fails
+                this.cachedStateSize = JSON.stringify(state).length;
+            }
         } catch (error) {
-            // Fallback if state serialization fails
+            // Fallback if state retrieval fails
             this.cachedStateSize = 0;
             this.memoryCacheValid = false;
             if (this.options.enableDebug) {

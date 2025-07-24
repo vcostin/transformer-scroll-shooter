@@ -77,7 +77,7 @@ export class StateAsync {
 
             // Apply retry logic if specified
             const finalPromise = options.retryAttempts || this.options.retryAttempts
-                ? this.withRetry(promise, options.retryAttempts || this.options.retryAttempts, options.retryDelay || this.options.retryDelay)
+                ? this.withRetry(() => valueOrPromise, options.retryAttempts || this.options.retryAttempts, options.retryDelay || this.options.retryDelay)
                 : promise;
 
             const value = await finalPromise;
@@ -398,14 +398,21 @@ export class StateAsync {
     }
 
     /**
-     * Add retry logic to a promise
+     * Add retry logic to a promise-generating function
+     * @param {Function} promiseFactory - Function that returns a new promise
+     * @param {number} retryAttempts - Number of retry attempts
+     * @param {number} retryDelay - Delay between retries in ms
      * @private
      */
-    async withRetry(promise, retryAttempts, retryDelay) {
+    async withRetry(promiseFactory, retryAttempts, retryDelay) {
         let lastError;
         
         for (let attempt = 0; attempt <= retryAttempts; attempt++) {
             try {
+                // Create a fresh promise for each attempt
+                const promise = typeof promiseFactory === 'function' 
+                    ? promiseFactory() 
+                    : promiseFactory;
                 return await promise;
             } catch (error) {
                 lastError = error;

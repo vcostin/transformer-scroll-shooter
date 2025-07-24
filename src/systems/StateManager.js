@@ -89,7 +89,7 @@ export class StateManager {
             onGetHistoryMemoryUsage: () => this.stateHistory.getHistoryMemoryUsage()
         });
 
-        // Async state management
+        // Async state management with safe state update callback
         this.stateAsync = new StateAsync({
             enableEvents: this.options.enableEvents,
             enableDebug: this.options.enableDebug,
@@ -97,7 +97,7 @@ export class StateManager {
             retryAttempts: this.options.asyncRetryAttempts || 0,
             retryDelay: this.options.asyncRetryDelay || 1000
         }, {
-            onSetState: (path, value, options) => this._safeCallModule('setState', () => this.setState(path, value, options)),
+            onSetState: (path, value, options) => this._safeCallModule('directSetState', () => this._directSetState(path, value, options)),
             onEmitEvent: (eventName, payload) => this._safeEmitEvent(eventName, payload)
         });
 
@@ -244,6 +244,78 @@ export class StateManager {
      */
     async setStateAsync(path, valueOrPromise, options = {}) {
         return this.stateAsync.setStateAsync(path, valueOrPromise, options);
+    }
+
+    /**
+     * Direct state update without triggering async operations (prevents circular dependency)
+     * Used internally by StateAsync to avoid infinite recursion
+     * @param {string} path - Dot-notation path to state property
+     * @param {*} value - New value to set
+     * @param {Object} options - Update options
+     * @returns {boolean} True if state was updated, false otherwise
+     * @private
+     */
+    _directSetState(path, value, options = {}) {
+        const updateOptions = {
+            skipValidation: false,
+            skipEvents: false,
+            skipHistory: false,
+            merge: false,
+            skipAsync: true, // Prevent async operation triggering
+            ...options
+        };
+
+        try {
+            // Validate path
+            if (!isValidPath(path)) {
+                throw new Error('State path must be a non-empty string');
+            }
+
+            // Get current value for comparison
+            const oldValue = this.getState(path);
+
+            // Validate new value if validation is enabled and module exists
+            if (!updateOptions.skipValidation && this.stateValidation) {
+                const validationResult = this._safeCallModule('validateValue', () => 
+                    this.stateValidation.validateValue(path, value)
+                );
+                if (validationResult !== true) {
+                    throw new Error(`Validation failed for '${path}': ${validationResult}`);
+                }
+            }
+
+            // Update state using utils
+            this.currentState = this._safeCallModule('setValueByPath', () => 
+                setValueByPath(this.currentState, path, value, updateOptions.merge)
+            );
+
+            // Add to history if enabled
+            if (!updateOptions.skipHistory) {
+                this._safeCallModule('addToHistory', () => 
+                    this.stateHistory.addStateToHistory(this.currentState)
+                );
+            }
+
+            // Track performance
+            this._safeCallModule('trackOperation', () => 
+                this.statePerformance.recordUpdate(Date.now())
+            );
+
+            // Emit change events if enabled
+            if (!updateOptions.skipEvents && oldValue !== value) {
+                this._safeCallModule('notifySubscribers', () => 
+                    this.stateSubscriptions.triggerSubscriptions(path, value, oldValue)
+                );
+                this._safeEmitEvent('stateChange', { path, value, oldValue });
+            }
+
+            return true;
+        } catch (error) {
+            if (this.options.enableDebug) {
+                console.error(`❌ StateManager: _directSetState('${path}') failed:`, error);
+            }
+            throw error;
+        }
     }
 
     /**

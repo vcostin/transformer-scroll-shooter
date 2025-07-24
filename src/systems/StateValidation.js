@@ -11,7 +11,7 @@
  */
 
 import { getValidationRules } from '@/constants/state-schema.js';
-import { resolveReference } from '@/systems/StateUtils.js';
+import { resolveReference, safeResolveReference } from '@/systems/StateUtils.js';
 
 /**
  * Validate a value against schema rules for a given path
@@ -40,13 +40,16 @@ export function validateValue(path, value, currentState) {
         return `Value must be one of: ${rules.enum.join(', ')}`;
     }
 
-    // Number range validation
+    // Number range validation with safe reference resolution
     if (typeof value === 'number') {
-        if (rules.min !== undefined && value < resolveReference(rules.min, path, currentState)) {
-            return `Value must be >= ${resolveReference(rules.min, path, currentState)}`;
+        const resolvedMin = safeResolveReference(rules.min, path, currentState, null, true);
+        const resolvedMax = safeResolveReference(rules.max, path, currentState, null, true);
+        
+        if (resolvedMin !== null && value < resolvedMin) {
+            return `Value must be >= ${resolvedMin}`;
         }
-        if (rules.max !== undefined && value > resolveReference(rules.max, path, currentState)) {
-            return `Value must be <= ${resolveReference(rules.max, path, currentState)}`;
+        if (resolvedMax !== null && value > resolvedMax) {
+            return `Value must be <= ${resolvedMax}`;
         }
     }
 

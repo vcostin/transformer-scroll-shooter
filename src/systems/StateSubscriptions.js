@@ -15,6 +15,8 @@
  * @module StateSubscriptions
  */
 
+import { generateSubscriptionId } from '@/utils/IdGenerator.js';
+
 /**
  * StateSubscriptions class for managing state change subscriptions
  */
@@ -199,13 +201,13 @@ export class StateSubscriptions {
     }
 
     /**
-     * Generate a unique subscription ID
+     * Generate a unique subscription ID using enhanced ID generator
      * @param {string} path - Subscription path
      * @returns {string} Unique subscription ID
      * @private
      */
     generateSubscriptionId(path) {
-        return `${path}_${Date.now()}_${Math.random()}`;
+        return generateSubscriptionId(path);
     }
 
     /**

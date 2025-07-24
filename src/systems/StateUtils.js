@@ -136,14 +136,15 @@ export function deepEqual(a, b) {
 }
 
 /**
- * Resolve validation rule references
- * Converts string references to actual values from state
- * @param {*} value - The value to resolve (could be string reference or actual value)
- * @param {string} path - Current path being validated
- * @param {Object} state - Current state for reference resolution
- * @returns {*} Resolved value
+ * Resolve a reference value, supporting $ references and relative paths
+ * Enhanced with safe default value handling to prevent undefined comparisons
+ * @param {*} value - Value to resolve (could be a reference string)
+ * @param {string} path - Current path context for relative references
+ * @param {Object} state - Current state object
+ * @param {*} defaultValue - Default value if resolution fails (if not provided, returns original value)
+ * @returns {*} Resolved value or defaultValue or original value
  */
-export function resolveReference(value, path, state) {
+export function resolveReference(value, path, state, defaultValue = null) {
     if (typeof value !== 'string') {
         return value;
     }
@@ -152,7 +153,11 @@ export function resolveReference(value, path, state) {
     if (value.startsWith('$')) {
         const refPath = value.substring(1);
         const resolvedValue = getValueByPath(state, refPath);
-        return resolvedValue !== undefined ? resolvedValue : value;
+        if (resolvedValue !== undefined) {
+            return resolvedValue;
+        }
+        // Return defaultValue if provided, otherwise return original value (backward compatibility)
+        return defaultValue !== null ? defaultValue : value;
     }
 
     // Handle schema-style references (relative to parent object)
@@ -163,7 +168,64 @@ export function resolveReference(value, path, state) {
     const referencePath = parentPath ? `${parentPath}.${value}` : value;
     
     const resolvedValue = getValueByPath(state, referencePath);
-    return resolvedValue !== undefined ? resolvedValue : value;
+    if (resolvedValue !== undefined) {
+        return resolvedValue;
+    }
+    // Return defaultValue if provided, otherwise return original value (backward compatibility)
+    return defaultValue !== null ? defaultValue : value;
+}
+
+/**
+ * Ramda-style pathOr function - get value by path with default fallback
+ * Inspired by functional programming libraries for safer path access
+ * @param {*} defaultValue - Default value if path doesn't exist
+ * @param {string} path - Dot-notation path to property
+ * @param {Object} obj - Object to traverse
+ * @returns {*} Value at path or defaultValue
+ */
+export function pathOr(defaultValue, path, obj) {
+    if (!obj || typeof obj !== 'object') {
+        return defaultValue;
+    }
+    
+    const value = getValueByPath(obj, path);
+    return value !== undefined ? value : defaultValue;
+}
+
+/**
+ * Safe reference resolution for validation rules
+ * Ensures numeric comparisons always have valid values
+ * @param {*} reference - Reference value to resolve
+ * @param {string} path - Current validation path
+ * @param {Object} state - Current state
+ * @param {*} fallback - Fallback value for failed resolution
+ * @param {boolean} expectNumeric - Whether to convert result to number
+ * @returns {*} Safely resolved value
+ */
+export function safeResolveReference(reference, path, state, fallback = null, expectNumeric = false) {
+    if (reference === undefined || reference === null) {
+        return fallback;
+    }
+    
+    const resolved = resolveReference(reference, path, state, fallback);
+    
+    // If resolveReference returned the original string and it was a reference,
+    // it means the resolution failed, so return fallback
+    if (typeof reference === 'string' && reference.startsWith('$') && resolved === reference) {
+        return fallback;
+    }
+    
+    // Only convert to numeric if explicitly requested or reference suggests numeric intent
+    const shouldConvertToNumeric = expectNumeric || 
+        (typeof reference === 'number') ||
+        (typeof reference === 'string' && !isNaN(Number(reference)) && reference !== '' && !/^[a-zA-Z]/.test(reference));
+    
+    if (shouldConvertToNumeric && resolved !== null && resolved !== undefined) {
+        const numericValue = Number(resolved);
+        return !isNaN(numericValue) ? numericValue : fallback;
+    }
+    
+    return resolved;
 }
 
 /**
