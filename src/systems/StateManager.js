@@ -26,6 +26,7 @@ import { validateValue as validateValueUtil } from './StateValidation.js';
 import { StateHistory } from './StateHistory.js';
 import { StateSubscriptions } from './StateSubscriptions.js';
 import { StatePerformance } from './StatePerformance.js';
+import { StateAsync } from './StateAsync.js';
 
 /**
  * StateManager class for centralized state management
@@ -86,6 +87,22 @@ export class StateManager {
         }, {
             onGetState: () => this.currentState,
             onGetHistoryMemoryUsage: () => this.stateHistory.getHistoryMemoryUsage()
+        });
+
+        // Async state management
+        this.stateAsync = new StateAsync({
+            enableEvents: this.options.enableEvents,
+            enableDebug: this.options.enableDebug,
+            defaultTimeout: this.options.asyncTimeout || 30000,
+            retryAttempts: this.options.asyncRetryAttempts || 0,
+            retryDelay: this.options.asyncRetryDelay || 1000
+        }, {
+            onSetState: (path, value, options) => this.setState(path, value, options),
+            onEmitEvent: (eventName, payload) => {
+                if (this.options.enableEvents) {
+                    this.eventDispatcher.emit(eventName, payload);
+                }
+            }
         });
 
         // Event dispatcher reference
@@ -221,49 +238,7 @@ export class StateManager {
      * @returns {Promise} Promise that resolves when state is updated
      */
     async setStateAsync(path, valueOrPromise, options = {}) {
-        // If it's not a promise, just use regular setState
-        if (!valueOrPromise || typeof valueOrPromise.then !== 'function') {
-            return this.setState(path, valueOrPromise, options);
-        }
-
-        // Set loading state if requested
-        if (options.loadingPath) {
-            this.setState(options.loadingPath, true, { skipHistory: true });
-        }
-
-        try {
-            const value = await valueOrPromise;
-            
-            // Clear loading state
-            if (options.loadingPath) {
-                this.setState(options.loadingPath, false, { skipHistory: true });
-            }
-            
-            // Set the actual value
-            return this.setState(path, value, options);
-            
-        } catch (error) {
-            // Clear loading state on error
-            if (options.loadingPath) {
-                this.setState(options.loadingPath, false, { skipHistory: true });
-            }
-            
-            // Set error state if requested
-            if (options.errorPath) {
-                this.setState(options.errorPath, error.message || 'Unknown error', { skipHistory: true });
-            }
-            
-            // Emit error event
-            if (this.options.enableEvents) {
-                this.eventDispatcher.emit('state:async-error', {
-                    path,
-                    error,
-                    timestamp: Date.now()
-                });
-            }
-            
-            throw error;
-        }
+        return this.stateAsync.setStateAsync(path, valueOrPromise, options);
     }
 
     /**
@@ -473,11 +448,13 @@ export class StateManager {
     getStats() {
         const historyStats = this.stateHistory.getHistoryStats();
         const subscriptionStats = this.stateSubscriptions.getSubscriptionStats();
+        const asyncStats = this.stateAsync.getAsyncStats();
         
         return this.statePerformance.getStats({
             historySize: historyStats.historySize,
             historyIndex: historyStats.historyIndex,
-            subscriptionCount: subscriptionStats.totalSubscriptions
+            subscriptionCount: subscriptionStats.totalSubscriptions,
+            ...asyncStats
         });
     }
 
@@ -487,6 +464,31 @@ export class StateManager {
      */
     getMemoryUsage() {
         return this.statePerformance.getMemoryUsage();
+    }
+
+    /**
+     * Get active async operations
+     * @returns {Array} Array of active operation information
+     */
+    getActiveAsyncOperations() {
+        return this.stateAsync.getActiveOperations();
+    }
+
+    /**
+     * Cancel an active async operation
+     * @param {string} operationId - ID of operation to cancel
+     * @returns {boolean} True if operation was cancelled
+     */
+    cancelAsyncOperation(operationId) {
+        return this.stateAsync.cancelOperation(operationId);
+    }
+
+    /**
+     * Cancel all active async operations
+     * @returns {number} Number of operations cancelled
+     */
+    cancelAllAsyncOperations() {
+        return this.stateAsync.cancelAllOperations();
     }
 
     /**
@@ -527,6 +529,8 @@ export class StateManager {
         this.statePerformance.invalidateMemoryCache();
         this.statePerformance.resetStats();
         this.stateSubscriptions.clearAll();
+        this.stateAsync.cancelAllOperations();
+        this.stateAsync.resetStats();
 
         this.stateHistory.clearHistory();
         this.stateHistory.addStateToHistory(this.currentState);
