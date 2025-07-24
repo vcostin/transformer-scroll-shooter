@@ -107,8 +107,33 @@ export function createMockGame(options = {}) {
 
 /**
  * Create a standardized mock game object for entity testing
+ * 
  * @param {Object} options - Configuration options
+ * @param {Object} [options.eventDispatcher] - Custom event dispatcher to use
+ * @param {Object} [options.stateManager] - Custom state manager to use
+ * @param {boolean} [options.includeEffectManager=true] - Whether to include an EffectManager
+ * @param {boolean} [options.startEffectManager=true] - Whether to start the EffectManager
+ * @param {EffectManager} [options.effectManager] - Custom EffectManager to use
  * @returns {Object} Standardized mock game object
+ * 
+ * @example
+ * // Create a basic mock game object with default settings
+ * const mockGame = createMockGameObject();
+ * 
+ * @example
+ * // Create a mock game object with a custom event dispatcher
+ * const customEventDispatcher = {
+ *   emit: vi.fn(),
+ *   on: vi.fn(),
+ *   off: vi.fn(),
+ *   getEventNames: vi.fn(() => ['event1', 'event2']),
+ *   getTotalListenerCount: vi.fn(() => 2)
+ * };
+ * const mockGame = createMockGameObject({ eventDispatcher: customEventDispatcher });
+ * 
+ * @example
+ * // Create a mock game object without an EffectManager
+ * const mockGame = createMockGameObject({ includeEffectManager: false });
  */
 export function createMockGameObject(options = {}) {
     const mockEventDispatcher = options.eventDispatcher || {

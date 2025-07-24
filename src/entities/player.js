@@ -14,6 +14,15 @@ import * as MathUtils from '@/utils/math.js';
 import { EffectManager } from '@/systems/EffectManager.js';
 
 export default class Player {
+    /**
+     * Extract payload from event data with fallback
+     * @param {Object} data - Event data object
+     * @returns {Object} Extracted payload
+     */
+    static extractEventPayload(data) {
+        return data.payload || data;
+    }
+
     constructor(game, x, y) {
         this.game = game;
         this.x = x;
@@ -273,7 +282,7 @@ export default class Player {
      */
     handleMoveInput(data) {
         // Extract from event payload
-        const payload = data.payload || data;
+        const payload = Player.extractEventPayload(data);
         const { direction, deltaTime } = payload;
         const previousX = this.x;
         const previousY = this.y;
@@ -382,7 +391,7 @@ export default class Player {
      */
     handleShootInput(data) {
         // Extract from event payload
-        const payload = data.payload || data;
+        const payload = Player.extractEventPayload(data);
         if (this.shootCooldown <= 0) {
             const props = this.modeProperties[this.mode];
             
@@ -468,7 +477,7 @@ export default class Player {
      */
     handleTransformInput(data) {
         // Extract from event payload
-        const payload = data.payload || data;
+        const payload = Player.extractEventPayload(data);
         if (this.transformCooldown <= 0) {
             const oldMode = this.mode;
             
@@ -611,7 +620,7 @@ export default class Player {
      */
     handleHeal(data) {
         // Extract from event payload
-        const payload = data.payload || data;
+        const payload = Player.extractEventPayload(data);
         const { amount } = payload;
         const oldHealth = this.health;
         
@@ -641,7 +650,7 @@ export default class Player {
      */
     handleEnemyCollision(data) {
         // Extract from event payload
-        const payload = data.payload || data;
+        const payload = Player.extractEventPayload(data);
         const { enemy } = payload;
         
         // Apply damage from enemy
@@ -655,7 +664,7 @@ export default class Player {
      */
     handlePowerupCollision(data) {
         // Extract from event payload
-        const payload = data.payload || data;
+        const payload = Player.extractEventPayload(data);
         const { powerup } = payload;
         
         // Add powerup to active powerups
