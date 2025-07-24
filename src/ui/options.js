@@ -10,45 +10,34 @@ import {
 } from '../constants/ui-events.js';
 
 export class OptionsMenu {
-    constructor(game, eventDispatcher = null, stateManager = null) {
+    constructor(game, eventDispatcher, stateManager) {
+        // Validate required dependencies
+        if (!eventDispatcher) {
+            throw new Error("OptionsMenu: 'eventDispatcher' is required and cannot be null or undefined.");
+        }
+        if (!stateManager) {
+            throw new Error("OptionsMenu: 'stateManager' is required and cannot be null or undefined.");
+        }
+        
         this.game = game;
         this.eventDispatcher = eventDispatcher;
         this.stateManager = stateManager;
+        this.effectManager = game.effectManager;
         this.isOpen = false;
         this.selectedOption = 0;
-        this.eventListeners = new Set();
-        // Subscribe to loaded settings
-        if (this.eventDispatcher) {
-            const unsubscribe = this.eventDispatcher.on(
-                UI_EVENTS.SETTINGS_LOADED,
-                (settings) => {
-                    // Apply loaded settings
-                    this.options.forEach(option => {
-                        const key = option.name.toLowerCase().replace(/\s+/g, '');
-                        if (settings.hasOwnProperty(key)) {
-                            const newVal = settings[key];
-                            option.setValue(newVal);
-                        }
-                    });
-                }
-            );
-            this.eventListeners.add(unsubscribe);
-        }
+        
+        // Setup effects-based event handling
+        this.setupEffects();
         
         // Initialize options configuration
         this.initializeOptions();
-        
-        // Set up event listeners
-        this.setupEventListeners();
         
         // Create UI overlay
         this.overlay = null;
         this.createOverlay();
         
         // Request load settings
-        if (this.eventDispatcher) {
-            this.eventDispatcher.emit(UI_EVENTS.SETTINGS_LOAD);
-        }
+        this.eventDispatcher.emit(UI_EVENTS.SETTINGS_LOAD);
     }
     
     /**
@@ -135,54 +124,61 @@ export class OptionsMenu {
     }
     
     /**
-     * Set up event listeners
+     * Setup effects-based event handling using EffectManager
      */
-    setupEventListeners() {
-        if (!this.eventDispatcher) return;
+    setupEffects() {
+        // Settings management effects
+        this.effectManager.effect(UI_EVENTS.SETTINGS_LOADED, (action) => {
+            const settings = action.payload;
+            // Apply loaded settings
+            this.options.forEach(option => {
+                const key = option.name.toLowerCase().replace(/\s+/g, '');
+                if (settings.hasOwnProperty(key)) {
+                    const newVal = settings[key];
+                    option.setValue(newVal);
+                }
+            });
+        });
         
-        // Listen for menu events
-        const menuOpenListener = this.eventDispatcher.on(UI_EVENTS.MENU_OPENED, (data) => {
+        // Menu control effects
+        this.effectManager.effect(UI_EVENTS.MENU_OPENED, (action) => {
+            const data = action.payload;
             if (data.menuType === MENU_TYPES.OPTIONS) {
                 this.open();
             }
         });
-        this.eventListeners.add(menuOpenListener);
         
-        const menuCloseListener = this.eventDispatcher.on(UI_EVENTS.MENU_CLOSED, (data) => {
+        this.effectManager.effect(UI_EVENTS.MENU_CLOSED, (action) => {
+            const data = action.payload;
             if (data.menuType === MENU_TYPES.OPTIONS) {
                 this.close();
             }
         });
-        this.eventListeners.add(menuCloseListener);
         
-        // Listen for navigation events
-        const navigationListener = this.eventDispatcher.on(UI_EVENTS.MENU_NAVIGATION, (data) => {
+        // Navigation effects
+        this.effectManager.effect(UI_EVENTS.MENU_NAVIGATION, (action) => {
+            const data = action.payload;
             if (this.isOpen) {
                 this.handleNavigation(data);
             }
         });
-        this.eventListeners.add(navigationListener);
     }
     
     /**
      * Emit setting changed event
      */
     emitSettingChanged(setting, value, oldValue) {
-        if (this.eventDispatcher) {
-            this.eventDispatcher.emit(UI_EVENTS.SETTING_CHANGED, {
-                setting,
-                value,
-                oldValue,
-                source: 'options'
-            });
-        }
+        this.eventDispatcher.emit(UI_EVENTS.SETTING_CHANGED, {
+            setting,
+            value,
+            oldValue,
+            source: 'options'
+        });
         
         // Update state manager
-        if (this.stateManager) {
-            const stateKey = this.getStateKeyForSetting(setting);
-            if (stateKey) {
-                this.stateManager.setState(stateKey, value);
-            }
+        const stateKey = this.getStateKeyForSetting(setting);
+        if (stateKey) {
+            this.stateManager.setState(stateKey, value);
         }
     }
     
@@ -228,12 +224,10 @@ export class OptionsMenu {
      * Select current option
      */
     selectCurrentOption() {
-        if (this.eventDispatcher) {
-            this.eventDispatcher.emit(UI_EVENTS.MENU_OPTION_SELECTED, {
-                optionIndex: this.selectedOption,
-                option: this.options[this.selectedOption]
-            });
-        }
+        this.eventDispatcher.emit(UI_EVENTS.MENU_OPTION_SELECTED, {
+            optionIndex: this.selectedOption,
+            option: this.options[this.selectedOption]
+        });
     }
     
     createOverlay() {
@@ -289,12 +283,10 @@ export class OptionsMenu {
         
         // Setup close button with event emission
         document.getElementById('closeOptions').addEventListener('click', () => {
-            if (this.eventDispatcher) {
-                this.eventDispatcher.emit(UI_EVENTS.BUTTON_CLICKED, {
-                    buttonId: 'closeOptions',
-                    source: 'options'
-                });
-            }
+            this.eventDispatcher.emit(UI_EVENTS.BUTTON_CLICKED, {
+                buttonId: 'closeOptions',
+                source: 'options'
+            });
             this.close();
         });
     }
@@ -304,18 +296,14 @@ export class OptionsMenu {
         this.overlay.style.display = 'block';
         
         // Emit menu opened event
-        if (this.eventDispatcher) {
-            this.eventDispatcher.emit(UI_EVENTS.MENU_OPENED, {
-                menuType: MENU_TYPES.OPTIONS,
-                source: 'options'
-            });
-        }
+        this.eventDispatcher.emit(UI_EVENTS.MENU_OPENED, {
+            menuType: MENU_TYPES.OPTIONS,
+            source: 'options'
+        });
         
         // Update state
-        if (this.stateManager) {
-            this.stateManager.setState(UI_STATE_KEYS.MENU_OPEN, true);
-            this.stateManager.setState(UI_STATE_KEYS.MENU_TYPE, MENU_TYPES.OPTIONS);
-        }
+        this.stateManager.setState(UI_STATE_KEYS.MENU_OPEN, true);
+        this.stateManager.setState(UI_STATE_KEYS.MENU_TYPE, MENU_TYPES.OPTIONS);
         
         this.game.paused = true;
         this.updateDisplay();
@@ -326,18 +314,14 @@ export class OptionsMenu {
         this.overlay.style.display = 'none';
         
         // Emit menu closed event
-        if (this.eventDispatcher) {
-            this.eventDispatcher.emit(UI_EVENTS.MENU_CLOSED, {
-                menuType: MENU_TYPES.OPTIONS,
-                source: 'options'
-            });
-        }
+        this.eventDispatcher.emit(UI_EVENTS.MENU_CLOSED, {
+            menuType: MENU_TYPES.OPTIONS,
+            source: 'options'
+        });
         
         // Update state
-        if (this.stateManager) {
-            this.stateManager.setState(UI_STATE_KEYS.MENU_OPEN, false);
-            this.stateManager.setState(UI_STATE_KEYS.MENU_TYPE, null);
-        }
+        this.stateManager.setState(UI_STATE_KEYS.MENU_OPEN, false);
+        this.stateManager.setState(UI_STATE_KEYS.MENU_TYPE, null);
         
         this.game.paused = false;
         this.saveSettings();
@@ -473,12 +457,7 @@ export class OptionsMenu {
             settings[key] = option.value();
         });
         
-        if (this.eventDispatcher) {
-            this.eventDispatcher.emit(UI_EVENTS.SETTINGS_SAVE, settings);
-        } else {
-            // Persist settings when no event dispatcher available
-            localStorage.setItem('gameSettings', JSON.stringify(settings));
-        }
+        this.eventDispatcher.emit(UI_EVENTS.SETTINGS_SAVE, settings);
     }
 
     /**

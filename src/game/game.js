@@ -24,18 +24,6 @@ export class Game {
         this.width = this.canvas.width;
         this.height = this.canvas.height;
         
-        // Game state
-        this.score = 0;
-        this.gameOver = false;
-        this.paused = false;
-        this.showFPS = false;
-        this.difficulty = 'Normal';
-        this.level = 1;
-        this.enemiesKilled = 0;
-        this.enemiesPerLevel = GAME_CONSTANTS.ENEMIES_PER_LEVEL;
-        this.bossActive = false;
-        this.bossSpawnedThisLevel = false;
-        
         // Game objects
         this.player = null;
         this.enemies = [];
@@ -64,47 +52,91 @@ export class Game {
         this.stateManager = stateManager;
         this.audio = new AudioManager();
         this.effectManager = new EffectManager(this.eventDispatcher);
-        this.options = new OptionsMenu(this);
+        this.options = new OptionsMenu(this, this.eventDispatcher, this.stateManager);
+        
+        // Additional properties that need to be available
+        this.enemiesPerLevel = GAME_CONSTANTS.ENEMIES_PER_LEVEL;
         
         // Frame counter for events
         this.frameNumber = 0;
-        
-        // Event listeners cleanup tracking
-        this.eventListeners = new Set();
-        
-        // State manager subscriptions cleanup tracking
-        this.stateSubscriptions = new Set();
         
         // Input handling
         this.keys = {};
         this.setupInput();
         
-        // Setup event listeners
-        this.setupEventListeners();
+        // Initialize pure event-driven architecture after StateManager is ready
+        this.initializeGameState();
+        
+        // Setup effects-based event handling
+        this.setupEffects();
         
         this.init();
     }
+
+    initializeGameState() {
+        // Initialize all game state through StateManager
+        this.stateManager.setState('game.score', 0);
+        this.stateManager.setState('game.gameOver', false);
+        this.stateManager.setState('game.paused', false);
+        this.stateManager.setState('game.showFPS', false);
+        this.stateManager.setState('game.difficulty', 'Normal');
+        this.stateManager.setState('game.level', 1);
+        this.stateManager.setState('game.enemiesKilled', 0);
+        this.stateManager.setState('game.enemiesPerLevel', GAME_CONSTANTS.ENEMIES_PER_LEVEL);
+        this.stateManager.setState('game.bossActive', false);
+        this.stateManager.setState('game.bossSpawnedThisLevel', false);
+    }
+
+    // Game state accessors
+    // Note: Always fetch from StateManager to ensure consistency and reactive behavior
+    // StateManager is internally optimized, caching here would break event-driven patterns
+    get score() { return this.stateManager.getState('game.score'); }
+    set score(value) { this.stateManager.setState('game.score', value); }
     
-    setupEventListeners() {
-        // Core game state event listeners
-        this.addEventListener(GAME_EVENTS.GAME_START, () => {
+    get gameOver() { return this.stateManager.getState('game.gameOver'); }
+    set gameOver(value) { this.stateManager.setState('game.gameOver', value); }
+    
+    get paused() { return this.stateManager.getState('game.paused'); }
+    set paused(value) { this.stateManager.setState('game.paused', value); }
+    
+    get level() { return this.stateManager.getState('game.level'); }
+    set level(value) { this.stateManager.setState('game.level', value); }
+    
+    get enemiesKilled() { return this.stateManager.getState('game.enemiesKilled'); }
+    set enemiesKilled(value) { this.stateManager.setState('game.enemiesKilled', value); }
+    
+    get showFPS() { return this.stateManager.getState('game.showFPS'); }
+    set showFPS(value) { this.stateManager.setState('game.showFPS', value); }
+    
+    get difficulty() { return this.stateManager.getState('game.difficulty'); }
+    set difficulty(value) { this.stateManager.setState('game.difficulty', value); }
+    
+    get bossActive() { return this.stateManager.getState('game.bossActive'); }
+    set bossActive(value) { this.stateManager.setState('game.bossActive', value); }
+    
+    get bossSpawnedThisLevel() { return this.stateManager.getState('game.bossSpawnedThisLevel'); }
+    set bossSpawnedThisLevel(value) { this.stateManager.setState('game.bossSpawnedThisLevel', value); }
+    
+    setupEffects() {
+        // Core game state effects
+        this.effectManager.effect(GAME_EVENTS.GAME_START, () => {
             this.stateManager.setState('game.state', 'running');
         });
         
-        this.addEventListener(GAME_EVENTS.GAME_PAUSE, () => {
+        this.effectManager.effect(GAME_EVENTS.GAME_PAUSE, () => {
             this.stateManager.setState('game.state', 'paused');
         });
         
-        this.addEventListener(GAME_EVENTS.GAME_RESUME, () => {
+        this.effectManager.effect(GAME_EVENTS.GAME_RESUME, () => {
             this.stateManager.setState('game.state', 'running');
         });
         
-        this.addEventListener(GAME_EVENTS.GAME_OVER, (data) => {
+        this.effectManager.effect(GAME_EVENTS.GAME_OVER, (data) => {
             this.stateManager.setState('game.state', 'gameOver');
             this.stateManager.setState('game.finalScore', data.score);
         });
         
-        this.addEventListener(GAME_EVENTS.UI_SCORE_UPDATE, (data) => {
+        this.effectManager.effect(GAME_EVENTS.UI_SCORE_UPDATE, (data) => {
             this.stateManager.setState('game.score', data.score);
         });
         
@@ -119,14 +151,9 @@ export class Game {
             }
         });
         
-        // Store subscription for cleanup
+        // Store subscription for cleanup (StateManager subscriptions still need manual cleanup)
+        this.stateSubscriptions = new Set();
         this.stateSubscriptions.add(unsubscribeScore);
-    }
-    
-    addEventListener(eventName, handler) {
-        const unsubscribe = this.eventDispatcher.on(eventName, handler);
-        this.eventListeners.add(unsubscribe);
-        return unsubscribe;
     }
     
     init() {
@@ -140,7 +167,7 @@ export class Game {
         this.player = new Player(this, 100, this.height / 2);
         this.background = new Background(this);
         
-        // Store reference for backward compatibility
+        // Store global reference for debugging and development tools
         window.game = this;
         
         // Emit game start event
@@ -208,13 +235,12 @@ export class Game {
             this.effectManager.stop();
         }
         
-        // Clean up event listeners
-        if (this.eventListeners) {
-            this.eventListeners.forEach(unsubscribe => unsubscribe());
-            this.eventListeners.clear();
+        // Clean up DOM event listeners
+        if (this.domEventCleanup) {
+            this.domEventCleanup.forEach(cleanup => cleanup());
         }
         
-        // Clean up state manager subscriptions
+        // Clean up state manager subscriptions (EffectManager handles event cleanup)
         if (this.stateSubscriptions) {
             this.stateSubscriptions.forEach(unsubscribe => unsubscribe());
             this.stateSubscriptions.clear();
@@ -278,22 +304,12 @@ export class Game {
         document.addEventListener('keyup', this.handleKeyUp);
         document.addEventListener('click', this.handleClick, { once: true });
         
-        // Store cleanup functions
-        this.eventListeners.add(() => {
-            if (document && document.removeEventListener) {
-                document.removeEventListener('keydown', this.handleKeyDown);
-            }
-        });
-        this.eventListeners.add(() => {
-            if (document && document.removeEventListener) {
-                document.removeEventListener('keyup', this.handleKeyUp);
-            }
-        });
-        this.eventListeners.add(() => {
-            if (document && document.removeEventListener) {
-                document.removeEventListener('click', this.handleClick);
-            }
-        });
+        // Store cleanup references for DOM events
+        this.domEventCleanup = [
+            () => document.removeEventListener && document.removeEventListener('keydown', this.handleKeyDown),
+            () => document.removeEventListener && document.removeEventListener('keyup', this.handleKeyUp),
+            () => document.removeEventListener && document.removeEventListener('click', this.handleClick)
+        ];
     }
     
     /**

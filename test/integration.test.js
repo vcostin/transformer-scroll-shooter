@@ -9,8 +9,18 @@ import { GAME_CONSTANTS, GAME_INFO } from '@/constants/game-constants.js'
 import * as CollisionUtils from '@/utils/collision.js'
 import * as MathUtils from '@/utils/math.js'
 import Player from '@/entities/player.js'
+import { EventDispatcher } from '@/systems/EventDispatcher.js'
+import { StateManager } from '@/systems/StateManager.js'
+import { EffectManager } from '@/systems/EffectManager.js'
+import { createMockGameObject } from '@test/game-test-utils.js'
 
 describe('Module Integration', () => {
+  // Helper function to create mock game with standardized setup
+  const createMockGame = () => createMockGameObject({
+    includeEffectManager: true,
+    startEffectManager: true
+  });
+
   describe('Constants Integration', () => {
     it('should have all game constants available', () => {
       expect(GAME_CONSTANTS).toBeDefined()
@@ -46,17 +56,7 @@ describe('Module Integration', () => {
 
   describe('Player Integration', () => {
     it('should create player with proper game integration', () => {
-      const mockGame = {
-        width: 800,
-        height: 600,
-        ctx: { save: () => {}, restore: () => {} },
-        keys: {},
-        bullets: [],
-        effects: [],
-        canvas: { width: 800, height: 600 },
-        audio: { playSound: () => {} },
-        delta: 16
-      }
+      const mockGame = createMockGame()
 
       const player = new Player(mockGame, 100, 300)
       expect(player).toBeDefined()
@@ -66,17 +66,7 @@ describe('Module Integration', () => {
     })
 
     it('should have proper mode system integration', () => {
-      const mockGame = {
-        width: 800,
-        height: 600,
-        ctx: { save: () => {}, restore: () => {} },
-        keys: {},
-        bullets: [],
-        effects: [],
-        canvas: { width: 800, height: 600 },
-        audio: { playSound: () => {} },
-        delta: 16
-      }
+      const mockGame = createMockGame()
 
       const player = new Player(mockGame, 100, 300)
       
@@ -95,17 +85,7 @@ describe('Module Integration', () => {
 
   describe('Cross-Module Integration', () => {
     it('should be able to use utils with player', () => {
-      const mockGame = {
-        width: 800,
-        height: 600,
-        ctx: { save: () => {}, restore: () => {} },
-        keys: {},
-        bullets: [],
-        effects: [],
-        canvas: { width: 800, height: 600 },
-        audio: { playSound: () => {} },
-        delta: 16
-      }
+      const mockGame = createMockGame()
 
       const player = new Player(mockGame, 100, 300)
       

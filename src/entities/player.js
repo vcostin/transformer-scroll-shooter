@@ -14,6 +14,15 @@ import * as MathUtils from '@/utils/math.js';
 import { EffectManager } from '@/systems/EffectManager.js';
 
 export default class Player {
+    /**
+     * Extract payload from event data with fallback
+     * @param {Object} data - Event data object
+     * @returns {Object} Extracted payload
+     */
+    static extractEventPayload(data) {
+        return data.payload || data;
+    }
+
     constructor(game, x, y) {
         this.game = game;
         this.x = x;
@@ -82,85 +91,128 @@ export default class Player {
         // Event-driven architecture setup
         this.eventDispatcher = game.eventDispatcher;
         this.stateManager = game.stateManager;
-        this.eventListeners = new Set();
+        this.effectManager = game.effectManager;
         
-        // Initialize event listeners
-        if (this.eventDispatcher) {
-            this.setupEventListeners();
-        }
+        // Setup effects-based event handling
+        this.setupEffects();
         
         // Initialize state
-        if (this.stateManager) {
-            this.initializeState();
-        }
+        this.initializeState();
     }
     
     /**
-     * Setup event listeners for input and collision events
+     * Setup effects-based event handling using EffectManager
      */
-    setupEventListeners() {
-        // Input event listeners
-        const moveHandler = this.eventDispatcher.on(PLAYER_EVENTS.INPUT_MOVE, (data) => {
+    setupEffects() {
+        this.setupInputEffects();
+        this.setupHealthEffects();
+        this.setupStateEffects();
+        this.setupCollisionEffects();
+        this.setupPowerupEffects();
+    }
+
+    /**
+     * Setup input-related effect handlers
+     */
+    setupInputEffects() {
+        this.effectManager.effect(PLAYER_EVENTS.INPUT_MOVE, (data) => {
             this.handleMoveInput(data);
         });
         
-        const shootHandler = this.eventDispatcher.on(PLAYER_EVENTS.INPUT_SHOOT, (data) => {
+        this.effectManager.effect(PLAYER_EVENTS.INPUT_SHOOT, (data) => {
             this.handleShootInput(data);
         });
         
-        const transformHandler = this.eventDispatcher.on(PLAYER_EVENTS.INPUT_TRANSFORM, (data) => {
+        this.effectManager.effect(PLAYER_EVENTS.INPUT_TRANSFORM, (data) => {
             this.handleTransformInput(data);
         });
-        
-        // Health event listeners
-        const damageHandler = this.eventDispatcher.on(PLAYER_EVENTS.PLAYER_DAMAGED, (data) => {
+    }
+
+    /**
+     * Setup health and damage effect handlers
+     */
+    setupHealthEffects() {
+        this.effectManager.effect(PLAYER_EVENTS.PLAYER_DAMAGED, (data) => {
             this.handleDamage(data);
         });
         
-        const healHandler = this.eventDispatcher.on(PLAYER_EVENTS.PLAYER_HEALED, (data) => {
+        this.effectManager.effect(PLAYER_EVENTS.PLAYER_HEALED, (data) => {
             this.handleHeal(data);
         });
+    }
+
+    /**
+     * Setup state synchronization effect handlers
+     */
+    setupStateEffects() {
+        this.effectManager.effect(PLAYER_EVENTS.PLAYER_SHOOT_COOLDOWN_CHANGED, (data) => {
+            this.stateManager.setState(PLAYER_STATES.SHOOT_COOLDOWN, data.value);
+        });
         
-        // Collision event listeners
-        const enemyCollisionHandler = this.eventDispatcher.on(PLAYER_EVENTS.PLAYER_COLLISION_ENEMY, (data) => {
+        this.effectManager.effect(PLAYER_EVENTS.PLAYER_TRANSFORM_COOLDOWN_CHANGED, (data) => {
+            this.stateManager.setState(PLAYER_STATES.TRANSFORM_COOLDOWN, data.value);
+        });
+        
+        this.effectManager.effect(PLAYER_EVENTS.PLAYER_TRANSFORMED, (data) => {
+            this.stateManager.setState(PLAYER_STATES.MODE, data.newMode);
+            this.stateManager.setState(PLAYER_STATES.SPEED, this.speed);
+            this.stateManager.setState(PLAYER_STATES.SHOOT_RATE, this.currentShootRate);
+        });
+        
+        this.effectManager.effect(PLAYER_EVENTS.PLAYER_MOVED, (data) => {
+            this.stateManager.setState(PLAYER_STATES.POSITION, { x: data.x, y: data.y });
+        });
+        
+        this.effectManager.effect(PLAYER_EVENTS.PLAYER_HEALTH_CHANGED, (data) => {
+            this.stateManager.setState(PLAYER_STATES.HEALTH, data.health);
+            this.stateManager.setState(PLAYER_STATES.SHIELD, data.shield || this.shield);
+        });
+        
+        this.effectManager.effect(PLAYER_EVENTS.PLAYER_POWERUP_ACTIVATED, (data) => {
+            this.stateManager.setState(PLAYER_STATES.POWERUPS, this.activePowerups);
+        });
+    }
+
+    /**
+     * Setup collision effect handlers
+     */
+    setupCollisionEffects() {
+        this.effectManager.effect(PLAYER_EVENTS.PLAYER_COLLISION_ENEMY, (data) => {
             this.handleEnemyCollision(data);
         });
         
-        const powerupCollisionHandler = this.eventDispatcher.on(PLAYER_EVENTS.PLAYER_COLLISION_POWERUP, (data) => {
+        this.effectManager.effect(PLAYER_EVENTS.PLAYER_COLLISION_POWERUP, (data) => {
             this.handlePowerupCollision(data);
         });
-        
-        // Store unsubscribe functions for cleanup
-        this.eventListeners.add(moveHandler);
-        this.eventListeners.add(shootHandler);
-        this.eventListeners.add(transformHandler);
-        this.eventListeners.add(damageHandler);
-        this.eventListeners.add(healHandler);
-        this.eventListeners.add(enemyCollisionHandler);
-        this.eventListeners.add(powerupCollisionHandler);
+    }
+
+    /**
+     * Setup powerup effect handlers
+     */
+    setupPowerupEffects() {
+        // Add any powerup-specific effects here if needed
+        // Currently handled through collision effects
     }
     
     /**
      * Initialize player state using EffectManager
      */
     initializeState() {
-        if (this.stateManager && this.eventDispatcher) {
-            // Use the game's EffectManager instead of creating a new one
-            const effectManager = this.game.effectManager;
-            if (effectManager) {
-                effectManager.initializeEntityState({
-                    stateManager: this.stateManager,
-                    initialState: {
-                        'HEALTH': this.health,
-                        'POSITION': { x: this.x, y: this.y },
-                        'MODE': this.mode,
-                        'SPEED': this.speed,
-                        'SHOOT_RATE': this.currentShootRate
-                    }
-                });
-                // Emit the event to trigger the effect
-                this.eventDispatcher.emit(GAME_EVENTS.ENTITY_STATE_INIT);
-            }
+        // Use the game's EffectManager instead of creating a new one
+        const effectManager = this.game.effectManager;
+        if (effectManager) {
+            effectManager.initializeEntityState({
+                stateManager: this.stateManager,
+                initialState: {
+                    [PLAYER_STATES.HEALTH]: this.health,
+                    [PLAYER_STATES.POSITION]: { x: this.x, y: this.y },
+                    [PLAYER_STATES.MODE]: this.mode,
+                    [PLAYER_STATES.SPEED]: this.speed,
+                    [PLAYER_STATES.SHOOT_RATE]: this.currentShootRate
+                }
+            });
+            // Emit the event to trigger the effect
+            this.eventDispatcher.emit(GAME_EVENTS.ENTITY_STATE_INIT);
         }
     }
     
@@ -177,10 +229,8 @@ export default class Player {
         this.updatePowerups(deltaTime);
 
         // Emit events for cooldown changes (handled by EffectManager)
-        if (this.eventDispatcher) {
-            this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_SHOOT_COOLDOWN_CHANGED, { value: this.shootCooldown });
-            this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_TRANSFORM_COOLDOWN_CHANGED, { value: this.transformCooldown });
-        }
+        this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_SHOOT_COOLDOWN_CHANGED, { value: this.shootCooldown });
+        this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_TRANSFORM_COOLDOWN_CHANGED, { value: this.transformCooldown });
 
         // Check if dead
         if (this.health <= 0) {
@@ -217,15 +267,13 @@ export default class Player {
         
         // Emit events for movement and position (handled by EffectManager)
         if (this.x !== previousX || this.y !== previousY) {
-            if (this.eventDispatcher) {
-                this.eventDispatcher.emit('PLAYER_POSITION_CHANGED', { x: this.x, y: this.y });
-                this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_MOVED, {
-                    x: this.x,
-                    y: this.y,
-                    previousX,
-                    previousY
-                });
-            }
+            this.eventDispatcher.emit('PLAYER_POSITION_CHANGED', { x: this.x, y: this.y });
+            this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_MOVED, {
+                x: this.x,
+                y: this.y,
+                previousX,
+                previousY
+            });
         }
     }
     
@@ -233,7 +281,9 @@ export default class Player {
      * Handle movement input events
      */
     handleMoveInput(data) {
-        const { direction, deltaTime } = data;
+        // Extract from event payload
+        const payload = Player.extractEventPayload(data);
+        const { direction, deltaTime } = payload;
         const previousX = this.x;
         const previousY = this.y;
         
@@ -306,15 +356,13 @@ export default class Player {
         
         // Only emit moved event if position actually changed
         if (this.x !== previousX || this.y !== previousY) {
-            if (this.eventDispatcher) {
-                this.eventDispatcher.emit('PLAYER_POSITION_CHANGED', { x: this.x, y: this.y });
-                this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_MOVED, {
-                    x: this.x,
-                    y: this.y,
-                    previousX,
-                    previousY
-                });
-            }
+            this.eventDispatcher.emit('PLAYER_POSITION_CHANGED', { x: this.x, y: this.y });
+            this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_MOVED, {
+                x: this.x,
+                y: this.y,
+                previousX,
+                previousY
+            });
         }
     }
     
@@ -328,15 +376,13 @@ export default class Player {
             bullets.forEach(bullet => this.game.addBullet(bullet));
             this.shootCooldown = this.currentShootRate;
             // Emit event for shoot cooldown change (handled by EffectManager)
-            if (this.eventDispatcher) {
-                this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_SHOOT_COOLDOWN_CHANGED, { value: this.shootCooldown });
-                this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_SHOT, {
-                    x: this.x + this.width,
-                    y: this.y + this.height / 2,
-                    bulletType: props.bulletType,
-                    mode: this.mode
-                });
-            }
+            this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_SHOOT_COOLDOWN_CHANGED, { value: this.shootCooldown });
+            this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_SHOT, {
+                x: this.x + this.width,
+                y: this.y + this.height / 2,
+                bulletType: props.bulletType,
+                mode: this.mode
+            });
         }
     }
     
@@ -344,6 +390,8 @@ export default class Player {
      * Handle shooting input events
      */
     handleShootInput(data) {
+        // Extract from event payload
+        const payload = Player.extractEventPayload(data);
         if (this.shootCooldown <= 0) {
             const props = this.modeProperties[this.mode];
             
@@ -356,20 +404,13 @@ export default class Player {
             
             this.shootCooldown = this.currentShootRate;
             
-            // Update state manager
-            if (this.stateManager) {
-                this.stateManager.setState(PLAYER_STATES.SHOOT_COOLDOWN, this.shootCooldown);
-            }
-            
-            // Emit shot event
-            if (this.eventDispatcher) {
-                this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_SHOT, {
-                    x: this.x + this.width,
-                    y: this.y + this.height / 2,
-                    bulletType: props.bulletType,
-                    mode: this.mode
-                });
-            }
+            // Emit shot event - state synchronization handled by effects
+            this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_SHOT, {
+                x: this.x + this.width,
+                y: this.y + this.height / 2,
+                bulletType: props.bulletType,
+                mode: this.mode
+            });
         }
     }
     
@@ -422,20 +463,12 @@ export default class Player {
             // Add transform effect
             this.game.addEffect(new TransformEffect(this.game, this.x, this.y));
             
-            if (this.stateManager) {
-                this.stateManager.setState(PLAYER_STATES.MODE, this.mode);
-                this.stateManager.setState(PLAYER_STATES.SPEED, this.speed);
-                this.stateManager.setState(PLAYER_STATES.SHOOT_RATE, this.currentShootRate);
-                this.stateManager.setState(PLAYER_STATES.TRANSFORM_COOLDOWN, this.transformCooldown);
-            }
-            
-            if (this.eventDispatcher) {
-                this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_TRANSFORMED, {
-                    oldMode,
-                    newMode: this.mode,
-                    modeIndex: this.currentModeIndex
-                });
-            }
+            // Emit transformation event - state synchronization handled by effects
+            this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_TRANSFORMED, {
+                oldMode,
+                newMode: this.mode,
+                modeIndex: this.currentModeIndex
+            });
         }
     }
     
@@ -443,6 +476,8 @@ export default class Player {
      * Handle transformation input events
      */
     handleTransformInput(data) {
+        // Extract from event payload
+        const payload = Player.extractEventPayload(data);
         if (this.transformCooldown <= 0) {
             const oldMode = this.mode;
             
@@ -457,22 +492,12 @@ export default class Player {
             // Add transform effect
             this.game.addEffect(new TransformEffect(this.game, this.x, this.y));
             
-            // Update state manager
-            if (this.stateManager) {
-                this.stateManager.setState(PLAYER_STATES.MODE, this.mode);
-                this.stateManager.setState(PLAYER_STATES.SPEED, this.speed);
-                this.stateManager.setState(PLAYER_STATES.SHOOT_RATE, this.currentShootRate);
-                this.stateManager.setState(PLAYER_STATES.TRANSFORM_COOLDOWN, this.transformCooldown);
-            }
-            
-            // Emit transformation event
-            if (this.eventDispatcher) {
-                this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_TRANSFORMED, {
-                    oldMode,
-                    newMode: this.mode,
-                    modeIndex: this.currentModeIndex
-                });
-            }
+            // Emit transformation event - state synchronization handled by effects
+            this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_TRANSFORMED, {
+                oldMode,
+                newMode: this.mode,
+                modeIndex: this.currentModeIndex
+            });
         }
     }
     
@@ -541,7 +566,8 @@ export default class Player {
      * Handle damage events
      */
     handleDamage(data) {
-        const { damage } = data;
+        // Extract damage from event payload
+        const damage = data.payload ? data.payload.damage : data.damage;
         const oldHealth = this.health;
         
         // Apply damage (consider shield)
@@ -553,25 +579,18 @@ export default class Player {
         
         this.health = Math.max(0, this.health - actualDamage);
         
-        // Update state manager
-        if (this.stateManager) {
-            this.stateManager.setState(PLAYER_STATES.HEALTH, this.health);
-            this.stateManager.setState(PLAYER_STATES.SHIELD, this.shield);
-        }
-        
-        // Emit health changed event
-        if (this.eventDispatcher) {
-            this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_HEALTH_CHANGED, {
-                health: this.health,
-                maxHealth: this.maxHealth,
-                percentage: this.health / this.maxHealth,
-                previousHealth: oldHealth,
-                damageDealt: actualDamage
-            });
-        }
+        // Emit health changed event - state synchronization handled by effects
+        this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_HEALTH_CHANGED, {
+            health: this.health,
+            maxHealth: this.maxHealth,
+            percentage: this.health / this.maxHealth,
+            previousHealth: oldHealth,
+            damageDealt: actualDamage,
+            shield: this.shield
+        });
         
         // Emit critical health event if health is low
-        if (this.health > 0 && this.health <= this.maxHealth * 0.25 && this.eventDispatcher) {
+        if (this.health > 0 && this.health <= this.maxHealth * 0.25) {
             this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_HEALTH_CRITICAL, {
                 health: this.health,
                 maxHealth: this.maxHealth
@@ -593,41 +612,32 @@ export default class Player {
      */
     takeDamage(damage) {
         // Bridge to event-driven damage handling
-        if (this.eventDispatcher) {
-            this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_DAMAGED, { damage });
-        } else {
-            // Fallback to direct damage handling
-            this.handleDamage({ damage });
-        }
+        this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_DAMAGED, { damage });
     }
     
     /**
      * Handle healing events
      */
     handleHeal(data) {
-        const { amount } = data;
+        // Extract from event payload
+        const payload = Player.extractEventPayload(data);
+        const { amount } = payload;
         const oldHealth = this.health;
         
         this.health = Math.min(this.maxHealth, this.health + amount);
         
-        // Update state manager
-        if (this.stateManager) {
-            this.stateManager.setState(PLAYER_STATES.HEALTH, this.health);
-        }
-        
-        // Emit health changed event
-        if (this.eventDispatcher) {
-            this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_HEALTH_CHANGED, {
-                health: this.health,
-                maxHealth: this.maxHealth,
-                percentage: this.health / this.maxHealth,
-                previousHealth: oldHealth,
-                healAmount: amount
-            });
-        }
+        // Emit health changed event - state synchronization handled by effects
+        this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_HEALTH_CHANGED, {
+            health: this.health,
+            maxHealth: this.maxHealth,
+            percentage: this.health / this.maxHealth,
+            previousHealth: oldHealth,
+            healAmount: amount,
+            shield: this.shield
+        });
         
         // Emit full health event if at max health
-        if (this.health === this.maxHealth && this.eventDispatcher) {
+        if (this.health === this.maxHealth) {
             this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_HEALTH_FULL, {
                 health: this.health,
                 maxHealth: this.maxHealth
@@ -639,7 +649,9 @@ export default class Player {
      * Handle enemy collision events
      */
     handleEnemyCollision(data) {
-        const { enemy } = data;
+        // Extract from event payload
+        const payload = Player.extractEventPayload(data);
+        const { enemy } = payload;
         
         // Apply damage from enemy
         if (enemy.damage) {
@@ -651,7 +663,9 @@ export default class Player {
      * Handle powerup collision events
      */
     handlePowerupCollision(data) {
-        const { powerup } = data;
+        // Extract from event payload
+        const payload = Player.extractEventPayload(data);
+        const { powerup } = payload;
         
         // Add powerup to active powerups
         const powerupData = {
@@ -665,19 +679,13 @@ export default class Player {
         // Apply powerup effects
         this.applyPowerupEffects(powerupData);
         
-        // Update state manager
-        if (this.stateManager) {
-            this.stateManager.setState(PLAYER_STATES.POWERUPS, this.activePowerups);
-        }
-        
-        // Emit powerup activated event
-        if (this.eventDispatcher) {
-            this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_POWERUP_ACTIVATED, {
-                type: powerup.type,
-                duration: powerup.duration,
-                player: this
-            });
-        }
+        // Emit powerup activated event - state synchronization handled by effects
+        this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_POWERUP_ACTIVATED, {
+            type: powerup.type,
+            duration: powerup.duration,
+            player: this,
+            activePowerups: this.activePowerups
+        });
     }
     
     /**
@@ -687,12 +695,10 @@ export default class Player {
         switch (powerup.type) {
             case 'shield':
                 this.shield = 50;
-                if (this.eventDispatcher) {
-                    this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_SHIELD_ACTIVATED, {
-                        shield: this.shield,
-                        duration: powerup.duration
-                    });
-                }
+                this.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_SHIELD_ACTIVATED, {
+                    shield: this.shield,
+                    duration: powerup.duration
+                });
                 break;
             case 'rapidfire':
                 this.updateModeProperties();
@@ -704,13 +710,11 @@ export default class Player {
     }
     
     /**
-     * Clean up event listeners
+     * Clean up resources
      */
     destroy() {
-        if (this.eventListeners) {
-            this.eventListeners.forEach(unsubscribe => unsubscribe());
-            this.eventListeners.clear();
-        }
+        // EffectManager handles cleanup automatically when effects are unregistered
+        // No manual cleanup needed for effect-based event handling
     }
     
     render(ctx) {

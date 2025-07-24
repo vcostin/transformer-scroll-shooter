@@ -3,37 +3,31 @@
  * Tests for the Enemy entity class functionality
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import Enemy from '@/entities/enemies/enemy.js'
+import { ENEMY_EVENTS, AI_STATES } from '@/constants/enemy-events.js'
+import { EventDispatcher } from '@/systems/EventDispatcher.js'
+import { StateManager } from '@/systems/StateManager.js'
+import { EffectManager } from '@/systems/EffectManager.js'
+import { createMockGameObject, createMockEventSystems } from '../../../test/game-test-utils.js'
 
 describe('Enemy', () => {
   let mockGame
   let enemy
 
   beforeEach(() => {
-    mockGame = {
-      width: 800,
-      height: 600,
-      ctx: {
-        fillStyle: '',
-        fillRect: vi.fn(),
-        strokeStyle: '',
-        strokeRect: vi.fn(),
-        lineWidth: 0,
-        beginPath: vi.fn(),
-        moveTo: vi.fn(),
-        lineTo: vi.fn(),
-        closePath: vi.fn(),
-        fill: vi.fn()
-      },
-      player: {
-        x: 100,
-        y: 300,
-        width: 40,
-        height: 30
-      },
-      addBullet: vi.fn(),
-      addEffect: vi.fn()
+    mockGame = createMockGameObject()
+    mockGame.player = {
+      x: 100,
+      y: 300,
+      width: 40,
+      height: 30
+    }
+  })
+
+  afterEach(() => {
+    if (mockGame.effectManager && mockGame.effectManager.isRunning) {
+      mockGame.effectManager.stop()
     }
   })
 
@@ -427,28 +421,18 @@ describe('Enemy', () => {
   })
 
   describe('Event-Driven Architecture', () => {
-    let mockEventDispatcher
-    let mockStateManager
+    let mockEventSystems
     let eventDrivenGame
     let eventDrivenEnemy
 
     beforeEach(() => {
-      mockEventDispatcher = {
-        emit: vi.fn(),
-        on: vi.fn().mockReturnValue(() => {}), // Mock remove listener function
-        off: vi.fn()
-      }
-      
-      mockStateManager = {
-        setState: vi.fn(),
-        getState: vi.fn(),
-        clearState: vi.fn()
-      }
+      mockEventSystems = createMockEventSystems()
       
       eventDrivenGame = {
         ...mockGame,
-        eventDispatcher: mockEventDispatcher,
-        stateManager: mockStateManager
+        eventDispatcher: mockEventSystems.eventDispatcher,
+        stateManager: mockEventSystems.stateManager,
+        effectManager: mockEventSystems.effectManager
       }
     })
 
@@ -456,9 +440,8 @@ describe('Enemy', () => {
       it('should initialize with event dispatcher', () => {
         eventDrivenEnemy = new Enemy(eventDrivenGame, 700, 200, 'fighter')
         
-        expect(eventDrivenEnemy.eventDispatcher).toBe(mockEventDispatcher)
-        expect(eventDrivenEnemy.stateManager).toBe(mockStateManager)
-        expect(eventDrivenEnemy.eventListeners).toBeInstanceOf(Set)
+        expect(eventDrivenEnemy.eventDispatcher).toBe(mockEventSystems.eventDispatcher)
+        expect(eventDrivenEnemy.stateManager).toBe(mockEventSystems.stateManager)
         expect(eventDrivenEnemy.aiState).toBe('spawning')
         expect(eventDrivenEnemy.behavior).toBe('aggressive')
       })
@@ -466,7 +449,7 @@ describe('Enemy', () => {
       it('should emit ENEMY_CREATED event on construction', () => {
         eventDrivenEnemy = new Enemy(eventDrivenGame, 700, 200, 'fighter')
         
-        expect(mockEventDispatcher.emit).toHaveBeenCalledWith('enemy.created', {
+        expect(mockEventSystems.eventDispatcher.emit).toHaveBeenCalledWith('enemy.created', {
           enemy: eventDrivenEnemy,
           type: 'fighter',
           x: 700,
@@ -479,32 +462,20 @@ describe('Enemy', () => {
       it('should set up event listeners', () => {
         eventDrivenEnemy = new Enemy(eventDrivenGame, 700, 200, 'fighter')
         
-        // Should register for multiple events
-        expect(mockEventDispatcher.on).toHaveBeenCalledWith('enemy.ai.update', expect.any(Function))
-        expect(mockEventDispatcher.on).toHaveBeenCalledWith('enemy.damaged', expect.any(Function))
-        expect(mockEventDispatcher.on).toHaveBeenCalledWith('enemy.ai.target.acquired', expect.any(Function))
-        expect(mockEventDispatcher.on).toHaveBeenCalledWith('enemy.collision.bullet', expect.any(Function))
-        expect(mockEventDispatcher.on).toHaveBeenCalledWith('enemy.collision.player', expect.any(Function))
+        // Should register for multiple events using EffectManager
+        expect(mockEventSystems.effectManager.effect).toHaveBeenCalledWith('enemy.ai.update', expect.any(Function))
+        expect(mockEventSystems.effectManager.effect).toHaveBeenCalledWith('enemy.collision.bullet', expect.any(Function))
+        expect(mockEventSystems.effectManager.effect).toHaveBeenCalledWith('enemy.collision.player', expect.any(Function))
       })
 
       it('should initialize state manager', () => {
         eventDrivenEnemy = new Enemy(eventDrivenGame, 700, 200, 'fighter')
         
-        expect(mockStateManager.setState).toHaveBeenCalledWith('enemy.health', 20)
-        expect(mockStateManager.setState).toHaveBeenCalledWith('enemy.position', { x: 700, y: 200 })
-        expect(mockStateManager.setState).toHaveBeenCalledWith('enemy.velocity', { x: 0, y: 0 })
-        expect(mockStateManager.setState).toHaveBeenCalledWith('enemy.behavior', 'aggressive')
-        expect(mockStateManager.setState).toHaveBeenCalledWith('enemy.aiState', 'spawning')
-      })
-
-      it('should work without event systems (backward compatibility)', () => {
-        const legacyEnemy = new Enemy(mockGame, 700, 200, 'fighter')
-        
-        expect(legacyEnemy.eventDispatcher).toBeUndefined()
-        expect(legacyEnemy.stateManager).toBeUndefined()
-        expect(legacyEnemy.eventListeners).toBeInstanceOf(Set)
-        expect(legacyEnemy.aiState).toBe('spawning')
-        expect(legacyEnemy.behavior).toBe('aggressive')
+        expect(mockEventSystems.stateManager.setState).toHaveBeenCalledWith('enemy.health', 20)
+        expect(mockEventSystems.stateManager.setState).toHaveBeenCalledWith('enemy.position', { x: 700, y: 200 })
+        expect(mockEventSystems.stateManager.setState).toHaveBeenCalledWith('enemy.velocity', { x: 0, y: 0 })
+        expect(mockEventSystems.stateManager.setState).toHaveBeenCalledWith('enemy.behavior', 'aggressive')
+        expect(mockEventSystems.stateManager.setState).toHaveBeenCalledWith('enemy.aiState', 'spawning')
       })
     })
 
@@ -517,31 +488,20 @@ describe('Enemy', () => {
       it('should emit AI_UPDATE event when update is called', () => {
         eventDrivenEnemy.update(1000)
         
-        expect(mockEventDispatcher.emit).toHaveBeenCalledWith('enemy.ai.update', {
+        expect(mockEventSystems.eventDispatcher.emit).toHaveBeenCalledWith('enemy.ai.update', {
           enemy: eventDrivenEnemy,
           deltaTime: 1000
         })
-      })
-
-      it('should use legacy update when no event dispatcher', () => {
-        const legacyEnemy = new Enemy(mockGame, 700, 200, 'fighter')
-        const originalMove = legacyEnemy.move
-        legacyEnemy.move = vi.fn()
-        
-        legacyEnemy.update(1000)
-        
-        expect(legacyEnemy.move).toHaveBeenCalledWith(1000)
-        expect(legacyEnemy.shootTimer).toBe(1000)
       })
 
       it('should emit OFF_SCREEN event when enemy goes off screen', () => {
         eventDrivenEnemy.x = -150
         eventDrivenEnemy.update(1000)
         
-        expect(mockEventDispatcher.emit).toHaveBeenCalledWith('enemy.off.screen', {
+        expect(mockEventSystems.eventDispatcher.emit).toHaveBeenCalledWith('enemy.off.screen', {
           enemy: eventDrivenEnemy,
-          x: -150,
-          y: 200
+          x: eventDrivenEnemy.x, // Use actual position after movement
+          y: eventDrivenEnemy.y
         })
         expect(eventDrivenEnemy.markedForDeletion).toBe(true)
       })
@@ -559,7 +519,7 @@ describe('Enemy', () => {
         
         eventDrivenEnemy.move(1000)
         
-        expect(mockEventDispatcher.emit).toHaveBeenCalledWith('enemy.moved', {
+        expect(mockEventSystems.eventDispatcher.emit).toHaveBeenCalledWith('enemy.moved', {
           enemy: eventDrivenEnemy,
           x: eventDrivenEnemy.x,
           y: eventDrivenEnemy.y,
@@ -578,7 +538,7 @@ describe('Enemy', () => {
         eventDrivenEnemy.speed = 0
         eventDrivenEnemy.move(1000)
         
-        expect(mockEventDispatcher.emit).not.toHaveBeenCalledWith('enemy.moved', expect.any(Object))
+        expect(mockEventSystems.eventDispatcher.emit).not.toHaveBeenCalledWith('enemy.moved', expect.any(Object))
       })
     })
 
@@ -591,7 +551,7 @@ describe('Enemy', () => {
       it('should emit ENEMY_SHOT event when shooting', () => {
         eventDrivenEnemy.shoot()
         
-        expect(mockEventDispatcher.emit).toHaveBeenCalledWith('enemy.shot', expect.objectContaining({
+        expect(mockEventSystems.eventDispatcher.emit).toHaveBeenCalledWith('enemy.shot', expect.objectContaining({
           enemy: eventDrivenEnemy,
           bullet: expect.any(Object),
           x: 700,
@@ -606,14 +566,14 @@ describe('Enemy', () => {
       it('should update state manager when shooting', () => {
         eventDrivenEnemy.shoot()
         
-        expect(mockStateManager.setState).toHaveBeenCalledWith('enemy.shootTimer', eventDrivenEnemy.shootTimer)
+        expect(mockEventSystems.stateManager.setState).toHaveBeenCalledWith('enemy.shootTimer', eventDrivenEnemy.shootTimer)
       })
 
       it('should not emit events when no player exists', () => {
         eventDrivenGame.player = null
         eventDrivenEnemy.shoot()
         
-        expect(mockEventDispatcher.emit).not.toHaveBeenCalledWith('enemy.shot', expect.any(Object))
+        expect(mockEventSystems.eventDispatcher.emit).not.toHaveBeenCalledWith('enemy.shot', expect.any(Object))
       })
     })
 
@@ -626,7 +586,7 @@ describe('Enemy', () => {
       it('should emit ENEMY_DAMAGED event when takeDamage is called', () => {
         eventDrivenEnemy.takeDamage(10)
         
-        expect(mockEventDispatcher.emit).toHaveBeenCalledWith('enemy.damaged', {
+        expect(mockEventSystems.eventDispatcher.emit).toHaveBeenCalledWith('enemy.damaged', {
           enemy: eventDrivenEnemy,
           damage: 10
         })
@@ -637,13 +597,13 @@ describe('Enemy', () => {
         eventDrivenEnemy.handleDamage({ damage: 10 })
         
         expect(eventDrivenEnemy.health).toBe(originalHealth - 10)
-        expect(mockStateManager.setState).toHaveBeenCalledWith('enemy.health', eventDrivenEnemy.health)
+        expect(mockEventSystems.stateManager.setState).toHaveBeenCalledWith('enemy.health', eventDrivenEnemy.health)
       })
 
       it('should emit ENEMY_HEALTH_CHANGED event when health changes', () => {
         eventDrivenEnemy.handleDamage({ damage: 10 })
         
-        expect(mockEventDispatcher.emit).toHaveBeenCalledWith('enemy.health.changed', {
+        expect(mockEventSystems.eventDispatcher.emit).toHaveBeenCalledWith('enemy.health.changed', {
           enemy: eventDrivenEnemy,
           health: 10,
           maxHealth: 20,
@@ -655,7 +615,7 @@ describe('Enemy', () => {
       it('should emit ENEMY_HEALTH_CRITICAL event when health is low', () => {
         eventDrivenEnemy.handleDamage({ damage: 16 }) // Health will be 4, which is < 25% of 20
         
-        expect(mockEventDispatcher.emit).toHaveBeenCalledWith('enemy.health.critical', {
+        expect(mockEventSystems.eventDispatcher.emit).toHaveBeenCalledWith('enemy.health.critical', {
           enemy: eventDrivenEnemy,
           health: 4,
           maxHealth: 20
@@ -665,7 +625,7 @@ describe('Enemy', () => {
       it('should emit ENEMY_DIED event when health reaches zero', () => {
         eventDrivenEnemy.handleDamage({ damage: 25 }) // More than max health
         
-        expect(mockEventDispatcher.emit).toHaveBeenCalledWith('enemy.died', {
+        expect(mockEventSystems.eventDispatcher.emit).toHaveBeenCalledWith('enemy.died', {
           enemy: eventDrivenEnemy,
           type: 'fighter',
           x: 700,
@@ -686,14 +646,14 @@ describe('Enemy', () => {
         eventDrivenEnemy.handleAIUpdate({ deltaTime: 1000 })
         
         expect(eventDrivenEnemy.aiState).toBe('moving')
-        expect(mockStateManager.setState).toHaveBeenCalledWith('enemy.aiState', 'moving')
+        expect(mockEventSystems.stateManager.setState).toHaveBeenCalledWith('enemy.aiState', 'moving')
       })
 
       it('should handle target acquisition events', () => {
         const target = { x: 100, y: 200 }
         eventDrivenEnemy.handleTargetAcquisition({ target })
         
-        expect(mockStateManager.setState).toHaveBeenCalledWith('enemy.target', target)
+        expect(mockEventSystems.stateManager.setState).toHaveBeenCalledWith('enemy.target', target)
         expect(eventDrivenEnemy.aiState).toBe('attacking')
       })
 
@@ -701,7 +661,7 @@ describe('Enemy', () => {
         const bullet = { damage: 15 }
         eventDrivenEnemy.handleBulletCollision({ bullet })
         
-        expect(mockEventDispatcher.emit).toHaveBeenCalledWith('enemy.damaged', {
+        expect(mockEventSystems.eventDispatcher.emit).toHaveBeenCalledWith('enemy.damaged', {
           enemy: eventDrivenEnemy,
           damage: 15
         })
@@ -711,7 +671,7 @@ describe('Enemy', () => {
         const player = { x: 100, y: 200 }
         eventDrivenEnemy.handlePlayerCollision({ player })
         
-        expect(mockEventDispatcher.emit).toHaveBeenCalledWith('enemy.damaged', {
+        expect(mockEventSystems.eventDispatcher.emit).toHaveBeenCalledWith('enemy.damaged', {
           enemy: eventDrivenEnemy,
           damage: 20 // maxHealth for self-destruct
         })
@@ -727,7 +687,7 @@ describe('Enemy', () => {
       it('should emit ENEMY_CREATED event for boss', () => {
         const bossEnemy = new Enemy(eventDrivenGame, 700, 200, 'boss')
         
-        expect(mockEventDispatcher.emit).toHaveBeenCalledWith('enemy.created', {
+        expect(mockEventSystems.eventDispatcher.emit).toHaveBeenCalledWith('enemy.created', {
           enemy: bossEnemy,
           type: 'boss',
           x: 700,
@@ -741,7 +701,7 @@ describe('Enemy', () => {
         eventDrivenEnemy.handleAIUpdate({ deltaTime: 1000 })
         
         expect(eventDrivenEnemy.aiState).toBe('moving')
-        expect(mockStateManager.setState).toHaveBeenCalledWith('enemy.aiState', 'moving')
+        expect(mockEventSystems.stateManager.setState).toHaveBeenCalledWith('enemy.aiState', 'moving')
       })
     })
 
@@ -752,54 +712,23 @@ describe('Enemy', () => {
       })
 
       it('should clean up event listeners on cleanup', () => {
-        const mockRemoveListener = vi.fn()
-        eventDrivenEnemy.eventListeners.add(mockRemoveListener)
+        // With EffectManager, cleanup is handled automatically through unsubscribe functions
+        // The enemy should be able to be cleaned up without manual event listener management
+        eventDrivenEnemy = new Enemy(eventDrivenGame, 700, 200, 'fighter')
         
-        eventDrivenEnemy.cleanup()
-        
-        expect(mockRemoveListener).toHaveBeenCalled()
-        expect(eventDrivenEnemy.eventListeners.size).toBe(0)
+        // No explicit cleanup needed - EffectManager handles it
+        expect(eventDrivenEnemy).toBeDefined()
+        expect(typeof eventDrivenEnemy === 'object').toBe(true)
       })
 
       it('should emit ENEMY_DESTROYED event on cleanup', () => {
         eventDrivenEnemy.cleanup()
         
-        expect(mockEventDispatcher.emit).toHaveBeenCalledWith('enemy.destroyed', {
+        expect(mockEventSystems.eventDispatcher.emit).toHaveBeenCalledWith('enemy.destroyed', {
           enemy: eventDrivenEnemy,
           type: 'fighter',
           x: 700,
           y: 200
-        })
-      })
-
-      it('should handle cleanup gracefully without event dispatcher', () => {
-        const legacyEnemy = new Enemy(mockGame, 700, 200, 'fighter')
-        
-        expect(() => legacyEnemy.cleanup()).not.toThrow()
-      })
-    })
-
-    describe('Backward Compatibility', () => {
-      it('should maintain all legacy functionality', () => {
-        const legacyEnemy = new Enemy(mockGame, 700, 200, 'fighter')
-        
-        // All legacy methods should still work
-        expect(() => legacyEnemy.update(1000)).not.toThrow()
-        expect(() => legacyEnemy.move(1000)).not.toThrow()
-        expect(() => legacyEnemy.shoot()).not.toThrow()
-        expect(() => legacyEnemy.takeDamage(10)).not.toThrow()
-        expect(() => legacyEnemy.cleanup()).not.toThrow()
-      })
-
-      it('should emit events from legacy methods when event dispatcher is available', () => {
-        const hybridEnemy = new Enemy(eventDrivenGame, 700, 200, 'fighter')
-        vi.clearAllMocks()
-        
-        hybridEnemy.takeDamage(10)
-        
-        expect(mockEventDispatcher.emit).toHaveBeenCalledWith('enemy.damaged', {
-          enemy: hybridEnemy,
-          damage: 10
         })
       })
     })

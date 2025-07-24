@@ -287,11 +287,11 @@ describe('Event System Performance', () => {
                     eventDispatcher.emit(UI_EVENTS.INPUT_MOUSE_MOVE, { x: frame % 800, y: 300 });
                     
                     if (frame % 10 === 0) {
-                        eventDispatcher.emit(UI_EVENTS.MENU_ITEM_HOVER, { itemId: frame % 5 });
+                        eventDispatcher.emit(UI_EVENTS.BUTTON_HOVERED, { itemId: frame % 5 });
                     }
                     
                     if (frame % 30 === 0) {
-                        eventDispatcher.emit(UI_EVENTS.MENU_ITEM_SELECTED, { itemId: frame % 5 });
+                        eventDispatcher.emit(UI_EVENTS.MENU_OPTION_SELECTED, { itemId: frame % 5 });
                     }
                     
                     // State updates
@@ -319,16 +319,16 @@ describe('Event System Performance', () => {
                 const frameMetrics = profiler.measureFrame(() => {
                     // Many simultaneous events
                     for (let i = 0; i < 10; i++) {
-                        eventDispatcher.emit(UI_EVENTS.ENEMY_SPAWNED, { 
+                        eventDispatcher.emit(UI_EVENTS.SCORE_UPDATED, { 
                             id: frame * 10 + i,
                             x: Math.random() * 800,
                             y: Math.random() * 600
                         });
                     }
                     
-                    // Collision events
+                    // Game events
                     for (let i = 0; i < 5; i++) {
-                        eventDispatcher.emit(UI_EVENTS.COLLISION_DETECTED, {
+                        eventDispatcher.emit(UI_EVENTS.HEALTH_UPDATED, {
                             entityA: frame * 5 + i,
                             entityB: frame * 5 + i + 1
                         });

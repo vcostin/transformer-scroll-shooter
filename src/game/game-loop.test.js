@@ -261,21 +261,21 @@ describe('Event-Driven Game Loop', () => {
 
     describe('Event Listener Management', () => {
         it('should register core game event listeners', () => {
-            const mockOn = vi.spyOn(game.eventDispatcher, 'on');
+            const mockEffect = vi.spyOn(game.effectManager, 'effect');
             
-            game.setupEventListeners();
+            game.setupEffects();
             
-            expect(mockOn).toHaveBeenCalledWith(
+            expect(mockEffect).toHaveBeenCalledWith(
                 GAME_EVENTS.GAME_START,
                 expect.any(Function)
             );
             
-            expect(mockOn).toHaveBeenCalledWith(
+            expect(mockEffect).toHaveBeenCalledWith(
                 GAME_EVENTS.GAME_PAUSE,
                 expect.any(Function)
             );
             
-            expect(mockOn).toHaveBeenCalledWith(
+            expect(mockEffect).toHaveBeenCalledWith(
                 GAME_EVENTS.GAME_RESUME,
                 expect.any(Function)
             );
@@ -284,7 +284,7 @@ describe('Event-Driven Game Loop', () => {
         it('should cleanup event listeners on destroy', () => {
             const mockOff = vi.spyOn(game.eventDispatcher, 'off');
             
-            game.setupEventListeners();
+            game.setupEffects();
             game.destroy();
             
             expect(mockOff).toHaveBeenCalled();

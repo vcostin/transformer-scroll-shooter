@@ -1,23 +1,25 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { EffectManager } from '@/systems/EffectManager.js';
 import { EffectContext } from '@/systems/EffectContext.js';
+import { createMockEventSystems } from '@test/game-test-utils.js';
 
 describe('EffectManager', () => {
   let effectManager;
-  let mockEventDispatcher;
+  let mockEventSystems;
 
   beforeEach(() => {
     // Use fake timers for deterministic testing
     vi.useFakeTimers();
-    // Create mock event dispatcher
-    mockEventDispatcher = {
-      emit: vi.fn().mockReturnValue(true),
-      on: vi.fn().mockReturnValue(() => {}),
-      once: vi.fn().mockReturnValue(() => {}),
-      off: vi.fn()
-    };
+    
+    // Create standardized mock event systems
+    mockEventSystems = createMockEventSystems({
+      eventDispatcherOverrides: {
+        emit: vi.fn().mockReturnValue(true),
+        once: vi.fn().mockReturnValue(() => {})
+      }
+    });
 
-    effectManager = new EffectManager(mockEventDispatcher);
+    effectManager = new EffectManager(mockEventSystems.eventDispatcher);
   });
 
   afterEach(() => {
@@ -30,14 +32,11 @@ describe('EffectManager', () => {
   });
 
   describe('constructor', () => {
-    it('should initialize with correct default values', () => {
-      expect(effectManager.eventDispatcher).toBe(mockEventDispatcher);
-      expect(effectManager.effects).toBeInstanceOf(Map);
-      expect(effectManager.runningEffects).toBeInstanceOf(Set);
-      expect(effectManager.forkedEffects).toBeInstanceOf(Set);
-      expect(effectManager.timeouts).toBeInstanceOf(Set);
+    it('should initialize with event dispatcher', () => {
+      expect(effectManager.eventDispatcher).toBe(mockEventSystems.eventDispatcher);
       expect(effectManager.isRunning).toBe(false);
-      expect(effectManager.debugMode).toBe(false);
+      expect(effectManager.effects).toBeInstanceOf(Map);
+      expect(effectManager.effects.size).toBe(0);
     });
   });
 
@@ -124,41 +123,41 @@ describe('EffectManager', () => {
 
   describe('start()', () => {
     it('should start effect manager and hook into event dispatcher', () => {
-      const originalEmit = mockEventDispatcher.emit;
+      const originalEmit = mockEventSystems.eventDispatcher.emit;
       
       effectManager.start();
       
       expect(effectManager.isRunning).toBe(true);
       expect(effectManager._originalEmit).toBeDefined();
-      expect(mockEventDispatcher.emit).not.toBe(originalEmit);
-      expect(mockEventDispatcher.on).toHaveBeenCalledWith('game:cleanup', expect.any(Function));
-      expect(mockEventDispatcher.on).toHaveBeenCalledWith('game:pause', expect.any(Function));
-      expect(mockEventDispatcher.on).toHaveBeenCalledWith('game:resume', expect.any(Function));
+      expect(mockEventSystems.eventDispatcher.emit).not.toBe(originalEmit);
+      expect(mockEventSystems.eventDispatcher.on).toHaveBeenCalledWith('game:cleanup', expect.any(Function));
+      expect(mockEventSystems.eventDispatcher.on).toHaveBeenCalledWith('game:pause', expect.any(Function));
+      expect(mockEventSystems.eventDispatcher.on).toHaveBeenCalledWith('game:resume', expect.any(Function));
     });
 
     it('should not start if already running', () => {
       effectManager.start();
-      const firstEmit = mockEventDispatcher.emit;
+      const firstEmit = mockEventSystems.eventDispatcher.emit;
       
       effectManager.start();
       
-      expect(mockEventDispatcher.emit).toBe(firstEmit);
+      expect(mockEventSystems.eventDispatcher.emit).toBe(firstEmit);
     });
   });
 
   describe('stop()', () => {
     it('should stop effect manager and restore original emit', () => {
-      const originalEmit = mockEventDispatcher.emit;
+      const originalEmit = mockEventSystems.eventDispatcher.emit;
       effectManager.start();
-      const interceptedEmit = mockEventDispatcher.emit;
+      const interceptedEmit = mockEventSystems.eventDispatcher.emit;
       
       effectManager.stop();
       
       expect(effectManager.isRunning).toBe(false);
-      expect(mockEventDispatcher.emit).not.toBe(interceptedEmit);
-      expect(mockEventDispatcher.off).toHaveBeenCalledWith('game:cleanup', expect.any(Function));
-      expect(mockEventDispatcher.off).toHaveBeenCalledWith('game:pause', expect.any(Function));
-      expect(mockEventDispatcher.off).toHaveBeenCalledWith('game:resume', expect.any(Function));
+      expect(mockEventSystems.eventDispatcher.emit).not.toBe(interceptedEmit);
+      expect(mockEventSystems.eventDispatcher.off).toHaveBeenCalledWith('game:cleanup', expect.any(Function));
+      expect(mockEventSystems.eventDispatcher.off).toHaveBeenCalledWith('game:pause', expect.any(Function));
+      expect(mockEventSystems.eventDispatcher.off).toHaveBeenCalledWith('game:resume', expect.any(Function));
     });
 
     it('should not stop if not running', () => {

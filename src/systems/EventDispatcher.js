@@ -5,9 +5,20 @@
 export class EventDispatcher {
   constructor() {
     this.listeners = new Map();
-    this.eventHistory = [];
+    this.wildcardPatterns = new Map(); // Cache for wildcard patterns
+    this._eventHistory = new Array(100); // Pre-allocated circular buffer
+    this.historyIndex = 0; // Current position in circular buffer
+    this.historyCount = 0; // Number of events stored
     this.maxHistorySize = 100;
     this.debugMode = false;
+    this._idCounter = 0; // More efficient ID generation
+  }
+
+  /**
+   * Get event history (for compatibility)
+   */
+  get eventHistory() {
+    return this.getEventHistory(this.historyCount);
   }
 
   /**
@@ -38,7 +49,7 @@ export class EventDispatcher {
       handler,
       priority,
       once,
-      id: this._generateId()
+      id: ++this._idCounter
     };
 
     const eventListeners = this.listeners.get(eventName);
@@ -46,6 +57,11 @@ export class EventDispatcher {
     
     // Sort by priority (higher priority first)
     eventListeners.sort((a, b) => b.priority - a.priority);
+
+    // Cache wildcard patterns for optimization
+    if (eventName.includes('*')) {
+      this._cacheWildcardPattern(eventName);
+    }
 
     this._debug(`Subscribed to '${eventName}' with priority ${priority}`);
 
@@ -79,6 +95,10 @@ export class EventDispatcher {
     if (handler === null) {
       // Remove all listeners for this event
       this.listeners.delete(eventName);
+      // Clean up wildcard pattern cache
+      if (eventName.includes('*')) {
+        this.wildcardPatterns.delete(eventName);
+      }
       this._debug(`Removed all listeners for '${eventName}'`);
     } else {
       // Remove specific handler
@@ -87,9 +107,12 @@ export class EventDispatcher {
         eventListeners.splice(index, 1);
         this._debug(`Removed specific listener for '${eventName}'`);
         
-        // Clean up empty event arrays
+        // Clean up empty event arrays and wildcard patterns
         if (eventListeners.length === 0) {
           this.listeners.delete(eventName);
+          if (eventName.includes('*')) {
+            this.wildcardPatterns.delete(eventName);
+          }
         }
       }
     }
@@ -226,7 +249,18 @@ export class EventDispatcher {
    * @returns {Array} Array of event objects
    */
   getEventHistory(limit = 10) {
-    return this.eventHistory.slice(-limit);
+    const result = [];
+    const actualLimit = Math.min(limit, this.historyCount);
+    
+    for (let i = 0; i < actualLimit; i++) {
+      const index = (this.historyIndex - i - 1 + this.maxHistorySize) % this.maxHistorySize;
+      const event = this._eventHistory[index];
+      if (event) {
+        result.unshift(event);
+      }
+    }
+    
+    return result;
   }
 
   /**
@@ -234,7 +268,10 @@ export class EventDispatcher {
    */
   clear() {
     this.listeners.clear();
-    this.eventHistory = [];
+    this.wildcardPatterns.clear();
+    this._eventHistory.fill(null); // Clear circular buffer
+    this.historyIndex = 0;
+    this.historyCount = 0;
     this._debug('Cleared all listeners and history');
   }
 
@@ -267,31 +304,45 @@ export class EventDispatcher {
   }
 
   _recordEvent(eventName, data) {
-    this.eventHistory.push({
+    // Use circular buffer for better performance
+    this._eventHistory[this.historyIndex] = {
       eventName,
       data,
       timestamp: Date.now()
-    });
+    };
     
-    // Keep history size manageable
-    if (this.eventHistory.length > this.maxHistorySize) {
-      this.eventHistory.shift();
+    this.historyIndex = (this.historyIndex + 1) % this.maxHistorySize;
+    if (this.historyCount < this.maxHistorySize) {
+      this.historyCount++;
     }
   }
 
   _getWildcardListeners(eventName) {
     const wildcardListeners = [];
     
-    for (const [pattern, listeners] of this.listeners) {
-      if (pattern.includes('*')) {
-        const regex = new RegExp(pattern.replace(/\*/g, '.*'));
-        if (regex.test(eventName)) {
+    // Use cached regex patterns for better performance
+    for (const [pattern, cachedRegex] of this.wildcardPatterns) {
+      if (cachedRegex.test(eventName)) {
+        const listeners = this.listeners.get(pattern);
+        if (listeners) {
           wildcardListeners.push(...listeners);
         }
       }
     }
     
     return wildcardListeners;
+  }
+
+  _cacheWildcardPattern(pattern) {
+    if (!this.wildcardPatterns.has(pattern)) {
+      const escapedPattern = this._escapeRegex(pattern).replace(/\\\*/g, '.*');
+      const regex = new RegExp('^' + escapedPattern + '$');
+      this.wildcardPatterns.set(pattern, regex);
+    }
+  }
+
+  _escapeRegex(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   _debug(message) {
