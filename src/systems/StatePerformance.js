@@ -147,9 +147,21 @@ export class StatePerformance {
         try {
             const state = this.onGetState();
             
-            // Use enhanced memory monitoring
-            const calculatedSize = this.memoryMonitor.calculateSize(state);
-            this.cachedStateSize = calculatedSize || 0;
+            // Quick size estimation first
+            const quickSize = JSON.stringify(state).length;
+            const memorySizeThreshold = 50 * 1024; // 50KB threshold
+            
+            // Check state size before calculating memory
+            if (quickSize > memorySizeThreshold) {
+                if (this.options.enableDebug) {
+                    console.warn('StatePerformance: State size exceeds threshold, using lightweight estimation');
+                }
+                this.cachedStateSize = quickSize; // Fallback lightweight estimation
+            } else {
+                // Use enhanced memory monitoring for smaller states
+                const calculatedSize = this.memoryMonitor.calculateSize(state);
+                this.cachedStateSize = calculatedSize || quickSize;
+            }
             this.memoryCacheValid = true;
             this.lastMemoryUpdate = now;
             

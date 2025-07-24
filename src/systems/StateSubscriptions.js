@@ -260,6 +260,7 @@ export class StateSubscriptions {
 
     /**
      * Get subscriptions for a specific path
+     * @private
      * @param {string} path - Path to get subscriptions for
      * @returns {Object[]} Array of subscription objects for the path
      */
