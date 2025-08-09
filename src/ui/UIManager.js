@@ -5,8 +5,7 @@
 
 import { 
     UI_EVENTS, 
-    UI_STATE_KEYS, 
-    INPUT_ACTIONS 
+    UI_STATE_KEYS
 } from '@/constants/ui-events.js';
 import MenuSystem from '@/ui/MenuSystem.js';
 import InputHandler from '@/ui/InputHandler.js';

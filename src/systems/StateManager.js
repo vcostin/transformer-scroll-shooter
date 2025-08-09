@@ -13,13 +13,12 @@
  */
 
 import { eventDispatcher } from '@/systems/EventDispatcher.js';
-import { DEFAULT_STATE, STATE_SCHEMA, getValidationRules, getDefaultValue } from '@/constants/state-schema.js';
+import { DEFAULT_STATE, getDefaultValue } from '@/constants/state-schema.js';
 import { 
     getValueByPath, 
     setValueByPath, 
     deepClone, 
     deepEqual, 
-    resolveReference as resolveReferenceUtil,
     isValidPath
 } from '@/systems/StateUtils.js';
 import { validateValue as validateValueUtil } from '@/systems/StateValidation.js';

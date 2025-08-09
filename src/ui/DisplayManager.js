@@ -358,7 +358,7 @@ export class DisplayManager {
     /**
      * Update FPS calculation
      */
-    updateFPS(deltaTime) {
+    updateFPS(_deltaTime) {
         this.frameCount++;
         const now = Date.now();
         
@@ -376,7 +376,7 @@ export class DisplayManager {
         this.ctx.save();
         
         // Render each HUD element
-        this.hudElements.forEach((element, key) => {
+        this.hudElements.forEach((element, _key) => {
             this.ctx.font = element.font;
             this.ctx.fillStyle = element.color;
             this.ctx.textAlign = 'left';

@@ -65,14 +65,15 @@ if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
 
 // Initialize game in browser environments
 if (typeof window !== 'undefined' && !(typeof process !== 'undefined' && process.env.NODE_ENV === 'test')) {
-    const game = new Game();
+    // Expose instance for input handlers (use bracket notation to satisfy checkJs)
+    window['game'] = new Game();
     window.addEventListener('keydown', handleSpecialKeys);
     addMobileControls();
 }
 
 function handleSpecialKeys(event) {
     // Reference the game instance from the global window
-    const game = window.game;
+    const game = window['game'];
     switch(event.code) {
         case 'KeyP':
             // Toggle pause
@@ -98,7 +99,7 @@ function handleSpecialKeys(event) {
 function addMobileControls() {
     // Add virtual controls for mobile devices
     if ('ontouchstart' in window) {
-        const canvas = document.getElementById('gameCanvas');
+    const canvas = document.getElementById('gameCanvas');
         
         if (canvas) {
             canvas.addEventListener('touchstart', handleTouch);
@@ -108,14 +109,10 @@ function addMobileControls() {
         function handleTouch(event) {
             event.preventDefault();
             // Basic touch controls (can be expanded)
-            const touch = event.touches[0];
-            const rect = canvas.getBoundingClientRect();
-            const x = touch.clientX - rect.left;
-            const y = touch.clientY - rect.top;
             
             // Simple touch-to-shoot
-            if (window.game && window.game.player) {
-                window.game.player.shoot();
+            if (window['game'] && window['game'].player) {
+                window['game'].player.shoot();
             }
         }
         

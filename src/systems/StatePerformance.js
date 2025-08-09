@@ -153,7 +153,7 @@ export class StatePerformance {
             
             try {
                 quickSize = JSON.stringify(state).length;
-            } catch (circularError) {
+            } catch {
                 // Circular reference detected - use enhanced monitoring
                 hasCircularRef = true;
                 quickSize = 1024; // Assume small enough for enhanced monitoring

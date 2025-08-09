@@ -11,7 +11,6 @@ import { TransformEffect } from '@/rendering/effects.js';
 import { PLAYER_EVENTS, PLAYER_STATES, MOVE_DIRECTIONS } from '@/constants/player-events.js';
 import { GAME_EVENTS } from '@/constants/game-events.js';
 import * as MathUtils from '@/utils/math.js';
-import { EffectManager } from '@/systems/EffectManager.js';
 
 export default class Player {
     /**
@@ -168,7 +167,7 @@ export default class Player {
             this.stateManager.setState(PLAYER_STATES.SHIELD, data.shield || this.shield);
         });
         
-        this.effectManager.effect(PLAYER_EVENTS.PLAYER_POWERUP_ACTIVATED, (data) => {
+    this.effectManager.effect(PLAYER_EVENTS.PLAYER_POWERUP_ACTIVATED, (_data) => {
             this.stateManager.setState(PLAYER_STATES.POWERUPS, this.activePowerups);
         });
     }
@@ -389,9 +388,8 @@ export default class Player {
     /**
      * Handle shooting input events
      */
-    handleShootInput(data) {
-        // Extract from event payload
-        const payload = Player.extractEventPayload(data);
+    handleShootInput(_data) {
+    // Extract from event payload if needed
         if (this.shootCooldown <= 0) {
             const props = this.modeProperties[this.mode];
             
@@ -475,9 +473,8 @@ export default class Player {
     /**
      * Handle transformation input events
      */
-    handleTransformInput(data) {
-        // Extract from event payload
-        const payload = Player.extractEventPayload(data);
+    handleTransformInput(_data) {
+    // Extract from event payload if needed
         if (this.transformCooldown <= 0) {
             const oldMode = this.mode;
             

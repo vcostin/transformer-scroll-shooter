@@ -18,8 +18,8 @@ export class AudioManager {
         // Create audio contexts for procedural sounds
         this.audioContext = null;
         try {
-            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        } catch (e) {
+            this.audioContext = new (window.AudioContext || window['webkitAudioContext'])();
+        } catch {
             console.warn('Web Audio API not supported');
         }
         
@@ -49,7 +49,7 @@ export class AudioManager {
         
         try {
             this.generateSound(soundDef, finalVolume);
-        } catch (e) {
+        } catch {
             console.warn('Could not play sound:', soundName);
         }
     }
@@ -64,8 +64,8 @@ export class AudioManager {
         // Set waveform
         oscillator.type = soundDef.type === 'noise' ? 'sawtooth' : soundDef.type;
         
-        // Set frequency
-        let frequency = soundDef.frequency;
+    // Set frequency
+    const frequency = soundDef.frequency;
         if (soundDef.ascending) {
             oscillator.frequency.setValueAtTime(frequency * 0.5, this.audioContext.currentTime);
             oscillator.frequency.exponentialRampToValueAtTime(frequency * 2, this.audioContext.currentTime + soundDef.duration);

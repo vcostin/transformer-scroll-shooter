@@ -9,7 +9,7 @@ import { BOSS_TYPES, BOSS_MESSAGES } from '@/constants/boss-constants.js';
 import { AudioManager } from '@/systems/audio.js';
 import { OptionsMenu } from '@/ui/options.js';
 import { Background } from '@/rendering/background.js';
-import { Explosion, PowerupEffect, MuzzleFlash } from '@/rendering/effects.js';
+import { Explosion, PowerupEffect } from '@/rendering/effects.js';
 import { Powerup, PowerupSpawner } from '@/systems/powerups.js';
 import Player from '@/entities/player.js';
 import Enemy from '@/entities/enemies/enemy.js';

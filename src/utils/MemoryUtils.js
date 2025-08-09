@@ -61,7 +61,7 @@ export function estimateMemorySize(obj, visited = new Set()) {
  * @returns {number|null} Memory size or null if disabled
  */
 export function trackMemory(obj, options = {}) {
-    const { enabled = true, useEstimation = true, maxDepth = 10 } = options;
+    const { enabled = true, useEstimation = true } = options;
     
     if (!enabled) return null;
     

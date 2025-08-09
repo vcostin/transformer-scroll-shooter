@@ -11,7 +11,7 @@
  */
 
 import { getValidationRules } from '@/constants/state-schema.js';
-import { resolveReference, safeResolveReference } from '@/systems/StateUtils.js';
+import { safeResolveReference } from '@/systems/StateUtils.js';
 
 /**
  * Validate a value against schema rules for a given path
@@ -242,8 +242,8 @@ export function validateNumberRange(value, min, max) {
  */
 export function createValidationError(path, message, value) {
     const error = new Error(`Validation error for '${path}': ${message}`);
-    error.path = path;
-    error.value = value;
-    error.type = 'ValidationError';
+    /** @type {any} */ (error).path = path;
+    /** @type {any} */ (error).value = value;
+    /** @type {any} */ (error).type = 'ValidationError';
     return error;
 }

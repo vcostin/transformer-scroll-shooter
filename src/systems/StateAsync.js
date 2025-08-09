@@ -479,7 +479,7 @@ export class StateAsync {
      * Update failure statistics
      * @private
      */
-    updateFailureStats(operationTime, error) {
+    updateFailureStats(operationTime, _error) {
         this.stats.failedOperations++;
         this.updateAverageTime(operationTime);
     }

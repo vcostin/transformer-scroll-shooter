@@ -20,7 +20,7 @@ export class Effect {
         }
     }
     
-    render(ctx) {
+    render(_ctx) {
         // Override in subclasses
     }
 }

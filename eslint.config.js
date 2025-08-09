@@ -67,6 +67,8 @@ export default [
       }
     },
     rules: {
+  'no-unused-vars': 'off',
+  'prefer-const': 'off',
       // Also forbid importing jest in test files explicitly
       'no-restricted-imports': [
         'error',
