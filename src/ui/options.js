@@ -347,11 +347,12 @@ export class OptionsMenu {
       optionDiv.appendChild(label)
 
       if (option.type === 'slider') {
+        /** @type {HTMLInputElement} */
         const slider = document.createElement('input')
         slider.type = 'range'
-        slider.min = option.min
-        slider.max = option.max
-        slider.step = option.step
+        slider.min = String(option.min)
+        slider.max = String(option.max)
+        slider.step = String(option.step)
         slider.value = option.value()
         slider.style.cssText = `
                     width: 100%;
@@ -366,7 +367,7 @@ export class OptionsMenu {
                 `
 
         slider.addEventListener('input', e => {
-          const value = parseFloat(e.target.value)
+          const value = parseFloat(/** @type {HTMLInputElement} */ (e.target).value)
           option.setValue(value)
           valueDisplay.textContent = Math.round(value * 100) + '%'
         })
@@ -374,6 +375,7 @@ export class OptionsMenu {
         optionDiv.appendChild(slider)
         optionDiv.appendChild(valueDisplay)
       } else if (option.type === 'toggle') {
+        /** @type {HTMLInputElement} */
         const checkbox = document.createElement('input')
         checkbox.type = 'checkbox'
         checkbox.checked = option.value()
@@ -383,11 +385,12 @@ export class OptionsMenu {
                 `
 
         checkbox.addEventListener('change', e => {
-          option.setValue(e.target.checked)
+          option.setValue(/** @type {HTMLInputElement} */ (e.target).checked)
         })
 
         optionDiv.appendChild(checkbox)
       } else if (option.type === 'select') {
+        /** @type {HTMLSelectElement} */
         const select = document.createElement('select')
         select.style.cssText = `
                     width: 100%;
@@ -407,7 +410,7 @@ export class OptionsMenu {
         })
 
         select.addEventListener('change', e => {
-          option.setValue(e.target.value)
+          option.setValue(/** @type {HTMLSelectElement} */ (e.target).value)
         })
 
         optionDiv.appendChild(select)
@@ -479,7 +482,9 @@ export class OptionsMenu {
    * Cleanup event listeners
    */
   cleanup() {
-    this.eventListeners.forEach(listener => {
+  /** @type {Set<Function>} */
+  this.eventListeners = this.eventListeners || new Set()
+  this.eventListeners.forEach(listener => {
       if (listener && typeof listener === 'function') {
         listener()
       }

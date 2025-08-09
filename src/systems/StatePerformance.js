@@ -39,16 +39,26 @@ export class StatePerformance {
     this.memoryCacheValid = false
 
     // Configuration
+    /** @type {{
+     *  enableMemoryTracking: boolean,
+     *  enablePerformanceTracking: boolean,
+     *  memoryUpdateThreshold: number,
+     *  enableDebug?: boolean,
+     *  onGetState?: () => any,
+     *  onGetHistoryMemoryUsage?: () => number
+     * }} */
     this.options = {
       enableMemoryTracking: options.enableMemoryTracking !== false,
       enablePerformanceTracking: options.enablePerformanceTracking !== false,
       memoryUpdateThreshold: options.memoryUpdateThreshold || 1000, // ms
-      ...options
+      enableDebug: options.enableDebug === true,
+      onGetState: options.onGetState,
+      onGetHistoryMemoryUsage: options.onGetHistoryMemoryUsage
     }
 
     // Callbacks for external system integration
-    this.onGetState = options.onGetState || (() => ({}))
-    this.onGetHistoryMemoryUsage = options.onGetHistoryMemoryUsage || (() => 0)
+  this.onGetState = this.options.onGetState || (() => ({}))
+  this.onGetHistoryMemoryUsage = this.options.onGetHistoryMemoryUsage || (() => 0)
 
     // Cache management
     this.lastMemoryUpdate = 0
@@ -220,12 +230,13 @@ export class StatePerformance {
    * @returns {Object} Complete statistics object
    */
   getStats(externalStats = {}) {
-    const baseStats = { ...this.stats }
+  /** @type {any} */
+  const baseStats = { ...this.stats }
 
     if (this.options.enableMemoryTracking) {
-      baseStats.memoryUsage = this.getMemoryUsage()
-      baseStats.cachedStateSize = this.cachedStateSize
-      baseStats.memoryCacheValid = this.memoryCacheValid
+  baseStats.memoryUsage = this.getMemoryUsage()
+  baseStats.cachedStateSize = this.cachedStateSize
+  baseStats.memoryCacheValid = this.memoryCacheValid
     }
 
     return {

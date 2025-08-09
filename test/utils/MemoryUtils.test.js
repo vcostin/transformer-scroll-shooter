@@ -3,7 +3,7 @@
  * Testing efficient memory estimation and monitoring capabilities
  */
 
-import { estimateMemorySize, trackMemory, MemoryMonitor } from '@test/utils/MemoryUtils.js'
+import { estimateMemorySize, trackMemory, MemoryMonitor } from '@/utils/MemoryUtils.js'
 
 describe('MemoryUtils', () => {
   describe('estimateMemorySize()', () => {

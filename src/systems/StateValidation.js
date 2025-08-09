@@ -242,8 +242,6 @@ export function validateNumberRange(value, min, max) {
  */
 export function createValidationError(path, message, value) {
   const error = new Error(`Validation error for '${path}': ${message}`)
-  /** @type {any} */ ;(error).path = path
-  /** @type {any} */ ;(error).value = value
-  /** @type {any} */ ;(error).type = 'ValidationError'
-  return error
+  // Attach context using Object.assign to avoid property typing issues in editors
+  return Object.assign(error, { path, value, type: 'ValidationError' })
 }

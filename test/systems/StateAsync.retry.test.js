@@ -2,8 +2,8 @@
  * Tests for enhanced StateAsync retry logic
  * Testing promise factory approach to prevent single-use promise issues
  */
-
-import { StateAsync } from '@test/systems/StateAsync.js'
+import { describe, test, expect, vi, beforeEach } from 'vitest'
+import { StateAsync } from '@/systems/StateAsync.js'
 
 describe('StateAsync Retry Logic', () => {
   let stateAsync
