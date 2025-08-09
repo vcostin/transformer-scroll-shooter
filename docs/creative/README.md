@@ -17,6 +17,7 @@ Index
 - Content pipeline & naming: ./PIPELINE.md
 - Roadmap: ./ROADMAP.md
 - Templates: ./templates/
+ - Lore (by level): ./lore/LEVEL1.md
 
 Working style
 - Make a small pitch (1–2 paragraphs + 3 bullets), get feedback, then build a tiny prototype.
