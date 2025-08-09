@@ -224,8 +224,8 @@ describe('OptionsMenu', () => {
         difficulty: 'Hard'
       }
 
-  const getItemMock = /** @type {any} */ (localStorage.getItem)
-  getItemMock.mockReturnValue(JSON.stringify(mockSettings))
+      const getItemMock = /** @type {any} */ (localStorage.getItem)
+      getItemMock.mockReturnValue(JSON.stringify(mockSettings))
 
       optionsMenu.loadSettings()
 
@@ -236,12 +236,12 @@ describe('OptionsMenu', () => {
     })
 
     it('should handle corrupted localStorage data gracefully', () => {
-  // Mock console.warn to prevent stderr output during test
+      // Mock console.warn to prevent stderr output during test
       const originalConsoleWarn = console.warn
       console.warn = vi.fn()
 
-  const getItemMock = /** @type {any} */ (localStorage.getItem)
-  getItemMock.mockReturnValue('invalid json')
+      const getItemMock = /** @type {any} */ (localStorage.getItem)
+      getItemMock.mockReturnValue('invalid json')
 
       expect(() => {
         optionsMenu.loadSettings()

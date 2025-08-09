@@ -482,9 +482,9 @@ export class OptionsMenu {
    * Cleanup event listeners
    */
   cleanup() {
-  /** @type {Set<Function>} */
-  this.eventListeners = this.eventListeners || new Set()
-  this.eventListeners.forEach(listener => {
+    /** @type {Set<Function>} */
+    this.eventListeners = this.eventListeners || new Set()
+    this.eventListeners.forEach(listener => {
       if (listener && typeof listener === 'function') {
         listener()
       }

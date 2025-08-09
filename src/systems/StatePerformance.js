@@ -57,8 +57,8 @@ export class StatePerformance {
     }
 
     // Callbacks for external system integration
-  this.onGetState = this.options.onGetState || (() => ({}))
-  this.onGetHistoryMemoryUsage = this.options.onGetHistoryMemoryUsage || (() => 0)
+    this.onGetState = this.options.onGetState || (() => ({}))
+    this.onGetHistoryMemoryUsage = this.options.onGetHistoryMemoryUsage || (() => 0)
 
     // Cache management
     this.lastMemoryUpdate = 0
@@ -230,13 +230,13 @@ export class StatePerformance {
    * @returns {Object} Complete statistics object
    */
   getStats(externalStats = {}) {
-  /** @type {any} */
-  const baseStats = { ...this.stats }
+    /** @type {any} */
+    const baseStats = { ...this.stats }
 
     if (this.options.enableMemoryTracking) {
-  baseStats.memoryUsage = this.getMemoryUsage()
-  baseStats.cachedStateSize = this.cachedStateSize
-  baseStats.memoryCacheValid = this.memoryCacheValid
+      baseStats.memoryUsage = this.getMemoryUsage()
+      baseStats.cachedStateSize = this.cachedStateSize
+      baseStats.memoryCacheValid = this.memoryCacheValid
     }
 
     return {
