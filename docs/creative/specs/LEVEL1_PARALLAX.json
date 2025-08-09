@@ -1,0 +1,61 @@
+{
+  "levelId": "level1_city_above_clouds",
+  "displayName": "City Above Clouds",
+  "budgets": {
+    "parallaxLayers": 5,
+    "particleBurstPeak": 300,
+    "budgetNotes": "Chosen within ART_DIRECTION.md constraints: parallaxLayers 4–6, particleBurstPeak 200–400"
+  },
+  "parallax": {
+    "scrollDirection": "left",
+    "tileWidth": 1280,
+    "tileHeight": 720,
+    "layers": [
+      {
+        "id": "far_clouds",
+        "name": "Far Clouds",
+        "speed": 0.10,
+        "zIndex": 10,
+        "opacity": 1,
+        "asset": "assets/backgrounds/city/far_clouds.png",
+        "notes": "Soft gradient clouds with star specks"
+      },
+      {
+        "id": "mid_towers",
+        "name": "Stratos Towers",
+        "speed": 0.35,
+        "zIndex": 20,
+        "opacity": 1,
+        "asset": "assets/backgrounds/city/stratos_towers.png",
+        "notes": "Dark silhouettes, low-frequency shapes"
+      },
+      {
+        "id": "mid_billboards",
+        "name": "Billboards & Cables",
+        "speed": 0.50,
+        "zIndex": 30,
+        "opacity": 1,
+        "asset": "assets/backgrounds/city/billboards_cables.png",
+        "notes": "Occasional oscillation/parallax micro-shift"
+      },
+      {
+        "id": "near_overpass",
+        "name": "Overpass & Antennae",
+        "speed": 0.75,
+        "zIndex": 40,
+        "opacity": 1,
+        "asset": "assets/backgrounds/city/overpass_antennae.png",
+        "notes": "Fast scroll; keep silhouettes chunky"
+      },
+      {
+        "id": "fx_sparks",
+        "name": "Foreground FX",
+        "speed": 1.00,
+        "zIndex": 50,
+        "opacity": 0.5,
+        "asset": "generated",
+        "notes": "Sparse particles only on events; avoid clutter"
+      }
+    ]
+  }
+}
