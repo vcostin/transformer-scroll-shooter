@@ -1,6 +1,6 @@
 /**
  * Math Utils Tests - Phase 4 Testing Infrastructure
- * 
+ *
  * Tests for mathematical utility functions
  */
 

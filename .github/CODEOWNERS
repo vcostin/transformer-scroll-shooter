@@ -1,0 +1,7 @@
+# CODEOWNERS
+# Require review from the owner by default
+* @vcostin
+
+# Optionally, fine-grained ownership (uncomment/add as needed):
+# /src/systems/ @vcostin
+# /.github/workflows/ @vcostin

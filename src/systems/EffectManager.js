@@ -1,6 +1,6 @@
-import { EffectContext } from '@/systems/EffectContext.js';
-import { PatternMatcher } from '@/utils/PatternMatcher.js';
-import { GAME_EVENTS } from '@/constants/game-events.js';
+import { EffectContext } from '@/systems/EffectContext.js'
+import { PatternMatcher } from '@/utils/PatternMatcher.js'
+import { GAME_EVENTS } from '@/constants/game-events.js'
 
 /**
  * EffectManager - Coordinates side effects execution
@@ -8,13 +8,18 @@ import { GAME_EVENTS } from '@/constants/game-events.js';
  */
 export class EffectManager {
   constructor(eventDispatcher) {
-    this.eventDispatcher = eventDispatcher;
-    this.patternMatcher = new PatternMatcher();
-    this.runningEffects = new Set();
-    this.forkedEffects = new Set();
-    this.timeouts = new Set();
-    this.isRunning = false;
-    this.debugMode = false;
+    this.eventDispatcher = eventDispatcher
+    this.patternMatcher = new PatternMatcher()
+    this.runningEffects = new Set()
+    this.forkedEffects = new Set()
+    this.timeouts = new Set()
+    this.isRunning = false
+    this.debugMode = false
+
+    // Pre-bind event handlers so we can reliably remove them later
+    this._boundCleanup = this._cleanup.bind(this)
+    this._boundPause = this._pause.bind(this)
+    this._boundResume = this._resume.bind(this)
   }
 
   /**
@@ -22,36 +27,38 @@ export class EffectManager {
    */
   get effects() {
     // Create a legacy-compatible effects map from PatternMatcher data
-    const effectsMap = new Map();
-    
-    for (const [id, patternEntry] of this.patternMatcher.patterns) {
-      const patternKey = patternEntry.pattern instanceof RegExp ? 
-        patternEntry.pattern.source : 
-        patternEntry.pattern.replace(/\*/g, '.*');
-      
+    const effectsMap = new Map()
+
+    for (const [, patternEntry] of this.patternMatcher.patterns) {
+      const patternKey =
+        patternEntry.pattern instanceof RegExp
+          ? patternEntry.pattern.source
+          : patternEntry.pattern.replace(/\*/g, '.*')
+
       if (!effectsMap.has(patternKey)) {
-        const pattern = patternEntry.pattern instanceof RegExp ? 
-          patternEntry.pattern : 
-          new RegExp(`^${patternKey}$`);
-        effectsMap.set(patternKey, { pattern, handlers: [] });
+        const pattern =
+          patternEntry.pattern instanceof RegExp
+            ? patternEntry.pattern
+            : new RegExp(`^${patternKey}$`)
+        effectsMap.set(patternKey, { pattern, handlers: [] })
       }
-      
-      const effectEntry = effectsMap.get(patternKey);
+
+      const effectEntry = effectsMap.get(patternKey)
       effectEntry.handlers.push({
         fn: patternEntry.handler,
         priority: patternEntry.priority,
         once: patternEntry.once,
         id: patternEntry.id,
         pattern: patternEntry.pattern
-      });
+      })
     }
-    
+
     // Sort handlers by priority within each effect entry
     for (const effectEntry of effectsMap.values()) {
-      effectEntry.handlers.sort((a, b) => b.priority - a.priority);
+      effectEntry.handlers.sort((a, b) => b.priority - a.priority)
     }
-    
-    return effectsMap;
+
+    return effectsMap
   }
 
   /**
@@ -63,31 +70,36 @@ export class EffectManager {
    * @param {boolean} options.once - If true, handler is called only once
    * @returns {Function} Unsubscribe function
    */
-  effect(eventPattern, effectHandler, options = {}) {
+  /**
+   * @param {string|RegExp} eventPattern
+   * @param {Function} effectHandler
+   * @param {{priority?: number, once?: boolean}} [options]
+   */
+  effect(eventPattern, effectHandler, options = undefined) {
     if (!eventPattern || (typeof eventPattern !== 'string' && !(eventPattern instanceof RegExp))) {
-      throw new Error('Effect pattern must be a string or RegExp');
+      throw new Error('Effect pattern must be a string or RegExp')
     }
 
     if (typeof effectHandler !== 'function') {
-      throw new Error('Effect handler must be a function');
+      throw new Error('Effect handler must be a function')
     }
 
-    const { priority = 0, once = false } = options;
+    const { priority = 0, once = false } = options ?? {}
 
     // Register with PatternMatcher for streamlined pattern matching
     const patternId = this.patternMatcher.register(eventPattern, effectHandler, {
       priority,
       once
-    });
+    })
 
-    this._debug(`Registered effect for pattern '${eventPattern}' with priority ${priority}`);
+    this._debug(`Registered effect for pattern '${eventPattern}' with priority ${priority}`)
 
     // Return unsubscribe function
     return () => {
       // Remove from PatternMatcher
-      this.patternMatcher.unregister(patternId);
-      this._debug(`Unregistered effect for pattern '${eventPattern}'`);
-    };
+      this.patternMatcher.unregister(patternId)
+      this._debug(`Unregistered effect for pattern '${eventPattern}'`)
+    }
   }
 
   /**
@@ -96,20 +108,20 @@ export class EffectManager {
    */
   start() {
     if (this.isRunning) {
-      return;
+      return
     }
 
-    this.isRunning = true;
-    this._debug('Effect manager started');
+    this.isRunning = true
+    this._debug('Effect manager started')
 
     // Hook into event dispatcher
-    this._originalEmit = this.eventDispatcher.emit.bind(this.eventDispatcher);
-    this.eventDispatcher.emit = this._interceptEmit.bind(this);
+    this._originalEmit = this.eventDispatcher.emit.bind(this.eventDispatcher)
+    this.eventDispatcher.emit = this._interceptEmit.bind(this)
 
-    // Listen for cleanup events
-    this.eventDispatcher.on('game:cleanup', this._cleanup.bind(this));
-    this.eventDispatcher.on('game:pause', this._pause.bind(this));
-    this.eventDispatcher.on('game:resume', this._resume.bind(this));
+    // Listen for lifecycle events (use pre-bound refs for proper unsubscription)
+    this.eventDispatcher.on('game:cleanup', this._boundCleanup)
+    this.eventDispatcher.on('game:pause', this._boundPause)
+    this.eventDispatcher.on('game:resume', this._boundResume)
   }
 
   /**
@@ -118,27 +130,27 @@ export class EffectManager {
    */
   stop() {
     if (!this.isRunning) {
-      return;
+      return
     }
 
-    this.isRunning = false;
-    this._debug('Effect manager stopping');
+    this.isRunning = false
+    this._debug('Effect manager stopping')
 
     // Cancel all running effects
-    this.cancelAllEffects();
+    this.cancelAllEffects()
 
     // Restore original emit function
     if (this._originalEmit) {
-      this.eventDispatcher.emit = this._originalEmit;
-      this._originalEmit = null;
+      this.eventDispatcher.emit = this._originalEmit
+      this._originalEmit = null
     }
 
-    // Clean up listeners
-    this.eventDispatcher.off('game:cleanup', this._cleanup);
-    this.eventDispatcher.off('game:pause', this._pause);
-    this.eventDispatcher.off('game:resume', this._resume);
+    // Clean up listeners (must use the same function references passed to `on`)
+    this.eventDispatcher.off('game:cleanup', this._boundCleanup)
+    this.eventDispatcher.off('game:pause', this._boundPause)
+    this.eventDispatcher.off('game:resume', this._boundResume)
 
-    this._debug('Effect manager stopped');
+    this._debug('Effect manager stopped')
   }
 
   /**
@@ -150,12 +162,12 @@ export class EffectManager {
    */
   _interceptEmit(eventName, data, options = {}) {
     // First emit the event normally
-    const hadListeners = this._originalEmit(eventName, data, options);
+    const hadListeners = this._originalEmit(eventName, data, options)
 
     // Then trigger matching effects
-    this._triggerEffects(eventName, data);
+    this._triggerEffects(eventName, data)
 
-    return hadListeners;
+    return hadListeners
   }
 
   /**
@@ -165,25 +177,25 @@ export class EffectManager {
    */
   _triggerEffects(eventName, data) {
     // Get matches using the advanced PatternMatcher
-    const matchingPatterns = this.patternMatcher.getMatches(eventName);
+    const matchingPatterns = this.patternMatcher.getMatches(eventName)
     if (matchingPatterns.length === 0) {
-      return;
+      return
     }
-    this._debug(`Triggering ${matchingPatterns.length} effects for event '${eventName}'`);
+    this._debug(`Triggering ${matchingPatterns.length} effects for event '${eventName}'`)
 
-    const toRemove = [];
+    const toRemove = []
 
     for (const patternEntry of matchingPatterns) {
       try {
-        this._executeEffect(patternEntry, eventName, data);
-        
+        this._executeEffect(patternEntry, eventName, data)
+
         // Mark once effects for removal
         if (patternEntry.once) {
-          toRemove.push(patternEntry.id);
+          toRemove.push(patternEntry.id)
         }
       } catch (error) {
-        this._debug(`Error executing effect for '${eventName}':`, error);
-        
+        this._debug(`Error executing effect for '${eventName}':`, error)
+
         // Emit error event
         this._originalEmit('effect:execution:error', {
           eventName,
@@ -192,12 +204,12 @@ export class EffectManager {
           pattern: patternEntry.pattern,
           error,
           timestamp: Date.now()
-        });
+        })
       }
     }
 
     // Remove once effects from PatternMatcher
-    this.patternMatcher.removeOncePatterns(toRemove);
+    this.patternMatcher.removeOncePatterns(toRemove)
   }
 
   /**
@@ -207,38 +219,39 @@ export class EffectManager {
    * @param {*} data - Event data
    */
   _executeEffect(patternEntry, eventName, data) {
-    const context = new EffectContext(this, this.eventDispatcher);
-    
+    const context = new EffectContext(this, this.eventDispatcher)
+
     const action = {
       type: eventName,
       payload: data,
       timestamp: Date.now()
-    };
+    }
 
     // Execute the effect with context
-    const effectPromise = Promise.resolve(patternEntry.handler(action, context));
-    
+    const effectPromise = Promise.resolve(patternEntry.handler(action, context))
+
     // Track the running effect
-    this.runningEffects.add(effectPromise);
+    this.runningEffects.add(effectPromise)
 
     effectPromise
       .then(() => {
-        this.runningEffects.delete(effectPromise);
-        this._debug(`Effect completed for '${eventName}'`);
+        this.runningEffects.delete(effectPromise)
+        this._debug(`Effect completed for '${eventName}'`)
       })
-      .catch((error) => {
-        this.runningEffects.delete(effectPromise);
-        this._debug(`Effect failed for '${eventName}':`, error);
-        
+      .catch(error => {
+        this.runningEffects.delete(effectPromise)
+        this._debug(`Effect failed for '${eventName}':`, error)
+
         // Emit error event
         this._originalEmit('effect:execution:error', {
           eventName,
           data,
-          effect: effect.fn.name || 'anonymous',
+          effect:
+            (patternEntry && patternEntry.handler && patternEntry.handler.name) || 'anonymous',
           error,
           timestamp: Date.now()
-        });
-      });
+        })
+      })
   }
 
   /**
@@ -248,8 +261,8 @@ export class EffectManager {
    */
   _getMatchingEffects(eventName) {
     // Use PatternMatcher for streamlined effect lookup
-    const matches = this.patternMatcher.getMatches(eventName);
-    
+    const matches = this.patternMatcher.getMatches(eventName)
+
     // Convert to legacy format for compatibility
     return matches.map(match => ({
       fn: match.handler,
@@ -257,7 +270,7 @@ export class EffectManager {
       once: match.once,
       id: match.id,
       pattern: match.pattern
-    }));
+    }))
   }
 
   /**
@@ -267,8 +280,8 @@ export class EffectManager {
   _removeOnceEffects(effectsToRemove) {
     // PatternMatcher handles once effect removal automatically
     effectsToRemove.forEach(effect => {
-      this._debug(`Removed once effect for pattern '${effect.pattern}'`);
-    });
+      this._debug(`Removed once effect for pattern '${effect.pattern}'`)
+    })
   }
 
   /**
@@ -280,33 +293,33 @@ export class EffectManager {
       // Check if the promise has a cancel method (AbortController pattern)
       if (effectPromise && typeof effectPromise.cancel === 'function') {
         try {
-          effectPromise.cancel();
+          effectPromise.cancel()
         } catch (error) {
-          this._debug('Error cancelling effect:', error);
+          this._debug('Error cancelling effect:', error)
         }
       }
     }
-    this.runningEffects.clear();
+    this.runningEffects.clear()
 
     // Cancel all forked effects - properly handle cancellation
     for (const forkedPromise of this.forkedEffects) {
       if (forkedPromise && typeof forkedPromise.cancel === 'function') {
         try {
-          forkedPromise.cancel();
+          forkedPromise.cancel()
         } catch (error) {
-          this._debug('Error cancelling forked effect:', error);
+          this._debug('Error cancelling forked effect:', error)
         }
       }
     }
-    this.forkedEffects.clear();
+    this.forkedEffects.clear()
 
     // Clear all timeouts
     for (const timeoutId of this.timeouts) {
-      clearTimeout(timeoutId);
+      clearTimeout(timeoutId)
     }
-    this.timeouts.clear();
+    this.timeouts.clear()
 
-    this._debug('All effects cancelled');
+    this._debug('All effects cancelled')
   }
 
   /**
@@ -314,12 +327,11 @@ export class EffectManager {
    * @param {Promise} effectPromise - Forked effect promise
    */
   trackForkedEffect(effectPromise) {
-    this.forkedEffects.add(effectPromise);
-    
-    effectPromise
-      .finally(() => {
-        this.forkedEffects.delete(effectPromise);
-      });
+    this.forkedEffects.add(effectPromise)
+
+    effectPromise.finally(() => {
+      this.forkedEffects.delete(effectPromise)
+    })
   }
 
   /**
@@ -327,13 +339,22 @@ export class EffectManager {
    * @param {number} timeoutId - Timeout ID
    */
   trackTimeout(timeoutId) {
-    this.timeouts.add(timeoutId);
-    
-    // Auto-cleanup tracking: Remove timeout ID on next tick to prevent memory leaks
-    // This intentionally executes immediately (not after timeout) to clean up our tracking
+    this.timeouts.add(timeoutId)
+
+    // Auto-cleanup tracking: Remove timeout ID on microtask to prevent leaks
+    // This matches existing tests' expectation while still allowing cancelAllEffects()
+    // to clear any remaining tracked timeouts immediately when needed.
     Promise.resolve().then(() => {
-      this.timeouts.delete(timeoutId);
-    });
+      this.timeouts.delete(timeoutId)
+    })
+  }
+
+  /**
+   * Optionally untrack a timeout if it has already fired and been cleared elsewhere
+   * @param {number} timeoutId - Timeout ID
+   */
+  untrackTimeout(timeoutId) {
+    this.timeouts.delete(timeoutId)
   }
 
   /**
@@ -347,7 +368,7 @@ export class EffectManager {
       forkedEffects: this.forkedEffects.size,
       activeTimeouts: this.timeouts.size,
       isRunning: this.isRunning
-    };
+    }
   }
 
   /**
@@ -355,22 +376,22 @@ export class EffectManager {
    * @param {boolean} enabled - Debug mode enabled
    */
   setDebugMode(enabled) {
-    this.debugMode = enabled;
+    this.debugMode = enabled
   }
 
   /**
    * Cleanup handler for game cleanup events
    */
   _cleanup() {
-    this._debug('Cleaning up effects');
-    this.cancelAllEffects();
+    this._debug('Cleaning up effects')
+    this.cancelAllEffects()
   }
 
   /**
    * Pause handler for game pause events
    */
   _pause() {
-    this._debug('Pausing effects');
+    this._debug('Pausing effects')
     // Could implement pause logic here
   }
 
@@ -378,25 +399,25 @@ export class EffectManager {
    * Resume handler for game resume events
    */
   _resume() {
-    this._debug('Resuming effects');
+    this._debug('Resuming effects')
     // Could implement resume logic here
   }
 
-   /**
+  /**
    * Generate unique ID for effects
    * @returns {string} Unique ID
    */
-   _generateId() {
-     return `effect_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
-   }
+  _generateId() {
+    return `effect_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
+  }
 
-   /**
+  /**
    * Debug logging
    * @param {...*} args - Arguments to log
    */
   _debug(...args) {
     if (this.debugMode) {
-      console.log('[EffectManager]', ...args);
+      console.log('[EffectManager]', ...args)
     }
   }
 
@@ -409,8 +430,8 @@ export class EffectManager {
   initializeEntityState({ stateManager, initialState }) {
     this.effect(GAME_EVENTS.ENTITY_STATE_INIT, () => {
       Object.entries(initialState).forEach(([key, value]) => {
-        stateManager.setState(key, value);
-      });
-    });
+        stateManager.setState(key, value)
+      })
+    })
   }
 }

@@ -4,9 +4,9 @@
  */
 export class EffectContext {
   constructor(effectManager, eventDispatcher) {
-    this.effectManager = effectManager;
-    this.eventDispatcher = eventDispatcher;
-    this.cancelToken = { cancelled: false };
+    this.effectManager = effectManager
+    this.eventDispatcher = eventDispatcher
+    this.cancelToken = { cancelled: false }
   }
 
   /**
@@ -17,15 +17,15 @@ export class EffectContext {
    */
   async call(fn, ...args) {
     if (this.cancelToken.cancelled) {
-      throw new Error('Effect was cancelled');
+      throw new Error('Effect was cancelled')
     }
 
     if (typeof fn !== 'function') {
-      throw new Error('call() requires a function as first argument');
+      throw new Error('call() requires a function as first argument')
     }
 
     try {
-      return await fn(...args);
+      return await fn(...args)
     } catch (error) {
       // Emit error event for centralized error handling
       this.eventDispatcher.emit('effect:error', {
@@ -34,8 +34,8 @@ export class EffectContext {
         args,
         error,
         timestamp: Date.now()
-      });
-      throw error;
+      })
+      throw error
     }
   }
 
@@ -47,17 +47,17 @@ export class EffectContext {
    */
   fork(fn, ...args) {
     if (this.cancelToken.cancelled) {
-      return Promise.resolve();
+      return Promise.resolve()
     }
 
     if (typeof fn !== 'function') {
-      throw new Error('fork() requires a function as first argument');
+      throw new Error('fork() requires a function as first argument')
     }
 
     // Execute asynchronously without waiting
     const forkedPromise = (async () => {
       try {
-        return await fn(...args);
+        return await fn(...args)
       } catch (error) {
         // Emit error event for forked operations
         this.eventDispatcher.emit('effect:error', {
@@ -66,16 +66,16 @@ export class EffectContext {
           args,
           error,
           timestamp: Date.now()
-        });
+        })
         // Don't re-throw in forked operations
-        return null;
+        return null
       }
-    })();
+    })()
 
     // Track the forked promise for potential cancellation
-    this.effectManager.trackForkedEffect(forkedPromise);
+    this.effectManager.trackForkedEffect(forkedPromise)
 
-    return forkedPromise;
+    return forkedPromise
   }
 
   /**
@@ -87,14 +87,14 @@ export class EffectContext {
    */
   put(eventName, data = null, options = {}) {
     if (this.cancelToken.cancelled) {
-      return false;
+      return false
     }
 
     if (typeof eventName !== 'string' || !eventName.trim()) {
-      throw new Error('put() requires a non-empty string as event name');
+      throw new Error('put() requires a non-empty string as event name')
     }
 
-    return this.eventDispatcher.emit(eventName, data, options);
+    return this.eventDispatcher.emit(eventName, data, options)
   }
 
   /**
@@ -105,41 +105,41 @@ export class EffectContext {
    */
   take(eventName, timeout = null) {
     if (this.cancelToken.cancelled) {
-      return Promise.reject(new Error('Effect was cancelled'));
+      return Promise.reject(new Error('Effect was cancelled'))
     }
 
     if (typeof eventName !== 'string' || !eventName.trim()) {
-      throw new Error('take() requires a non-empty string as event name');
+      throw new Error('take() requires a non-empty string as event name')
     }
 
     return new Promise((resolve, reject) => {
-      let timeoutId = null;
-      
+      let timeoutId = null
+
       // Set up timeout if specified
       if (timeout !== null && timeout > 0) {
         timeoutId = setTimeout(() => {
-          unsubscribe();
-          reject(new Error(`take() timeout after ${timeout}ms waiting for '${eventName}'`));
-        }, timeout);
+          unsubscribe()
+          reject(new Error(`take() timeout after ${timeout}ms waiting for '${eventName}'`))
+        }, timeout)
       }
 
       // Subscribe to the event
-      const unsubscribe = this.eventDispatcher.once(eventName, (data) => {
+      const unsubscribe = this.eventDispatcher.once(eventName, data => {
         if (timeoutId) {
-          clearTimeout(timeoutId);
+          clearTimeout(timeoutId)
         }
-        resolve(data);
-      });
+        resolve(data)
+      })
 
       // Handle cancellation
       if (this.cancelToken.cancelled) {
-        unsubscribe();
+        unsubscribe()
         if (timeoutId) {
-          clearTimeout(timeoutId);
+          clearTimeout(timeoutId)
         }
-        reject(new Error('Effect was cancelled'));
+        reject(new Error('Effect was cancelled'))
       }
-    });
+    })
   }
 
   /**
@@ -149,13 +149,13 @@ export class EffectContext {
    */
   select(path = null) {
     if (this.cancelToken.cancelled) {
-      return null;
+      return null
     }
 
     // This will be implemented when we integrate with StateManager
     // For now, emit an event to request state
-    this.eventDispatcher.emit('state:request', { path });
-    return null;
+    this.eventDispatcher.emit('state:request', { path })
+    return null
   }
 
   /**
@@ -165,24 +165,24 @@ export class EffectContext {
    */
   delay(ms) {
     if (this.cancelToken.cancelled) {
-      return Promise.resolve();
+      return Promise.resolve()
     }
 
     if (typeof ms !== 'number' || ms < 0) {
-      throw new Error('delay() requires a non-negative number');
+      throw new Error('delay() requires a non-negative number')
     }
 
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       const timeoutId = setTimeout(() => {
         // Check cancellation during timeout callback
         if (!this.cancelToken.cancelled) {
-          resolve();
+          resolve()
         }
-      }, ms);
+      }, ms)
 
       // Store timeout ID for potential cancellation
-      this.effectManager.trackTimeout(timeoutId);
-    });
+      this.effectManager.trackTimeout(timeoutId)
+    })
   }
 
   /**
@@ -192,26 +192,26 @@ export class EffectContext {
    */
   async race(effects) {
     if (this.cancelToken.cancelled) {
-      return Promise.resolve();
+      return Promise.resolve()
     }
 
     if (typeof effects !== 'object' || effects === null) {
-      throw new Error('race() requires an object with effects');
+      throw new Error('race() requires an object with effects')
     }
 
-    const effectNames = Object.keys(effects);
+    const effectNames = Object.keys(effects)
     if (effectNames.length === 0) {
-      throw new Error('race() requires at least one effect');
+      throw new Error('race() requires at least one effect')
     }
 
     // Create promises with their names attached
-    const racePromises = effectNames.map(name => 
+    const racePromises = effectNames.map(name =>
       Promise.resolve(effects[name]).then(result => ({ winner: name, result }))
-    );
+    )
 
     try {
-      const winner = await Promise.race(racePromises);
-      return winner;
+      const winner = await Promise.race(racePromises)
+      return winner
     } catch (error) {
       // Emit error event for race operations
       this.eventDispatcher.emit('effect:error', {
@@ -219,8 +219,8 @@ export class EffectContext {
         effects: effectNames,
         error,
         timestamp: Date.now()
-      });
-      throw error;
+      })
+      throw error
     }
   }
 
@@ -231,34 +231,34 @@ export class EffectContext {
    */
   async all(effects) {
     if (this.cancelToken.cancelled) {
-      return Promise.resolve();
+      return Promise.resolve()
     }
 
     if (typeof effects !== 'object' || effects === null) {
-      throw new Error('all() requires an object or array with effects');
+      throw new Error('all() requires an object or array with effects')
     }
 
-    const isArray = Array.isArray(effects);
-    const effectKeys = isArray ? effects.map((_, index) => index) : Object.keys(effects);
-    const effectValues = isArray ? effects : Object.values(effects);
+    const isArray = Array.isArray(effects)
+    const effectKeys = isArray ? effects.map((_, index) => index) : Object.keys(effects)
+    const effectValues = isArray ? effects : Object.values(effects)
 
     if (effectKeys.length === 0) {
-      return isArray ? [] : {};
+      return isArray ? [] : {}
     }
 
     try {
       // Wait for all effects to complete
-      const results = await Promise.all(effectValues);
-      
+      const results = await Promise.all(effectValues)
+
       // Return results in the same structure as input
       if (isArray) {
-        return results;
+        return results
       } else {
-        const resultObj = {};
+        const resultObj = {}
         effectKeys.forEach((key, index) => {
-          resultObj[key] = results[index];
-        });
-        return resultObj;
+          resultObj[key] = results[index]
+        })
+        return resultObj
       }
     } catch (error) {
       // Emit error event for all operations
@@ -267,8 +267,8 @@ export class EffectContext {
         effects: effectKeys,
         error,
         timestamp: Date.now()
-      });
-      throw error;
+      })
+      throw error
     }
   }
 
@@ -276,7 +276,7 @@ export class EffectContext {
    * Cancel this effect context
    */
   cancel() {
-    this.cancelToken.cancelled = true;
+    this.cancelToken.cancelled = true
   }
 
   /**
@@ -284,6 +284,6 @@ export class EffectContext {
    * @returns {boolean} True if cancelled
    */
   isCancelled() {
-    return this.cancelToken.cancelled;
+    return this.cancelToken.cancelled
   }
 }

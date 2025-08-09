@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@test/*": ["test/*"]
+    },
+    "checkJs": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["vitest/globals", "node"]
+  },
+  "include": ["src", "test", "tests", "vitest.config.js", "vite.config.js"],
+  "exclude": ["node_modules", "dist", "coverage"]
+}

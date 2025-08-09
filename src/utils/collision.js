@@ -1,6 +1,6 @@
 /**
  * Collision Utilities - Phase 2 Module Extraction
- * 
+ *
  * Reusable collision detection functions for game objects.
  * Extracted from Game class for better modularity and testing.
  */
@@ -12,10 +12,12 @@
  * @returns {boolean} - True if rectangles intersect
  */
 export function checkRectCollision(rect1, rect2) {
-    return rect1.x < rect2.x + rect2.width &&
-           rect1.x + rect1.width > rect2.x &&
-           rect1.y < rect2.y + rect2.height &&
-           rect1.y + rect1.height > rect2.y;
+  return (
+    rect1.x < rect2.x + rect2.width &&
+    rect1.x + rect1.width > rect2.x &&
+    rect1.y < rect2.y + rect2.height &&
+    rect1.y + rect1.height > rect2.y
+  )
 }
 
 /**
@@ -25,10 +27,10 @@ export function checkRectCollision(rect1, rect2) {
  * @returns {boolean} - True if circles intersect
  */
 export function checkCircleCollision(circle1, circle2) {
-    const dx = circle1.x - circle2.x;
-    const dy = circle1.y - circle2.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    return distance < circle1.radius + circle2.radius;
+  const dx = circle1.x - circle2.x
+  const dy = circle1.y - circle2.y
+  const distance = Math.sqrt(dx * dx + dy * dy)
+  return distance < circle1.radius + circle2.radius
 }
 
 /**
@@ -38,10 +40,12 @@ export function checkCircleCollision(circle1, circle2) {
  * @returns {boolean} - True if point is inside rectangle
  */
 export function pointInRect(point, rect) {
-    return point.x >= rect.x && 
-           point.x <= rect.x + rect.width &&
-           point.y >= rect.y && 
-           point.y <= rect.y + rect.height;
+  return (
+    point.x >= rect.x &&
+    point.x <= rect.x + rect.width &&
+    point.y >= rect.y &&
+    point.y <= rect.y + rect.height
+  )
 }
 
 /**
@@ -53,10 +57,12 @@ export function pointInRect(point, rect) {
  * @returns {boolean} - True if object is within bounds
  */
 export function isWithinBounds(obj, screenWidth, screenHeight, margin = 100) {
-    return obj.x > -margin && 
-           obj.x < screenWidth + margin &&
-           obj.y > -margin && 
-           obj.y < screenHeight + margin;
+  return (
+    obj.x > -margin &&
+    obj.x < screenWidth + margin &&
+    obj.y > -margin &&
+    obj.y < screenHeight + margin
+  )
 }
 
 /**
@@ -66,9 +72,9 @@ export function isWithinBounds(obj, screenWidth, screenHeight, margin = 100) {
  * @returns {number} - Distance between points
  */
 export function calculateDistance(point1, point2) {
-    const dx = point1.x - point2.x;
-    const dy = point1.y - point2.y;
-    return Math.sqrt(dx * dx + dy * dy);
+  const dx = point1.x - point2.x
+  const dy = point1.y - point2.y
+  return Math.sqrt(dx * dx + dy * dy)
 }
 
 /**
@@ -78,15 +84,15 @@ export function calculateDistance(point1, point2) {
  * @returns {number} - Angle in radians
  */
 export function calculateAngle(from, to) {
-    return Math.atan2(to.y - from.y, to.x - from.x);
+  return Math.atan2(to.y - from.y, to.x - from.x)
 }
 
 // Default export for convenience
 export default {
-    checkRectCollision,
-    checkCircleCollision,
-    pointInRect,
-    isWithinBounds,
-    calculateDistance,
-    calculateAngle
-};
+  checkRectCollision,
+  checkCircleCollision,
+  pointInRect,
+  isWithinBounds,
+  calculateDistance,
+  calculateAngle
+}

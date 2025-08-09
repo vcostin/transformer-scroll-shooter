@@ -1,6 +1,6 @@
 /**
  * Integration Tests - Phase 4 Testing Infrastructure
- * 
+ *
  * Tests that validate the integration between modules
  */
 
@@ -16,10 +16,11 @@ import { createMockGameObject } from '@test/game-test-utils.js'
 
 describe('Module Integration', () => {
   // Helper function to create mock game with standardized setup
-  const createMockGame = () => createMockGameObject({
-    includeEffectManager: true,
-    startEffectManager: true
-  });
+  const createMockGame = () =>
+    createMockGameObject({
+      includeEffectManager: true,
+      startEffectManager: true
+    })
 
   describe('Constants Integration', () => {
     it('should have all game constants available', () => {
@@ -69,12 +70,12 @@ describe('Module Integration', () => {
       const mockGame = createMockGame()
 
       const player = new Player(mockGame, 100, 300)
-      
+
       // Test mode integration
       expect(player.modes).toEqual(['car', 'scuba', 'boat', 'plane'])
       expect(player.mode).toBe('car')
       expect(player.modeProperties[player.mode]).toBeDefined()
-      
+
       // Test that mode properties are applied
       const currentMode = player.modeProperties[player.mode]
       expect(player.width).toBe(currentMode.width)
@@ -88,11 +89,11 @@ describe('Module Integration', () => {
       const mockGame = createMockGame()
 
       const player = new Player(mockGame, 100, 300)
-      
+
       // Test using math utils with player
       const clampedX = MathUtils.clamp(player.x, 0, 800)
       expect(clampedX).toBe(100)
-      
+
       // Test using collision utils with player
       const playerRect = { x: player.x, y: player.y, width: player.width, height: player.height }
       const testPoint = { x: player.x + 10, y: player.y + 10 }
@@ -104,7 +105,7 @@ describe('Module Integration', () => {
       expect(GAME_CONSTANTS.BOSS_LEVEL_INTERVAL).toBeGreaterThan(0)
       expect(GAME_CONSTANTS.ENEMIES_PER_LEVEL).toBeGreaterThan(0)
       expect(GAME_CONSTANTS.PLAYER_LIVES).toBeGreaterThan(0)
-      
+
       // Test that performance limits are reasonable
       expect(GAME_CONSTANTS.MAX_PARTICLES).toBeGreaterThan(10)
       expect(GAME_CONSTANTS.MAX_BULLETS).toBeGreaterThan(10)

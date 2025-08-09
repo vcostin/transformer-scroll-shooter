@@ -1,6 +1,6 @@
 /**
  * Collision Utils Tests - Phase 4 Testing Infrastructure
- * 
+ *
  * Tests for collision detection utilities
  */
 

@@ -117,12 +117,12 @@ eventDispatcher.on('game.update', (data) => {
 
 #### 1. Reduce State Updates
 ```javascript
-// Batch state updates
-stateManager.batch(() => {
-    stateManager.setState('player.x', newX);
-    stateManager.setState('player.y', newY);
-    stateManager.setState('player.health', newHealth);
-});
+// Prefer batchUpdate for grouped changes
+stateManager.batchUpdate([
+    { path: 'player.x', value: newX },
+    { path: 'player.y', value: newY },
+    { path: 'player.health', value: newHealth }
+], { skipEvents: false });
 ```
 
 #### 2. Optimize Subscriptions
@@ -396,6 +396,15 @@ jobs:
 - **SharedArrayBuffer**: Shared memory between threads
 
 ### Monitoring Services
+ 
+## State Updates: Structural Sharing and Hot Paths
+
+- State updates use structural sharing (path-copy shallow clones along the updated path) to minimize allocations.
+- For ultra-hot update paths (like per-frame positions), pass `{ skipStats: true }` to avoid stats overhead:
+```javascript
+stateManager.setState('player.position', { x, y }, { skipStats: true });
+```
+- Use specific subscriptions (e.g., `player.position`) to limit recalculations caused by parent identity changes.
 
 - **New Relic**: Application performance monitoring
 - **DataDog**: Performance metrics and alerting

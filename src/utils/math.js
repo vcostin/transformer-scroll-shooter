@@ -1,6 +1,6 @@
 /**
  * Math Utilities - Phase 2 Module Extraction
- * 
+ *
  * Common mathematical functions and helpers for game development.
  * Extracted from various files for better reusability.
  */
@@ -13,7 +13,7 @@
  * @returns {number} - Clamped value
  */
 export function clamp(value, min, max) {
-    return Math.max(min, Math.min(max, value));
+  return Math.max(min, Math.min(max, value))
 }
 
 /**
@@ -24,7 +24,7 @@ export function clamp(value, min, max) {
  * @returns {number} - Interpolated value
  */
 export function lerp(start, end, t) {
-    return start + (end - start) * t;
+  return start + (end - start) * t
 }
 
 /**
@@ -34,7 +34,7 @@ export function lerp(start, end, t) {
  * @returns {number} - Random number
  */
 export function randomBetween(min, max) {
-    return Math.random() * (max - min) + min;
+  return Math.random() * (max - min) + min
 }
 
 /**
@@ -44,7 +44,7 @@ export function randomBetween(min, max) {
  * @returns {number} - Random integer
  */
 export function randomInt(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
+  return Math.floor(Math.random() * (max - min + 1)) + min
 }
 
 /**
@@ -53,7 +53,7 @@ export function randomInt(min, max) {
  * @returns {number} - Radians
  */
 export function degreesToRadians(degrees) {
-    return degrees * (Math.PI / 180);
+  return degrees * (Math.PI / 180)
 }
 
 /**
@@ -62,7 +62,7 @@ export function degreesToRadians(degrees) {
  * @returns {number} - Degrees
  */
 export function radiansToDegrees(radians) {
-    return radians * (180 / Math.PI);
+  return radians * (180 / Math.PI)
 }
 
 /**
@@ -71,9 +71,9 @@ export function radiansToDegrees(radians) {
  * @returns {Object} - Normalized vector
  */
 export function normalize(vector) {
-    const length = Math.sqrt(vector.x * vector.x + vector.y * vector.y);
-    if (length === 0) return { x: 0, y: 0 };
-    return { x: vector.x / length, y: vector.y / length };
+  const length = Math.sqrt(vector.x * vector.x + vector.y * vector.y)
+  if (length === 0) return { x: 0, y: 0 }
+  return { x: vector.x / length, y: vector.y / length }
 }
 
 /**
@@ -82,7 +82,7 @@ export function normalize(vector) {
  * @returns {number} - Vector magnitude
  */
 export function magnitude(vector) {
-    return Math.sqrt(vector.x * vector.x + vector.y * vector.y);
+  return Math.sqrt(vector.x * vector.x + vector.y * vector.y)
 }
 
 /**
@@ -93,7 +93,7 @@ export function magnitude(vector) {
  * @returns {boolean} - True if approximately equal
  */
 export function approximately(a, b, epsilon = 0.001) {
-    return Math.abs(a - b) < epsilon;
+  return Math.abs(a - b) < epsilon
 }
 
 /**
@@ -102,19 +102,19 @@ export function approximately(a, b, epsilon = 0.001) {
  * @returns {number} - Sign of value
  */
 export function sign(value) {
-    return value > 0 ? 1 : value < 0 ? -1 : 0;
+  return value > 0 ? 1 : value < 0 ? -1 : 0
 }
 
 // Default export for convenience
 export default {
-    clamp,
-    lerp,
-    randomBetween,
-    randomInt,
-    degreesToRadians,
-    radiansToDegrees,
-    normalize,
-    magnitude,
-    approximately,
-    sign
-};
+  clamp,
+  lerp,
+  randomBetween,
+  randomInt,
+  degreesToRadians,
+  radiansToDegrees,
+  normalize,
+  magnitude,
+  approximately,
+  sign
+}
