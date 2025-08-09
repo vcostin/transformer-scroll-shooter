@@ -18,6 +18,8 @@ Index
 - Roadmap: ./ROADMAP.md
 - Templates: ./templates/
  - Lore (by level): ./lore/LEVEL1.md
+ - Parallax spec (Level 1): ./specs/LEVEL1_PARALLAX.json
+ - Palette: ./palettes/NEON_RUINS.json
 
 Working style
 - Make a small pitch (1–2 paragraphs + 3 bullets), get feedback, then build a tiny prototype.

@@ -1,0 +1,20 @@
+{
+  "name": "Neon Ruins",
+  "description": "Dark blues/purples with neon cyan/magenta accents and limited warm highlights",
+  "swatches": [
+    { "id": "bg-deep-navy", "hex": "#0b1022", "usage": "background base" },
+    { "id": "bg-indigo", "hex": "#1a1f3b", "usage": "background mid" },
+    { "id": "shadow-purple", "hex": "#2b1b3a", "usage": "shadows/silhouettes" },
+    { "id": "neon-cyan", "hex": "#00eaff", "usage": "energy, player bullets" },
+    { "id": "neon-magenta", "hex": "#ff3bbf", "usage": "enemy bullets/highlights" },
+    { "id": "accent-warm", "hex": "#ffb347", "usage": "sparks/explosions minimal" },
+    { "id": "ui-text", "hex": "#e6f0ff", "usage": "UI text" },
+    { "id": "ui-dim", "hex": "#94a3b8", "usage": "UI secondary" },
+    { "id": "health-green", "hex": "#36f1a8", "usage": "health/pickups" }
+  ],
+  "recommendations": {
+    "contrast": "Ensure bullets > 4.5:1 against background",
+    "glow": "Outer glow 2–4 px for 720p base",
+    "colorCoding": "Player=cyan, Enemy=magenta"
+  }
+}
