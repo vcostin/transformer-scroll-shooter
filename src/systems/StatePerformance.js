@@ -173,6 +173,7 @@ export class StatePerformance {
 
       // Check state size before calculating memory
       let calculatedSize = 0
+      let usedEnhancedCalculation = false
       if (!hasCircularRef && quickSize > memorySizeThreshold) {
         if (this.options.enableDebug) {
           console.warn(
@@ -182,13 +183,14 @@ export class StatePerformance {
         this.cachedStateSize = quickSize // Fallback lightweight estimation
       } else {
         // Use enhanced memory monitoring for smaller states or circular references
+        usedEnhancedCalculation = true
         calculatedSize = this.memoryMonitor.calculateSize(state)
         this.cachedStateSize = calculatedSize || quickSize
       }
       this.memoryCacheValid = true
       this.lastMemoryUpdate = now
 
-      if (this.options.enableDebug && calculatedSize === 0) {
+  if (this.options.enableDebug && usedEnhancedCalculation && calculatedSize === 0) {
         console.warn('StatePerformance: Memory calculation returned 0, using fallback')
         // Fallback to JSON.stringify if estimation fails
         this.cachedStateSize = JSON.stringify(state).length
