@@ -15,6 +15,11 @@ export class EffectManager {
     this.timeouts = new Set();
     this.isRunning = false;
     this.debugMode = false;
+
+  // Pre-bind event handlers so we can reliably remove them later
+  this._boundCleanup = this._cleanup.bind(this);
+  this._boundPause = this._pause.bind(this);
+  this._boundResume = this._resume.bind(this);
   }
 
   /**
@@ -24,7 +29,7 @@ export class EffectManager {
     // Create a legacy-compatible effects map from PatternMatcher data
     const effectsMap = new Map();
     
-    for (const [id, patternEntry] of this.patternMatcher.patterns) {
+  for (const [, patternEntry] of this.patternMatcher.patterns) {
       const patternKey = patternEntry.pattern instanceof RegExp ? 
         patternEntry.pattern.source : 
         patternEntry.pattern.replace(/\*/g, '.*');
@@ -63,7 +68,12 @@ export class EffectManager {
    * @param {boolean} options.once - If true, handler is called only once
    * @returns {Function} Unsubscribe function
    */
-  effect(eventPattern, effectHandler, options = {}) {
+  /**
+   * @param {string|RegExp} eventPattern
+   * @param {Function} effectHandler
+   * @param {{priority?: number, once?: boolean}} [options]
+   */
+  effect(eventPattern, effectHandler, options = undefined) {
     if (!eventPattern || (typeof eventPattern !== 'string' && !(eventPattern instanceof RegExp))) {
       throw new Error('Effect pattern must be a string or RegExp');
     }
@@ -72,7 +82,7 @@ export class EffectManager {
       throw new Error('Effect handler must be a function');
     }
 
-    const { priority = 0, once = false } = options;
+  const { priority = 0, once = false } = (options ?? {});
 
     // Register with PatternMatcher for streamlined pattern matching
     const patternId = this.patternMatcher.register(eventPattern, effectHandler, {
@@ -106,10 +116,10 @@ export class EffectManager {
     this._originalEmit = this.eventDispatcher.emit.bind(this.eventDispatcher);
     this.eventDispatcher.emit = this._interceptEmit.bind(this);
 
-    // Listen for cleanup events
-    this.eventDispatcher.on('game:cleanup', this._cleanup.bind(this));
-    this.eventDispatcher.on('game:pause', this._pause.bind(this));
-    this.eventDispatcher.on('game:resume', this._resume.bind(this));
+  // Listen for lifecycle events (use pre-bound refs for proper unsubscription)
+  this.eventDispatcher.on('game:cleanup', this._boundCleanup);
+  this.eventDispatcher.on('game:pause', this._boundPause);
+  this.eventDispatcher.on('game:resume', this._boundResume);
   }
 
   /**
@@ -133,10 +143,10 @@ export class EffectManager {
       this._originalEmit = null;
     }
 
-    // Clean up listeners
-    this.eventDispatcher.off('game:cleanup', this._cleanup);
-    this.eventDispatcher.off('game:pause', this._pause);
-    this.eventDispatcher.off('game:resume', this._resume);
+  // Clean up listeners (must use the same function references passed to `on`)
+  this.eventDispatcher.off('game:cleanup', this._boundCleanup);
+  this.eventDispatcher.off('game:pause', this._boundPause);
+  this.eventDispatcher.off('game:resume', this._boundResume);
 
     this._debug('Effect manager stopped');
   }
@@ -234,7 +244,7 @@ export class EffectManager {
         this._originalEmit('effect:execution:error', {
           eventName,
           data,
-          effect: effect.fn.name || 'anonymous',
+          effect: (patternEntry && patternEntry.handler && patternEntry.handler.name) || 'anonymous',
           error,
           timestamp: Date.now()
         });
@@ -328,12 +338,21 @@ export class EffectManager {
    */
   trackTimeout(timeoutId) {
     this.timeouts.add(timeoutId);
-    
-    // Auto-cleanup tracking: Remove timeout ID on next tick to prevent memory leaks
-    // This intentionally executes immediately (not after timeout) to clean up our tracking
+
+    // Auto-cleanup tracking: Remove timeout ID on microtask to prevent leaks
+    // This matches existing tests' expectation while still allowing cancelAllEffects()
+    // to clear any remaining tracked timeouts immediately when needed.
     Promise.resolve().then(() => {
       this.timeouts.delete(timeoutId);
     });
+  }
+
+  /**
+   * Optionally untrack a timeout if it has already fired and been cleared elsewhere
+   * @param {number} timeoutId - Timeout ID
+   */
+  untrackTimeout(timeoutId) {
+    this.timeouts.delete(timeoutId);
   }
 
   /**

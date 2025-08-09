@@ -133,7 +133,7 @@ export class OptionsMenu {
             // Apply loaded settings
             this.options.forEach(option => {
                 const key = option.name.toLowerCase().replace(/\s+/g, '');
-                if (settings.hasOwnProperty(key)) {
+                    if (Object.prototype.hasOwnProperty.call(settings, key)) {
                     const newVal = settings[key];
                     option.setValue(newVal);
                 }
@@ -475,7 +475,7 @@ export class OptionsMenu {
         // Apply loaded settings
         this.options.forEach(option => {
             const key = option.name.toLowerCase().replace(/\s+/g, '');
-            if (data.hasOwnProperty(key)) {
+                if (Object.prototype.hasOwnProperty.call(data, key)) {
                 option.setValue(data[key]);
             }
         });

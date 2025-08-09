@@ -29,26 +29,5 @@ export default defineConfig({
     include: []
   },
   base: './',
-  assetsInclude: ['**/*.mp3', '**/*.wav', '**/*.ogg', '**/*.png', '**/*.jpg', '**/*.gif'],
-  test: {
-    // Performance optimizations for vitest
-    threads: true,
-    isolate: false,
-    pool: 'threads',
-    poolOptions: {
-      threads: {
-        singleThread: false,
-        isolate: false
-      }
-    },
-    // Faster test environment
-    environment: 'jsdom',
-    // Reduce overhead
-    setupFiles: [],
-    // Only run tests, don't build
-    watch: false,
-    // Optimize test discovery
-    include: ['**/*.test.js'],
-    exclude: ['**/node_modules/**', '**/dist/**', '**/*.skip.js']
-  }
+  assetsInclude: ['**/*.mp3', '**/*.wav', '**/*.ogg', '**/*.png', '**/*.jpg', '**/*.gif']
 })
