@@ -19,10 +19,11 @@ import { EffectManager } from '@/systems/EffectManager.js'
 
 export class Game {
   constructor() {
-    this.canvas = document.getElementById('gameCanvas')
-    this.ctx = this.canvas.getContext('2d')
-    this.width = this.canvas.width
-    this.height = this.canvas.height
+  /** @type {HTMLCanvasElement} */
+  this.canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('gameCanvas'))
+  this.ctx = this.canvas.getContext('2d')
+  this.width = this.canvas.width
+  this.height = this.canvas.height
 
     // Game objects
     this.player = null
@@ -64,13 +65,13 @@ export class Game {
     this.keys = {}
     this.setupInput()
 
-    // Initialize pure event-driven architecture after StateManager is ready
+  // Initialize pure event-driven architecture after StateManager is ready
     this.initializeGameState()
 
     // Setup effects-based event handling
     this.setupEffects()
 
-    this.init()
+  this.init()
   }
 
   initializeGameState() {
@@ -204,7 +205,8 @@ export class Game {
     this.background = new Background(this)
 
     // Store global reference for debugging and development tools
-    window.game = this
+  // Expose for debugging (use bracket access for checkJs)
+  window['game'] = this
 
     // Emit game start event
     this.startGame()
@@ -283,8 +285,8 @@ export class Game {
     }
 
     // Clean up global reference
-    if (window.game === this) {
-      delete window.game
+    if (window['game'] === this) {
+      delete window['game']
     }
   }
 
@@ -363,7 +365,8 @@ export class Game {
     if (
       typeof process !== 'undefined' &&
       process.env.NODE_ENV === 'test' &&
-      typeof vitest !== 'undefined'
+  // Detect vitest safely in checkJs
+  typeof globalThis !== 'undefined' && typeof globalThis['vitest'] !== 'undefined'
     ) {
       return true
     }
@@ -741,7 +744,9 @@ export class Game {
   updateUI() {
     // Update HTML UI elements
     document.getElementById('score').textContent = this.score
-    document.getElementById('health').textContent = this.player.health
+  /** @type {HTMLElement|null} */
+  const healthEl = document.getElementById('health')
+  if (healthEl) healthEl.textContent = String(this.player.health)
     document.getElementById('mode').textContent = this.player.mode
       ? this.player.mode.toUpperCase()
       : 'UNKNOWN'

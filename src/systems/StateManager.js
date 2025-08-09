@@ -84,18 +84,15 @@ export class StateManager {
     )
 
     // Performance tracking and monitoring
-    this.statePerformance = new StatePerformance(
-      {
-        enablePerformanceTracking: this.options.enablePerformanceTracking !== false,
-        enableMemoryTracking: this.options.enableMemoryTracking !== false,
-        enableDebug: this.options.enableDebug,
-        memoryUpdateThreshold: this.options.memoryUpdateThreshold || 1000
-      },
-      {
-        onGetState: () => this.currentState,
-        onGetHistoryMemoryUsage: () => this.stateHistory.getHistoryMemoryUsage()
-      }
-    )
+    this.statePerformance = new StatePerformance({
+      enablePerformanceTracking: this.options.enablePerformanceTracking !== false,
+      enableMemoryTracking: this.options.enableMemoryTracking !== false,
+      enableDebug: this.options.enableDebug,
+      memoryUpdateThreshold: this.options.memoryUpdateThreshold || 1000,
+      // Provide callbacks directly in options for StatePerformance
+      onGetState: () => this.currentState,
+      onGetHistoryMemoryUsage: () => this.stateHistory.getHistoryMemoryUsage()
+    })
 
     // Async state management with safe state update callback
     this.stateAsync = new StateAsync(
@@ -140,6 +137,10 @@ export class StateManager {
    * @param {Object} options - Options for getting state
    * @param {boolean} options.skipStats - Whether to skip statistics tracking
    * @returns {*} State value or undefined if not found
+   */
+  /**
+   * @param {string} [path]
+   * @param {{ skipStats?: boolean }} [options]
    */
   getState(path = '', options = {}) {
     this.statePerformance.recordGet(options.skipStats)
@@ -291,13 +292,11 @@ export class StateManager {
       // Get current value for comparison
       const oldValue = this.getState(path)
 
-      // Validate new value if validation is enabled and module exists
-      if (!updateOptions.skipValidation && this.stateValidation) {
-        const validationResult = this._safeCallModule('validateValue', () =>
-          this.stateValidation.validateValue(path, value)
-        )
-        if (validationResult !== true) {
-          throw new Error(`Validation failed for '${path}': ${validationResult}`)
+      // Validate new value if validation is enabled
+      if (!updateOptions.skipValidation && this.options.enableValidation) {
+        const validationError = validateValueUtil(path, value, this.currentState)
+        if (validationError) {
+          throw new Error(`Validation error for '${path}': ${validationError}`)
         }
       }
 
@@ -669,7 +668,8 @@ export class StateManager {
 
     // Add global state manager to window for debugging
     if (typeof window !== 'undefined') {
-      window.stateManager = this
+      // Avoid checkJs errors by using bracket notation
+      window['stateManager'] = this
     }
 
     console.log('🐛 StateManager: Debug mode enabled')
@@ -682,8 +682,9 @@ export class StateManager {
     this.options.enableDebug = false
 
     // Remove global reference
-    if (typeof window !== 'undefined' && window.stateManager === this) {
-      delete window.stateManager
+    if (typeof window !== 'undefined' && window['stateManager'] === this) {
+      // Avoid checkJs errors by using bracket notation
+      delete window['stateManager']
     }
 
     console.log('🐛 StateManager: Debug mode disabled')
