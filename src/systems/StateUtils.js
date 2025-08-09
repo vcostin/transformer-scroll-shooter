@@ -41,29 +41,44 @@ export function getValueByPath(obj, path) {
  */
 export function setValueByPath(obj, path, value, merge = false) {
     const parts = path.split('.');
-    const newObj = deepClone(obj);
-    let current = newObj;
 
-    // Navigate to the parent of the target property
+    // Create a shallow copy of the root
+    const newRoot = Array.isArray(obj) ? obj.slice() : { ...obj };
+
+    let currentOld = obj;
+    let currentNew = newRoot;
+
     for (let i = 0; i < parts.length - 1; i++) {
         const part = parts[i];
-        if (current[part] === undefined || current[part] === null) {
-            current[part] = {};
-        } else if (typeof current[part] !== 'object') {
-            current[part] = {};
+        const nextOld = currentOld && typeof currentOld === 'object' ? currentOld[part] : undefined;
+
+        // Create a shallow copy for the next level (or a new object if missing)
+        let nextNew;
+        if (nextOld && typeof nextOld === 'object') {
+            nextNew = Array.isArray(nextOld) ? nextOld.slice() : { ...nextOld };
+        } else {
+            nextNew = {};
         }
-        current = current[part];
+
+        currentNew[part] = nextNew;
+        currentOld = nextOld || {};
+        currentNew = nextNew;
     }
 
-    // Set the final value
     const finalKey = parts[parts.length - 1];
-    if (merge && typeof current[finalKey] === 'object' && typeof value === 'object') {
-        current[finalKey] = { ...current[finalKey], ...value };
+    const existing = currentOld && typeof currentOld === 'object' ? currentOld[finalKey] : undefined;
+
+    if (merge && existing && typeof existing === 'object' && typeof value === 'object') {
+        if (Array.isArray(existing) && Array.isArray(value)) {
+            currentNew[finalKey] = existing.concat(value);
+        } else {
+            currentNew[finalKey] = { ...existing, ...value };
+        }
     } else {
-        current[finalKey] = value;
+        currentNew[finalKey] = value;
     }
 
-    return newObj;
+    return newRoot;
 }
 
 /**
