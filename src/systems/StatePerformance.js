@@ -190,7 +190,7 @@ export class StatePerformance {
       this.memoryCacheValid = true
       this.lastMemoryUpdate = now
 
-  if (this.options.enableDebug && usedEnhancedCalculation && calculatedSize === 0) {
+      if (this.options.enableDebug && usedEnhancedCalculation && calculatedSize === 0) {
         console.warn('StatePerformance: Memory calculation returned 0, using fallback')
         // Fallback to JSON.stringify if estimation fails
         this.cachedStateSize = JSON.stringify(state).length
