@@ -1,3 +1,27 @@
+## Summary
+
+Describe what this PR changes and why.
+
+## Checklist
+
+- [ ] PR body is Markdown and clear
+- [ ] Follows Codebase Rules (see `docs/PROJECT_RULES.md`)
+  - [ ] Vitest-only (no Jest APIs)
+  - [ ] ESLint/Prettier clean locally (`npm run lint`, `npm run format:check`)
+  - [ ] Uses safe `Object.prototype.hasOwnProperty.call`
+- [ ] Follows VCS/GitHub Workflow Rules (see `docs/PROJECT_RULES.md` and `.vscode/copilot-instructions.md`)
+  - [ ] Created with `gh pr create` (or equivalent)
+  - [ ] Not merging without human review
+  - [ ] Will squash-merge and delete branch after approval
+
+## Validation
+
+- [ ] Tests pass locally (`npm run test:run`)
+- [ ] CI is green (lint/format and tests as applicable)
+
+## Notes
+
+Anything else reviewers should know?
 ## 🎯 Pull Request Title
 
 Brief description of the changes in this PR.
