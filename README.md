@@ -336,3 +336,8 @@ The **completed** architecture provides:
 - **Modern ES Modules**: Clean, maintainable code structure with advanced JavaScript features
 
 **Current Status**: ✅ **Architecture complete** - Pure event-driven implementation with comprehensive optimization and zero legacy dependencies.
+
+## 📐 Project Rules
+
+See `docs/PROJECT_RULES.md` for codebase and VCS/GitHub workflow rules.
+For assistant automation guidance, see `.vscode/copilot-instructions.md`.
