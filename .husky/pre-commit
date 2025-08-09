@@ -1,34 +1,19 @@
 #!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
 
-# Stash unstaged changes to avoid partial formatting issues
-STASH_NAME="pre-commit-format-stash"
-STASHED=false
-
-# Only stash if there are unstaged changes
-if ! git diff --quiet -- .; then
-  STASHED=true
-  git stash push -k -u -m "$STASH_NAME" --quiet
+echo "husky pre-commit: checking formatting..."
+if npm run -s format:check; then
+  echo "Formatting OK."
+  exit 0
 fi
 
-# Run format check
-npm run --silent format:check
-FORMAT_STATUS=$?
-
-if [ $FORMAT_STATUS -ne 0 ]; then
-  echo "Pre-commit: formatting issues found. Running formatter..."
-  npm run --silent format || exit 1
+echo "Formatting issues found. Running prettier --write ..."
+if npm run -s format; then
+  # Add any changes produced by formatter
   git add -A
+  # Optional: verify now clean (non-fatal)
+  npm run -s format:check >/dev/null 2>&1 || true
+  exit 0
+else
+  echo "Formatter failed. Aborting commit."
+  exit 1
 fi
-
-# Restore stashed changes if any
-if [ "$STASHED" = true ]; then
-  # Apply stash without dropping to preserve work; drop only if apply succeeded
-  if git stash apply --quiet "stash^{/$STASH_NAME}"; then
-    git stash drop --quiet "stash^{/$STASH_NAME}" || true
-  else
-    echo "Warning: could not reapply stashed changes automatically. Resolve manually."
-  fi
-fi
-
-exit 0
