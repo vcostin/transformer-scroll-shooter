@@ -9,9 +9,8 @@ fi
 echo "Formatting issues found. Running prettier --write ..."
 if npm run -s format; then
   # Add any changes produced by formatter
-  git add -A
-  # Optional: verify now clean (non-fatal)
-  npm run -s format:check >/dev/null 2>&1 || true
+  git add --update
+  # Formatting complete, changes staged.
   exit 0
 else
   echo "Formatter failed. Aborting commit."
