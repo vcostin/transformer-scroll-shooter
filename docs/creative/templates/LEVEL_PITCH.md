@@ -1,4 +1,4 @@
-# Level 1 Pitch — City Above Clouds
+# Level 1 Pitch: City Above Clouds
 
 One-liner
 - Neon ruins above the cloudline; learn dodge, first powerup, readable chaos.

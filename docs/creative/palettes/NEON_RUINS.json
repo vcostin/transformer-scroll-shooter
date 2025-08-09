@@ -13,7 +13,7 @@
     { "id": "health-green", "hex": "#36f1a8", "usage": "health/pickups" }
   ],
   "recommendations": {
-    "contrast": "Ensure bullets > 4.5:1 against background",
+  "contrast": "Ensure all bullet types (player and enemy) maintain > 4.5:1 contrast against background per WCAG AA",
     "glow": "Outer glow 2–4 px for 720p base",
     "colorCoding": "Player=cyan, Enemy=magenta"
   }

@@ -1,7 +1,11 @@
 {
   "levelId": "level1_city_above_clouds",
   "displayName": "City Above Clouds",
-  "budgets": { "parallaxLayers": 5, "particleBurstPeak": 300 },
+  "budgets": {
+    "parallaxLayers": 5,
+    "particleBurstPeak": 300,
+    "budgetNotes": "Chosen within ART_DIRECTION.md constraints: parallaxLayers 4–6, particleBurstPeak 200–400"
+  },
   "parallax": {
     "scrollDirection": "left",
     "tileWidth": 1280,

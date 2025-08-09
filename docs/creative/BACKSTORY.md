@@ -1,4 +1,4 @@
-# Backstory Brainstorm
+# Backstory Brainstorming
 
 Goal: Pick a compelling, lightweight premise that supports arcade action and can be told via short in-game cues.
 
