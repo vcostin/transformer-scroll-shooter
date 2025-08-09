@@ -14,14 +14,14 @@ describe('Game', () => {
   beforeEach(() => {
     // Set test environment
     process.env.NODE_ENV = 'test'
-    
+
     // Mock DOM elements
     mockCanvas = {
       width: 800,
       height: 600,
       getContext: vi.fn()
     }
-    
+
     mockContext = {
       fillStyle: '',
       fillRect: vi.fn(),
@@ -51,12 +51,12 @@ describe('Game', () => {
       lineWidth: 0,
       globalAlpha: 1
     }
-    
+
     mockCanvas.getContext.mockReturnValue(mockContext)
-    
+
     // Mock DOM methods
     global.document = {
-      getElementById: vi.fn((id) => {
+      getElementById: vi.fn(id => {
         if (id === 'gameCanvas') {
           return mockCanvas
         }
@@ -70,7 +70,7 @@ describe('Game', () => {
         }
         return mockElement
       }),
-      createElement: vi.fn((tag) => {
+      createElement: vi.fn(tag => {
         const mockElement = {
           id: '',
           textContent: '',
@@ -94,10 +94,10 @@ describe('Game', () => {
       },
       addEventListener: vi.fn()
     }
-    
+
     // Mock requestAnimationFrame
     global.requestAnimationFrame = vi.fn(cb => setTimeout(cb, 16))
-    
+
     game = new Game()
   })
 
@@ -106,11 +106,11 @@ describe('Game', () => {
     if (game && typeof game.stop === 'function') {
       game.stop()
     }
-    
+
     // Clean up any running timers
     vi.clearAllTimers()
     vi.clearAllMocks()
-    
+
     // Reset environment
     delete process.env.NODE_ENV
   })
@@ -184,9 +184,9 @@ describe('Game', () => {
   describe('spawnEnemy', () => {
     it('should create enemy with random type', () => {
       const initialEnemyCount = game.enemies.length
-      
+
       game.spawnEnemy()
-      
+
       expect(game.enemies.length).toBe(initialEnemyCount + 1)
       const enemy = game.enemies[game.enemies.length - 1]
       expect(['fighter', 'bomber', 'scout']).toContain(enemy.type)
@@ -194,7 +194,7 @@ describe('Game', () => {
 
     it('should spawn enemy at right edge of screen', () => {
       game.spawnEnemy()
-      
+
       const enemy = game.enemies[game.enemies.length - 1]
       expect(enemy.x).toBeGreaterThan(game.width)
     })
@@ -205,7 +205,7 @@ describe('Game', () => {
         game.spawnEnemy()
         spawnPositions.push(game.enemies[game.enemies.length - 1].y)
       }
-      
+
       // Should have some variety in Y positions
       const uniquePositions = [...new Set(spawnPositions)]
       expect(uniquePositions.length).toBeGreaterThan(1)
@@ -215,7 +215,7 @@ describe('Game', () => {
   describe('spawnBoss', () => {
     it('should create boss enemy', () => {
       game.spawnBoss()
-      
+
       expect(game.enemies.length).toBe(1)
       const boss = game.enemies[0]
       expect(game.isBoss(boss)).toBe(true)
@@ -223,13 +223,13 @@ describe('Game', () => {
 
     it('should set bossActive flag', () => {
       game.spawnBoss()
-      
+
       expect(game.bossActive).toBe(true)
     })
 
     it('should spawn boss at visible position', () => {
       game.spawnBoss()
-      
+
       const boss = game.enemies[0]
       expect(boss.x).toBeLessThan(game.width)
       expect(boss.x).toBeGreaterThan(0)
@@ -237,7 +237,7 @@ describe('Game', () => {
 
     it('should add boss message', () => {
       game.spawnBoss()
-      
+
       expect(game.messages.length).toBe(1)
       expect(game.messages[0].text).toContain('BOSS')
     })
@@ -255,7 +255,7 @@ describe('Game', () => {
         takeDamage: vi.fn(),
         collectPowerup: vi.fn()
       }
-      
+
       // Mock audio
       game.audio = {
         playSound: vi.fn()
@@ -273,7 +273,7 @@ describe('Game', () => {
         damage: 10,
         markedForDeletion: false
       }
-      
+
       // Create enemy
       const enemy = {
         x: 200,
@@ -285,12 +285,12 @@ describe('Game', () => {
         takeDamage: vi.fn(),
         markedForDeletion: false
       }
-      
+
       game.bullets.push(bullet)
       game.enemies.push(enemy)
-      
+
       game.checkCollisions()
-      
+
       expect(bullet.markedForDeletion).toBe(true)
       expect(enemy.takeDamage).toHaveBeenCalledWith(10)
     })
@@ -306,11 +306,11 @@ describe('Game', () => {
         damage: 5,
         markedForDeletion: false
       }
-      
+
       game.bullets.push(bullet)
-      
+
       game.checkCollisions()
-      
+
       expect(bullet.markedForDeletion).toBe(true)
       expect(game.player.takeDamage).toHaveBeenCalledWith(5)
     })
@@ -325,11 +325,11 @@ describe('Game', () => {
         takeDamage: vi.fn(),
         markedForDeletion: false
       }
-      
+
       game.enemies.push(enemy)
-      
+
       game.checkCollisions()
-      
+
       expect(enemy.takeDamage).toHaveBeenCalledWith(50)
       expect(game.player.takeDamage).toHaveBeenCalledWith(50)
     })
@@ -342,11 +342,11 @@ describe('Game', () => {
         height: 20,
         markedForDeletion: false
       }
-      
+
       game.powerups.push(powerup)
-      
+
       game.checkCollisions()
-      
+
       expect(powerup.markedForDeletion).toBe(true)
       expect(game.player.collectPowerup).toHaveBeenCalledWith(powerup)
     })
@@ -361,7 +361,7 @@ describe('Game', () => {
         damage: 20,
         markedForDeletion: false
       }
-      
+
       const enemy = {
         x: 200,
         y: 200,
@@ -369,17 +369,17 @@ describe('Game', () => {
         height: 20,
         health: 20,
         points: 10,
-        takeDamage: vi.fn((damage) => {
+        takeDamage: vi.fn(damage => {
           enemy.health -= damage
         }),
         markedForDeletion: false
       }
-      
+
       game.bullets.push(bullet)
       game.enemies.push(enemy)
-      
+
       game.checkCollisions()
-      
+
       expect(game.score).toBe(10)
     })
   })
@@ -388,28 +388,28 @@ describe('Game', () => {
     it('should detect overlapping rectangles', () => {
       const rect1 = { x: 100, y: 100, width: 50, height: 50 }
       const rect2 = { x: 120, y: 120, width: 50, height: 50 }
-      
+
       expect(game.checkCollision(rect1, rect2)).toBe(true)
     })
 
     it('should detect non-overlapping rectangles', () => {
       const rect1 = { x: 100, y: 100, width: 50, height: 50 }
       const rect2 = { x: 200, y: 200, width: 50, height: 50 }
-      
+
       expect(game.checkCollision(rect1, rect2)).toBe(false)
     })
 
     it('should detect touching rectangles', () => {
       const rect1 = { x: 100, y: 100, width: 50, height: 50 }
       const rect2 = { x: 150, y: 100, width: 50, height: 50 }
-      
+
       expect(game.checkCollision(rect1, rect2)).toBe(false)
     })
 
     it('should handle edge cases', () => {
       const rect1 = { x: 0, y: 0, width: 10, height: 10 }
       const rect2 = { x: 5, y: 5, width: 10, height: 10 }
-      
+
       expect(game.checkCollision(rect1, rect2)).toBe(true)
     })
   })
@@ -417,9 +417,9 @@ describe('Game', () => {
   describe('addBullet', () => {
     it('should add bullet to bullets array', () => {
       const bullet = { x: 100, y: 200, type: 'normal' }
-      
+
       game.addBullet(bullet)
-      
+
       expect(game.bullets).toContain(bullet)
       expect(game.bullets.length).toBe(1)
     })
@@ -428,9 +428,9 @@ describe('Game', () => {
   describe('addEffect', () => {
     it('should add effect to effects array', () => {
       const effect = { x: 100, y: 200, type: 'explosion' }
-      
+
       game.addEffect(effect)
-      
+
       expect(game.effects).toContain(effect)
       expect(game.effects.length).toBe(1)
     })
@@ -439,7 +439,7 @@ describe('Game', () => {
   describe('addMessage', () => {
     it('should add message to messages array', () => {
       game.addMessage('Test Message', '#ff0000', 2000)
-      
+
       expect(game.messages.length).toBe(1)
       expect(game.messages[0].text).toBe('Test Message')
       expect(game.messages[0].color).toBe('#ff0000')
@@ -451,7 +451,7 @@ describe('Game', () => {
       for (let i = 0; i < 5; i++) {
         game.addMessage(`Message ${i}`)
       }
-      
+
       expect(game.messages.length).toBeLessThanOrEqual(3) // MAX_MESSAGES = 3
     })
   })
@@ -461,17 +461,17 @@ describe('Game', () => {
       game.addMessage('Test', '#ffffff', 1000)
       const message = game.messages[0]
       message.age = 0 // Initialize age
-      
+
       game.updateMessages()
-      
+
       expect(message.age).toBeGreaterThan(0)
     })
 
     it('should remove expired messages', () => {
       game.addMessage('Test', '#ffffff', 0)
-      
+
       game.updateMessages()
-      
+
       expect(game.messages.length).toBe(0)
     })
   })
@@ -480,11 +480,11 @@ describe('Game', () => {
     it('should remove off-screen enemies', () => {
       const onScreenEnemy = { x: 400, markedForDeletion: false }
       const offScreenEnemy = { x: -200, markedForDeletion: false }
-      
+
       game.enemies.push(onScreenEnemy, offScreenEnemy)
-      
+
       game.cleanup()
-      
+
       expect(game.enemies).toContain(onScreenEnemy)
       expect(game.enemies).not.toContain(offScreenEnemy)
     })
@@ -492,11 +492,11 @@ describe('Game', () => {
     it('should remove marked bullets', () => {
       const normalBullet = { x: 400, y: 300, markedForDeletion: false }
       const markedBullet = { x: 400, y: 300, markedForDeletion: true }
-      
+
       game.bullets.push(normalBullet, markedBullet)
-      
+
       game.cleanup()
-      
+
       expect(game.bullets).toContain(normalBullet)
       expect(game.bullets).not.toContain(markedBullet)
     })
@@ -504,11 +504,11 @@ describe('Game', () => {
     it('should remove off-screen powerups', () => {
       const onScreenPowerup = { x: 400, markedForDeletion: false }
       const offScreenPowerup = { x: -200, markedForDeletion: false }
-      
+
       game.powerups.push(onScreenPowerup, offScreenPowerup)
-      
+
       game.cleanup()
-      
+
       expect(game.powerups).toContain(onScreenPowerup)
       expect(game.powerups).not.toContain(offScreenPowerup)
     })
@@ -517,11 +517,11 @@ describe('Game', () => {
       // Add some subscription functions
       const unsubscribe1 = vi.fn()
       const unsubscribe2 = vi.fn()
-      
+
       game.stateSubscriptions = new Set([unsubscribe1, unsubscribe2])
-      
+
       game.destroy()
-      
+
       expect(unsubscribe1).toHaveBeenCalled()
       expect(unsubscribe2).toHaveBeenCalled()
       expect(game.stateSubscriptions.size).toBe(0)
@@ -531,11 +531,11 @@ describe('Game', () => {
       // Test that game properly cleans up subscriptions to prevent memory leaks
       const unsubscribe1 = vi.fn()
       const unsubscribe2 = vi.fn()
-      
+
       game.stateSubscriptions = new Set([unsubscribe1, unsubscribe2])
-      
+
       game.destroy()
-      
+
       expect(unsubscribe1).toHaveBeenCalled()
       expect(unsubscribe2).toHaveBeenCalled()
       expect(game.stateSubscriptions.size).toBe(0)
@@ -544,7 +544,7 @@ describe('Game', () => {
     it('should handle empty state subscriptions during cleanup', () => {
       // Test that game can handle empty subscriptions set
       game.stateSubscriptions = new Set()
-      
+
       expect(() => {
         game.destroy()
       }).not.toThrow()
@@ -553,7 +553,7 @@ describe('Game', () => {
     it('should handle undefined state subscriptions during cleanup', () => {
       // Test that game can handle undefined subscriptions
       game.stateSubscriptions = undefined
-      
+
       expect(() => {
         game.destroy()
       }).not.toThrow()
@@ -563,28 +563,28 @@ describe('Game', () => {
       // Mock document.removeEventListener to track cleanup calls
       const originalRemoveEventListener = document.removeEventListener
       document.removeEventListener = vi.fn()
-      
+
       // Setup DOM event listeners first
       game.setupInput()
-      
+
       game.destroy()
-      
+
       // Verify that DOM event cleanup was attempted
       expect(game.domEventCleanup).toBeDefined()
       expect(Array.isArray(game.domEventCleanup)).toBe(true)
-      
+
       // Restore original
       document.removeEventListener = originalRemoveEventListener
     })
 
     it('should prevent memory leaks by cleaning up event listeners', () => {
       // Test that game properly cleans up DOM event listeners to prevent memory leaks
-      
+
       // Setup DOM event listeners
       game.setupInput()
-      
+
       game.destroy()
-      
+
       // Verify that DOM cleanup array exists and is functional
       expect(game.domEventCleanup).toBeDefined()
       expect(Array.isArray(game.domEventCleanup)).toBe(true)
@@ -593,7 +593,7 @@ describe('Game', () => {
 
     it('should handle empty event listeners during cleanup', () => {
       // Test that game can handle empty DOM event cleanup gracefully
-      
+
       expect(() => {
         game.destroy()
       }).not.toThrow()
@@ -610,9 +610,9 @@ describe('Game', () => {
       game.bossActive = true
       game.enemies.push({ x: 100, y: 100 })
       game.bullets.push({ x: 200, y: 200 })
-      
+
       game.restart()
-      
+
       expect(game.score).toBe(0)
       expect(game.level).toBe(1)
       expect(game.enemiesKilled).toBe(0)
@@ -624,7 +624,7 @@ describe('Game', () => {
       expect(game.effects.length).toBe(0)
       expect(game.messages.length).toBe(0)
     })
-    
+
     it('should reset spawn timers to prevent immediate spawns', () => {
       // Set up game with active spawn timers
       game.enemySpawnTimer = 5000
@@ -632,9 +632,9 @@ describe('Game', () => {
       game.lastTime = 10000
       game.fpsTimer = 1500
       game.frameCount = 100
-      
+
       game.restart()
-      
+
       // Verify all timers are reset
       expect(game.enemySpawnTimer).toBe(0)
       expect(game.powerupSpawnTimer).toBe(0)
@@ -655,7 +655,7 @@ describe('Game', () => {
         takeDamage: vi.fn(),
         collectPowerup: vi.fn()
       }
-      
+
       game.audio = {
         playSound: vi.fn()
       }
@@ -664,7 +664,7 @@ describe('Game', () => {
     it('should advance level when enough enemies killed', () => {
       game.enemiesKilled = 9
       game.enemiesPerLevel = 10
-      
+
       // Create and kill an enemy
       const bullet = {
         x: 200,
@@ -675,7 +675,7 @@ describe('Game', () => {
         damage: 20,
         markedForDeletion: false
       }
-      
+
       const enemy = {
         x: 200,
         y: 200,
@@ -683,7 +683,7 @@ describe('Game', () => {
         height: 20,
         health: 20,
         points: 10,
-        takeDamage: vi.fn((damage) => {
+        takeDamage: vi.fn(damage => {
           enemy.health -= damage
           if (enemy.health <= 0) {
             enemy.markedForDeletion = true
@@ -691,15 +691,15 @@ describe('Game', () => {
         }),
         markedForDeletion: false
       }
-      
+
       game.bullets.push(bullet)
       game.enemies.push(enemy)
-      
+
       // Mock addMessage method to avoid issues
       game.addMessage = vi.fn()
-      
+
       game.checkCollisions()
-      
+
       expect(game.level).toBe(2)
       expect(game.enemiesKilled).toBe(0)
     })
@@ -708,14 +708,15 @@ describe('Game', () => {
       game.level = 5
       game.enemiesKilled = 0
       game.bossActive = false
-      
+
       // Mock the boss spawn condition
-      const shouldSpawnBoss = game.level > 1 && 
-                             game.level % 5 === 0 && 
-                             !game.bossActive && 
-                             game.enemiesKilled % game.enemiesPerLevel === 0 && 
-                             game.enemiesKilled >= 0
-      
+      const shouldSpawnBoss =
+        game.level > 1 &&
+        game.level % 5 === 0 &&
+        !game.bossActive &&
+        game.enemiesKilled % game.enemiesPerLevel === 0 &&
+        game.enemiesKilled >= 0
+
       expect(shouldSpawnBoss).toBe(true)
     })
   })
@@ -731,11 +732,11 @@ describe('Game', () => {
         takeDamage: vi.fn(),
         collectPowerup: vi.fn()
       }
-      
+
       game.audio = {
         playSound: vi.fn()
       }
-      
+
       game.addMessage = vi.fn()
       game.spawnBoss = vi.fn()
     })
@@ -744,9 +745,9 @@ describe('Game', () => {
       game.level = 5
       game.enemiesKilled = 0
       game.bossActive = false
-      
+
       game.update(1000)
-      
+
       expect(game.spawnBoss).toHaveBeenCalled()
     })
 
@@ -754,9 +755,9 @@ describe('Game', () => {
       game.level = 10
       game.enemiesKilled = 0
       game.bossActive = false
-      
+
       game.update(1000)
-      
+
       expect(game.spawnBoss).toHaveBeenCalled()
     })
 
@@ -764,23 +765,23 @@ describe('Game', () => {
       game.level = 15
       game.enemiesKilled = 0
       game.bossActive = false
-      
+
       game.update(1000)
-      
+
       expect(game.spawnBoss).toHaveBeenCalled()
     })
 
     it('should not spawn boss on non-boss levels', () => {
       const nonBossLevels = [1, 2, 3, 4, 6, 7, 8, 9, 11, 12, 13, 14, 16]
-      
+
       nonBossLevels.forEach(level => {
         game.level = level
         game.enemiesKilled = 0
         game.bossActive = false
         game.spawnBoss.mockClear()
-        
+
         game.update(1000)
-        
+
         expect(game.spawnBoss).not.toHaveBeenCalled()
       })
     })
@@ -789,9 +790,9 @@ describe('Game', () => {
       game.level = 5
       game.enemiesKilled = 0
       game.bossActive = true // Boss already active
-      
+
       game.update(1000)
-      
+
       expect(game.spawnBoss).not.toHaveBeenCalled()
     })
 
@@ -799,9 +800,9 @@ describe('Game', () => {
       game.level = 5
       game.enemiesKilled = 3 // Some enemies killed
       game.bossActive = false
-      
+
       game.update(1000)
-      
+
       expect(game.spawnBoss).not.toHaveBeenCalled()
     })
 
@@ -809,9 +810,9 @@ describe('Game', () => {
       game.level = 1
       game.enemiesKilled = 0
       game.bossActive = false
-      
+
       game.update(1000)
-      
+
       expect(game.spawnBoss).not.toHaveBeenCalled()
     })
 
@@ -819,7 +820,7 @@ describe('Game', () => {
       game.level = 4
       game.enemiesKilled = 9 // About to level up
       game.bossActive = false
-      
+
       // Create and kill an enemy to trigger level progression
       const bullet = {
         x: 200,
@@ -830,7 +831,7 @@ describe('Game', () => {
         damage: 20,
         markedForDeletion: false
       }
-      
+
       const enemy = {
         x: 200,
         y: 200,
@@ -839,7 +840,7 @@ describe('Game', () => {
         health: 20,
         points: 10,
         type: 'fighter',
-        takeDamage: vi.fn((damage) => {
+        takeDamage: vi.fn(damage => {
           enemy.health -= damage
           if (enemy.health <= 0) {
             enemy.markedForDeletion = true
@@ -847,19 +848,19 @@ describe('Game', () => {
         }),
         markedForDeletion: false
       }
-      
+
       game.bullets.push(bullet)
       game.enemies.push(enemy)
-      
+
       // Trigger collision detection which should advance to level 5
       game.checkCollisions()
-      
+
       expect(game.level).toBe(5)
       expect(game.enemiesKilled).toBe(0)
-      
+
       // Now update should spawn boss
       game.update(1000)
-      
+
       expect(game.spawnBoss).toHaveBeenCalled()
     })
 
@@ -867,7 +868,7 @@ describe('Game', () => {
       game.level = 5
       game.bossActive = true
       game.score = 1000
-      
+
       // Create player bullet and boss
       const bullet = {
         x: 300,
@@ -878,7 +879,7 @@ describe('Game', () => {
         damage: 200, // Enough to kill boss
         markedForDeletion: false
       }
-      
+
       const boss = {
         x: 300,
         y: 300,
@@ -887,7 +888,7 @@ describe('Game', () => {
         health: 200,
         points: 500,
         type: 'boss',
-        takeDamage: vi.fn((damage) => {
+        takeDamage: vi.fn(damage => {
           boss.health -= damage
           if (boss.health <= 0) {
             boss.markedForDeletion = true
@@ -895,12 +896,12 @@ describe('Game', () => {
         }),
         markedForDeletion: false
       }
-      
+
       game.bullets.push(bullet)
       game.enemies.push(boss)
-      
+
       game.checkCollisions()
-      
+
       expect(game.bossActive).toBe(false)
       expect(game.score).toBe(1000 + 500 + 1000) // original + boss points + boss bonus
     })
@@ -910,23 +911,23 @@ describe('Game', () => {
       game.bossActive = true
       game.enemiesKilled = 0
       game.bossSpawnedThisLevel = true // Boss has already been spawned on this level
-      
+
       // Simulate boss defeat
       game.bossActive = false
-      
+
       // Should not spawn another boss on same level
       game.update(1000)
-      
+
       expect(game.spawnBoss).not.toHaveBeenCalled()
-      
+
       // But should spawn boss on next boss level
       game.level = 10
       game.enemiesKilled = 0
       game.bossSpawnedThisLevel = false // Reset for new level
       game.spawnBoss.mockClear()
-      
+
       game.update(1000)
-      
+
       expect(game.spawnBoss).toHaveBeenCalled()
     })
   })
@@ -940,7 +941,7 @@ describe('Game', () => {
 
     it('should handle null player in collision detection', () => {
       game.player = null
-      
+
       expect(() => {
         game.checkCollisions()
       }).not.toThrow()
@@ -951,9 +952,9 @@ describe('Game', () => {
         update: vi.fn(),
         markedForDeletion: false
       }
-      
+
       game.enemies.push(mockObject)
-      
+
       expect(() => {
         game.updateArray(game.enemies, 10000)
       }).not.toThrow()
@@ -963,34 +964,31 @@ describe('Game', () => {
   describe('Integration Tests', () => {
     it('should handle complete game lifecycle with all fixes', () => {
       // Test that all review fixes work together
-      
+
       // 1. Test FPS variables initialization
       expect(game.frameCount).toBe(0)
       expect(game.fpsTimer).toBe(0)
       expect(game.lastTime).toBe(0)
       expect(game.deltaTime).toBe(0)
       expect(game.fps).toBe(60)
-      
+
       // 2. Test state subscriptions setup
-      game.stateSubscriptions = new Set([
-        vi.fn(),
-        vi.fn()
-      ])
-      
+      game.stateSubscriptions = new Set([vi.fn(), vi.fn()])
+
       // 3. Test DOM event setup
       game.setupInput()
-      
+
       // 4. Test game update cycle
       game.update(16.67) // Typical 60fps delta time
-      
+
       // 5. Test proper cleanup
       game.destroy()
-      
+
       // Verify all subscriptions were cleaned up
       expect(game.stateSubscriptions.size).toBe(0)
       // Verify DOM cleanup array exists
       expect(game.domEventCleanup).toBeDefined()
-      
+
       // All fixes should work together without errors
       expect(true).toBe(true)
     })

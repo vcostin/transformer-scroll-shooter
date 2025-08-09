@@ -1,6 +1,6 @@
 /**
  * Game Constants Tests - Phase 4 Testing Infrastructure
- * 
+ *
  * Tests for game configuration constants
  */
 

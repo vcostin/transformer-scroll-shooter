@@ -1,17 +1,17 @@
 /**
  * StateValidation - Validation logic for StateManager
- * 
+ *
  * This module contains all validation-related functionality:
  * - Schema validation logic
- * - Type checking utilities  
+ * - Type checking utilities
  * - Dynamic validation resolution
  * - Error handling for validation
- * 
+ *
  * All functions work with external schema definitions and are stateless.
  */
 
-import { getValidationRules } from '@/constants/state-schema.js';
-import { safeResolveReference } from '@/systems/StateUtils.js';
+import { getValidationRules } from '@/constants/state-schema.js'
+import { safeResolveReference } from '@/systems/StateUtils.js'
 
 /**
  * Validate a value against schema rules for a given path
@@ -21,86 +21,86 @@ import { safeResolveReference } from '@/systems/StateUtils.js';
  * @returns {string|null} Error message if validation fails, null if valid
  */
 export function validateValue(path, value, currentState) {
-    const rules = getValidationRules(path);
-    if (!rules) return null;
+  const rules = getValidationRules(path)
+  if (!rules) return null
 
-    // Type validation
-    if (rules.type) {
-        if (rules.type === 'any') return null;
-        if (rules.nullable && value === null) return null;
+  // Type validation
+  if (rules.type) {
+    if (rules.type === 'any') return null
+    if (rules.nullable && value === null) return null
 
-        const valueType = Array.isArray(value) ? 'array' : typeof value;
-        if (valueType !== rules.type) {
-            return `Expected ${rules.type}, got ${valueType}`;
-        }
+    const valueType = Array.isArray(value) ? 'array' : typeof value
+    if (valueType !== rules.type) {
+      return `Expected ${rules.type}, got ${valueType}`
     }
+  }
 
-    // Enum validation
-    if (rules.enum && !rules.enum.includes(value)) {
-        return `Value must be one of: ${rules.enum.join(', ')}`;
+  // Enum validation
+  if (rules.enum && !rules.enum.includes(value)) {
+    return `Value must be one of: ${rules.enum.join(', ')}`
+  }
+
+  // Number range validation with safe reference resolution
+  if (typeof value === 'number') {
+    const resolvedMin = safeResolveReference(rules.min, path, currentState, null, true)
+    const resolvedMax = safeResolveReference(rules.max, path, currentState, null, true)
+
+    if (resolvedMin !== null && value < resolvedMin) {
+      return `Value must be >= ${resolvedMin}`
     }
-
-    // Number range validation with safe reference resolution
-    if (typeof value === 'number') {
-        const resolvedMin = safeResolveReference(rules.min, path, currentState, null, true);
-        const resolvedMax = safeResolveReference(rules.max, path, currentState, null, true);
-        
-        if (resolvedMin !== null && value < resolvedMin) {
-            return `Value must be >= ${resolvedMin}`;
-        }
-        if (resolvedMax !== null && value > resolvedMax) {
-            return `Value must be <= ${resolvedMax}`;
-        }
+    if (resolvedMax !== null && value > resolvedMax) {
+      return `Value must be <= ${resolvedMax}`
     }
+  }
 
-    // String validation
-    if (typeof value === 'string') {
-        if (rules.minLength !== undefined && value.length < rules.minLength) {
-            return `String must be at least ${rules.minLength} characters long`;
-        }
-        if (rules.maxLength !== undefined && value.length > rules.maxLength) {
-            return `String must be no more than ${rules.maxLength} characters long`;
-        }
-        if (rules.pattern && !new RegExp(rules.pattern).test(value)) {
-            return `String does not match required pattern: ${rules.pattern}`;
-        }
+  // String validation
+  if (typeof value === 'string') {
+    if (rules.minLength !== undefined && value.length < rules.minLength) {
+      return `String must be at least ${rules.minLength} characters long`
     }
-
-    // Array validation
-    if (Array.isArray(value)) {
-        if (rules.minItems !== undefined && value.length < rules.minItems) {
-            return `Array must have at least ${rules.minItems} items`;
-        }
-        if (rules.maxItems !== undefined && value.length > rules.maxItems) {
-            return `Array must have no more than ${rules.maxItems} items`;
-        }
-        if (rules.uniqueItems && hasDuplicates(value)) {
-            return `Array items must be unique`;
-        }
+    if (rules.maxLength !== undefined && value.length > rules.maxLength) {
+      return `String must be no more than ${rules.maxLength} characters long`
     }
-
-    // Object validation
-    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-        if (rules.required) {
-            const missingKeys = rules.required.filter(key => !(key in value));
-            if (missingKeys.length > 0) {
-                return `Missing required properties: ${missingKeys.join(', ')}`;
-            }
-        }
-        if (rules.properties) {
-            for (const [key, keyValue] of Object.entries(value)) {
-                if (rules.properties[key]) {
-                    const keyPath = path ? `${path}.${key}` : key;
-                    const keyError = validateValue(keyPath, keyValue, currentState);
-                    if (keyError) {
-                        return `Property '${key}': ${keyError}`;
-                    }
-                }
-            }
-        }
+    if (rules.pattern && !new RegExp(rules.pattern).test(value)) {
+      return `String does not match required pattern: ${rules.pattern}`
     }
+  }
 
-    return null;
+  // Array validation
+  if (Array.isArray(value)) {
+    if (rules.minItems !== undefined && value.length < rules.minItems) {
+      return `Array must have at least ${rules.minItems} items`
+    }
+    if (rules.maxItems !== undefined && value.length > rules.maxItems) {
+      return `Array must have no more than ${rules.maxItems} items`
+    }
+    if (rules.uniqueItems && hasDuplicates(value)) {
+      return `Array items must be unique`
+    }
+  }
+
+  // Object validation
+  if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+    if (rules.required) {
+      const missingKeys = rules.required.filter(key => !(key in value))
+      if (missingKeys.length > 0) {
+        return `Missing required properties: ${missingKeys.join(', ')}`
+      }
+    }
+    if (rules.properties) {
+      for (const [key, keyValue] of Object.entries(value)) {
+        if (rules.properties[key]) {
+          const keyPath = path ? `${path}.${key}` : key
+          const keyError = validateValue(keyPath, keyValue, currentState)
+          if (keyError) {
+            return `Property '${key}': ${keyError}`
+          }
+        }
+      }
+    }
+  }
+
+  return null
 }
 
 /**
@@ -110,17 +110,17 @@ export function validateValue(path, value, currentState) {
  * @returns {Array} Array of validation errors (empty if all valid)
  */
 export function validateBatch(updates, currentState) {
-    const errors = [];
-    
-    for (const update of updates) {
-        const { path, value } = update;
-        const error = validateValue(path, value, currentState);
-        if (error) {
-            errors.push({ path, error });
-        }
+  const errors = []
+
+  for (const update of updates) {
+    const { path, value } = update
+    const error = validateValue(path, value, currentState)
+    if (error) {
+      errors.push({ path, error })
     }
-    
-    return errors;
+  }
+
+  return errors
 }
 
 /**
@@ -129,7 +129,7 @@ export function validateBatch(updates, currentState) {
  * @returns {boolean} True if validation rules exist for this path
  */
 export function hasValidationRules(path) {
-    return getValidationRules(path) !== null;
+  return getValidationRules(path) !== null
 }
 
 /**
@@ -138,7 +138,7 @@ export function hasValidationRules(path) {
  * @returns {Object|null} Validation rules object or null if none exist
  */
 export function getPathValidationRules(path) {
-    return getValidationRules(path);
+  return getValidationRules(path)
 }
 
 /**
@@ -148,10 +148,10 @@ export function getPathValidationRules(path) {
  * @returns {boolean} True if types match
  */
 export function isValidType(value, expectedType) {
-    if (expectedType === 'any') return true;
-    
-    const actualType = Array.isArray(value) ? 'array' : typeof value;
-    return actualType === expectedType;
+  if (expectedType === 'any') return true
+
+  const actualType = Array.isArray(value) ? 'array' : typeof value
+  return actualType === expectedType
 }
 
 /**
@@ -160,10 +160,10 @@ export function isValidType(value, expectedType) {
  * @returns {string} Type name (array, object, string, number, boolean, null, undefined)
  */
 export function getValueType(value) {
-    if (value === null) return 'null';
-    if (value === undefined) return 'undefined';
-    if (Array.isArray(value)) return 'array';
-    return typeof value;
+  if (value === null) return 'null'
+  if (value === undefined) return 'undefined'
+  if (Array.isArray(value)) return 'array'
+  return typeof value
 }
 
 /**
@@ -173,15 +173,15 @@ export function getValueType(value) {
  * @private
  */
 function hasDuplicates(array) {
-    const seen = new Set();
-    for (const item of array) {
-        const key = typeof item === 'object' ? JSON.stringify(item) : item;
-        if (seen.has(key)) {
-            return true;
-        }
-        seen.add(key);
+  const seen = new Set()
+  for (const item of array) {
+    const key = typeof item === 'object' ? JSON.stringify(item) : item
+    if (seen.has(key)) {
+      return true
     }
-    return false;
+    seen.add(key)
+  }
+  return false
 }
 
 /**
@@ -191,10 +191,10 @@ function hasDuplicates(array) {
  * @returns {string|null} Error message if invalid, null if valid
  */
 export function validateRequired(value, required) {
-    if (required && (value === null || value === undefined)) {
-        return 'Value is required';
-    }
-    return null;
+  if (required && (value === null || value === undefined)) {
+    return 'Value is required'
+  }
+  return null
 }
 
 /**
@@ -204,10 +204,10 @@ export function validateRequired(value, required) {
  * @returns {string|null} Error message if invalid, null if valid
  */
 export function validateEnum(value, enumValues) {
-    if (enumValues && !enumValues.includes(value)) {
-        return `Value must be one of: ${enumValues.join(', ')}`;
-    }
-    return null;
+  if (enumValues && !enumValues.includes(value)) {
+    return `Value must be one of: ${enumValues.join(', ')}`
+  }
+  return null
 }
 
 /**
@@ -218,19 +218,19 @@ export function validateEnum(value, enumValues) {
  * @returns {string|null} Error message if invalid, null if valid
  */
 export function validateNumberRange(value, min, max) {
-    if (typeof value !== 'number') {
-        return 'Value must be a number';
-    }
-    
-    if (min !== undefined && value < min) {
-        return `Value must be >= ${min}`;
-    }
-    
-    if (max !== undefined && value > max) {
-        return `Value must be <= ${max}`;
-    }
-    
-    return null;
+  if (typeof value !== 'number') {
+    return 'Value must be a number'
+  }
+
+  if (min !== undefined && value < min) {
+    return `Value must be >= ${min}`
+  }
+
+  if (max !== undefined && value > max) {
+    return `Value must be <= ${max}`
+  }
+
+  return null
 }
 
 /**
@@ -241,9 +241,9 @@ export function validateNumberRange(value, min, max) {
  * @returns {Error} Validation error with context
  */
 export function createValidationError(path, message, value) {
-    const error = new Error(`Validation error for '${path}': ${message}`);
-    /** @type {any} */ (error).path = path;
-    /** @type {any} */ (error).value = value;
-    /** @type {any} */ (error).type = 'ValidationError';
-    return error;
+  const error = new Error(`Validation error for '${path}': ${message}`)
+  /** @type {any} */ ;(error).path = path
+  /** @type {any} */ ;(error).value = value
+  /** @type {any} */ ;(error).type = 'ValidationError'
+  return error
 }

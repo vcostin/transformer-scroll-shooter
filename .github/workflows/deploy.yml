@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [ master, main ]
+    branches: [master, main]
   workflow_dispatch:
 
 permissions:
@@ -11,8 +11,8 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
-  cancel-in-progress: true  # Cancel previous runs if new one starts
+  group: 'pages'
+  cancel-in-progress: true # Cancel previous runs if new one starts
 
 jobs:
   deploy:
@@ -25,13 +25,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 'lts/*'
           cache: 'npm'
-          
+
       - name: Cache node_modules
         uses: actions/cache@v4
         with:
@@ -39,32 +39,32 @@ jobs:
           key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-
-          
+
       - name: Install dependencies
         run: npm ci --prefer-offline --no-audit
-        
+
       - name: Run tests
         run: npm run test:run
-        
+
       - name: Generate coverage report
         run: npm run test:coverage
-        
+
       - name: Upload coverage reports as artifacts
         uses: actions/upload-artifact@v4
         with:
           name: coverage-reports-deploy
           path: coverage/
           retention-days: 30
-          
+
       - name: Generate coverage summary
         run: |
           echo "## 📊 Test Coverage Summary" >> $GITHUB_STEP_SUMMARY
           echo "| Metric | Percentage |" >> $GITHUB_STEP_SUMMARY
           echo "|--------|------------|" >> $GITHUB_STEP_SUMMARY
-          
+
           # Generate coverage and capture the "All files" line
           COVERAGE_LINE=$(npm run test:coverage 2>&1 | grep "All files" | head -1)
-          
+
           if [[ -n "$COVERAGE_LINE" ]]; then
             # Parse the coverage percentages from the "All files" line
             STATEMENTS=$(echo "$COVERAGE_LINE" | awk -F'|' '{print $2}' | tr -d ' ')
@@ -79,22 +79,22 @@ jobs:
           else
             echo "| Coverage | See artifacts below |" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "📋 **View detailed coverage report in the artifacts section**" >> $GITHUB_STEP_SUMMARY
           echo "🔍 **Download the coverage-reports-deploy artifact to view HTML report**" >> $GITHUB_STEP_SUMMARY
-        
+
       - name: Build project
         run: npm run build
-        
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
-        
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: './dist'
-          
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

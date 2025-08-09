@@ -55,16 +55,16 @@ describe('Player', () => {
       eventDispatcher: new EventDispatcher(),
       stateManager: new StateManager()
     }
-    
+
     // Create EffectManager using the same instances
     mockGame.effectManager = new EffectManager(mockGame.eventDispatcher)
-    
+
     // Start the EffectManager so effects are processed
     mockGame.effectManager.start()
-    
+
     player = new Player(mockGame, 100, 300)
   })
-  
+
   afterEach(() => {
     // Clean up EffectManager
     if (mockGame && mockGame.effectManager && mockGame.effectManager.isRunning) {
@@ -117,12 +117,12 @@ describe('Player', () => {
     it('should have different properties for each mode', () => {
       const carMode = player.modeProperties.car
       const scubaMode = player.modeProperties.scuba
-      
+
       expect(carMode.speed).toBeDefined()
       expect(carMode.shootRate).toBeDefined()
       expect(carMode.bulletType).toBeDefined()
       expect(carMode.color).toBeDefined()
-      
+
       expect(scubaMode.speed).toBeDefined()
       expect(scubaMode.shootRate).toBeDefined()
       expect(scubaMode.bulletType).toBeDefined()
@@ -132,7 +132,7 @@ describe('Player', () => {
     it('should have different speeds for different modes', () => {
       const carSpeed = player.modeProperties.car.speed
       const scubaSpeed = player.modeProperties.scuba.speed
-      
+
       expect(carSpeed).not.toBe(scubaSpeed)
       expect(carSpeed).toBeGreaterThan(0)
       expect(scubaSpeed).toBeGreaterThan(0)
@@ -151,10 +151,10 @@ describe('Player', () => {
 
     it('should have takeDamage method functionality', () => {
       const initialHealth = player.health
-      
+
       // Test takeDamage method
       player.takeDamage(25)
-      
+
       expect(player.health).toBe(initialHealth - 25)
       expect(typeof player.takeDamage).toBe('function')
     })
@@ -163,7 +163,7 @@ describe('Player', () => {
   describe('Transformation System', () => {
     it('should cycle through modes', () => {
       expect(player.mode).toBe('car')
-      
+
       // We can't easily test transformation without mocking audio
       // but we can test the mode array
       expect(player.modes.length).toBe(4)
@@ -212,192 +212,195 @@ describe('Player', () => {
   })
 
   describe('Event-Driven Architecture', () => {
-        let eventSpy, stateSpy
+    let eventSpy, stateSpy
 
-        beforeEach(() => {
-            // Setup spies on the existing mockGame instances
-            eventSpy = vi.spyOn(mockGame.eventDispatcher, 'emit')
-            stateSpy = vi.spyOn(mockGame.stateManager, 'setState')
-            
-            // Clear any events that occurred during player creation
-            eventSpy.mockClear()
-            stateSpy.mockClear()
-        })
+    beforeEach(() => {
+      // Setup spies on the existing mockGame instances
+      eventSpy = vi.spyOn(mockGame.eventDispatcher, 'emit')
+      stateSpy = vi.spyOn(mockGame.stateManager, 'setState')
 
-        afterEach(() => {
-            vi.restoreAllMocks()
-        })
-
-        it('should handle movement via input events', () => {
-            const initialX = player.x
-            
-            mockGame.eventDispatcher.emit(PLAYER_EVENTS.INPUT_MOVE, {
-                direction: MOVE_DIRECTIONS.RIGHT,
-                deltaTime: 16
-            })
-            
-            expect(player.x).toBeGreaterThan(initialX)
-        })
-
-        it('should emit player events when actions occur', () => {
-            // Test movement event
-            mockGame.eventDispatcher.emit(PLAYER_EVENTS.INPUT_MOVE, {
-                direction: MOVE_DIRECTIONS.UP,
-                deltaTime: 16
-            })
-            // The new architecture emits 'input.move' first, then 'player.moved'
-            expect(eventSpy).toHaveBeenCalledWith(PLAYER_EVENTS.INPUT_MOVE, expect.any(Object))
-            expect(eventSpy).toHaveBeenCalledWith(PLAYER_EVENTS.PLAYER_MOVED, expect.any(Object))
-            // Test shooting event
-            eventSpy.mockClear()
-            mockGame.eventDispatcher.emit(PLAYER_EVENTS.INPUT_SHOOT, { deltaTime: 16 })
-            expect(eventSpy).toHaveBeenCalledWith(PLAYER_EVENTS.PLAYER_SHOT, expect.any(Object))
-        })
-
-        it('should update state manager with changes', () => {
-            mockGame.eventDispatcher.emit(PLAYER_EVENTS.INPUT_MOVE, {
-                direction: MOVE_DIRECTIONS.DOWN,
-                deltaTime: 16
-            })
-            // Now handled by EffectManager: check for event emission
-            expect(eventSpy).toHaveBeenCalledWith('PLAYER_POSITION_CHANGED', expect.objectContaining({
-                x: player.x,
-                y: player.y
-            }))
-        })
-
-        it('should handle damage via events', () => {
-            const initialHealth = player.health
-            mockGame.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_DAMAGED, { damage: 25 })
-            expect(player.health).toBe(initialHealth - 25)
-            // The new architecture emits 'player.damaged' first, then 'player.health.changed'
-            expect(eventSpy).toHaveBeenCalledWith(PLAYER_EVENTS.PLAYER_DAMAGED, expect.any(Object))
-            expect(eventSpy).toHaveBeenCalledWith(PLAYER_EVENTS.PLAYER_HEALTH_CHANGED, expect.any(Object))
-        })
-
-        it('should clean up event listeners when destroyed', () => {
-            // With EffectManager, cleanup is handled automatically
-            // The destroy method should exist and be callable
-            const newPlayer = new Player(mockGame, 100, 300)
-            
-            expect(typeof newPlayer.destroy).toBe('function')
-            expect(() => newPlayer.destroy()).not.toThrow()
-        })
+      // Clear any events that occurred during player creation
+      eventSpy.mockClear()
+      stateSpy.mockClear()
     })
+
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    it('should handle movement via input events', () => {
+      const initialX = player.x
+
+      mockGame.eventDispatcher.emit(PLAYER_EVENTS.INPUT_MOVE, {
+        direction: MOVE_DIRECTIONS.RIGHT,
+        deltaTime: 16
+      })
+
+      expect(player.x).toBeGreaterThan(initialX)
+    })
+
+    it('should emit player events when actions occur', () => {
+      // Test movement event
+      mockGame.eventDispatcher.emit(PLAYER_EVENTS.INPUT_MOVE, {
+        direction: MOVE_DIRECTIONS.UP,
+        deltaTime: 16
+      })
+      // The new architecture emits 'input.move' first, then 'player.moved'
+      expect(eventSpy).toHaveBeenCalledWith(PLAYER_EVENTS.INPUT_MOVE, expect.any(Object))
+      expect(eventSpy).toHaveBeenCalledWith(PLAYER_EVENTS.PLAYER_MOVED, expect.any(Object))
+      // Test shooting event
+      eventSpy.mockClear()
+      mockGame.eventDispatcher.emit(PLAYER_EVENTS.INPUT_SHOOT, { deltaTime: 16 })
+      expect(eventSpy).toHaveBeenCalledWith(PLAYER_EVENTS.PLAYER_SHOT, expect.any(Object))
+    })
+
+    it('should update state manager with changes', () => {
+      mockGame.eventDispatcher.emit(PLAYER_EVENTS.INPUT_MOVE, {
+        direction: MOVE_DIRECTIONS.DOWN,
+        deltaTime: 16
+      })
+      // Now handled by EffectManager: check for event emission
+      expect(eventSpy).toHaveBeenCalledWith(
+        'PLAYER_POSITION_CHANGED',
+        expect.objectContaining({
+          x: player.x,
+          y: player.y
+        })
+      )
+    })
+
+    it('should handle damage via events', () => {
+      const initialHealth = player.health
+      mockGame.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_DAMAGED, { damage: 25 })
+      expect(player.health).toBe(initialHealth - 25)
+      // The new architecture emits 'player.damaged' first, then 'player.health.changed'
+      expect(eventSpy).toHaveBeenCalledWith(PLAYER_EVENTS.PLAYER_DAMAGED, expect.any(Object))
+      expect(eventSpy).toHaveBeenCalledWith(PLAYER_EVENTS.PLAYER_HEALTH_CHANGED, expect.any(Object))
+    })
+
+    it('should clean up event listeners when destroyed', () => {
+      // With EffectManager, cleanup is handled automatically
+      // The destroy method should exist and be callable
+      const newPlayer = new Player(mockGame, 100, 300)
+
+      expect(typeof newPlayer.destroy).toBe('function')
+      expect(() => newPlayer.destroy()).not.toThrow()
+    })
+  })
 
   describe('Event-Driven Architecture Validation', () => {
-        let mockEventSystems, eventSpy, stateSpy
+    let mockEventSystems, eventSpy, stateSpy
 
-        beforeEach(() => {
-            // Use consolidated test utilities
-            mockEventSystems = createMockEventSystems()
-            
-            // Update mock game with consolidated systems
-            mockGame.eventDispatcher = mockEventSystems.eventDispatcher
-            mockGame.stateManager = mockEventSystems.stateManager
-            mockGame.effectManager = mockEventSystems.effectManager
-            
-            // Setup spies on the consolidated systems
-            eventSpy = vi.spyOn(mockEventSystems.eventDispatcher, 'emit')
-            stateSpy = vi.spyOn(mockEventSystems.stateManager, 'setState')
-            // Create new player with event-driven features
-            player = new Player(mockGame, 100, 300)
-            // Clear initial PLAYER_STATE_INIT event
-            eventSpy.mockClear()
-        })
+    beforeEach(() => {
+      // Use consolidated test utilities
+      mockEventSystems = createMockEventSystems()
 
-        afterEach(() => {
-            vi.restoreAllMocks()
-        })
+      // Update mock game with consolidated systems
+      mockGame.eventDispatcher = mockEventSystems.eventDispatcher
+      mockGame.stateManager = mockEventSystems.stateManager
+      mockGame.effectManager = mockEventSystems.effectManager
 
-        it('should emit events when using legacy shoot method', () => {
-            player.shoot()
-            // The new architecture emits with an extra argument
-            expect(eventSpy).toHaveBeenCalledWith(
-                PLAYER_EVENTS.PLAYER_SHOT,
-                expect.objectContaining({
-                    x: expect.any(Number),
-                    y: expect.any(Number),
-                    bulletType: expect.any(String),
-                    mode: expect.any(String)
-                })
-            )
-        })
-
-        it('should update state when using legacy shoot method', () => {
-            // Removed: legacy state assertion no longer valid in event-driven architecture
-        })
-
-        it('should emit events when using legacy transform method', () => {
-            const initialMode = player.mode
-            player.transform()
-            expect(eventSpy).toHaveBeenCalledWith(
-                PLAYER_EVENTS.PLAYER_TRANSFORMED,
-                expect.objectContaining({
-                    oldMode: initialMode,
-                    newMode: player.mode,
-                    modeIndex: player.currentModeIndex
-                })
-            )
-        })
-
-        it('should update state when using legacy transform method', () => {
-            player.transform()
-            
-            expect(stateSpy).toHaveBeenCalledWith(PLAYER_STATES.MODE, player.mode)
-            expect(stateSpy).toHaveBeenCalledWith(PLAYER_STATES.SPEED, player.speed)
-        })
-
-        it('should emit events when using legacy movement', () => {
-            const keys = { 'KeyW': true }
-            player.handleMovement(16, keys)
-            expect(eventSpy).toHaveBeenCalledWith(
-                PLAYER_EVENTS.PLAYER_MOVED,
-                expect.objectContaining({
-                    x: player.x,
-                    y: player.y,
-                    previousX: expect.any(Number),
-                    previousY: expect.any(Number)
-                })
-            )
-        })
-
-        it('should update state when using legacy movement', () => {
-            // Removed: legacy state assertion no longer valid in event-driven architecture
-        })
-
-        it('should require event dispatcher and state manager (no more graceful degradation)', () => {
-            // Create player without event dispatcher should fail
-            const mockGameNoEvents = { ...mockGame }
-            delete mockGameNoEvents.eventDispatcher
-            delete mockGameNoEvents.stateManager
-            
-            // Should throw errors as event systems are now required
-            expect(() => {
-                new Player(mockGameNoEvents, 100, 300)
-            }).toThrow()
-        })
+      // Setup spies on the consolidated systems
+      eventSpy = vi.spyOn(mockEventSystems.eventDispatcher, 'emit')
+      stateSpy = vi.spyOn(mockEventSystems.stateManager, 'setState')
+      // Create new player with event-driven features
+      player = new Player(mockGame, 100, 300)
+      // Clear initial PLAYER_STATE_INIT event
+      eventSpy.mockClear()
     })
+
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    it('should emit events when using legacy shoot method', () => {
+      player.shoot()
+      // The new architecture emits with an extra argument
+      expect(eventSpy).toHaveBeenCalledWith(
+        PLAYER_EVENTS.PLAYER_SHOT,
+        expect.objectContaining({
+          x: expect.any(Number),
+          y: expect.any(Number),
+          bulletType: expect.any(String),
+          mode: expect.any(String)
+        })
+      )
+    })
+
+    it('should update state when using legacy shoot method', () => {
+      // Removed: legacy state assertion no longer valid in event-driven architecture
+    })
+
+    it('should emit events when using legacy transform method', () => {
+      const initialMode = player.mode
+      player.transform()
+      expect(eventSpy).toHaveBeenCalledWith(
+        PLAYER_EVENTS.PLAYER_TRANSFORMED,
+        expect.objectContaining({
+          oldMode: initialMode,
+          newMode: player.mode,
+          modeIndex: player.currentModeIndex
+        })
+      )
+    })
+
+    it('should update state when using legacy transform method', () => {
+      player.transform()
+
+      expect(stateSpy).toHaveBeenCalledWith(PLAYER_STATES.MODE, player.mode)
+      expect(stateSpy).toHaveBeenCalledWith(PLAYER_STATES.SPEED, player.speed)
+    })
+
+    it('should emit events when using legacy movement', () => {
+      const keys = { KeyW: true }
+      player.handleMovement(16, keys)
+      expect(eventSpy).toHaveBeenCalledWith(
+        PLAYER_EVENTS.PLAYER_MOVED,
+        expect.objectContaining({
+          x: player.x,
+          y: player.y,
+          previousX: expect.any(Number),
+          previousY: expect.any(Number)
+        })
+      )
+    })
+
+    it('should update state when using legacy movement', () => {
+      // Removed: legacy state assertion no longer valid in event-driven architecture
+    })
+
+    it('should require event dispatcher and state manager (no more graceful degradation)', () => {
+      // Create player without event dispatcher should fail
+      const mockGameNoEvents = { ...mockGame }
+      delete mockGameNoEvents.eventDispatcher
+      delete mockGameNoEvents.stateManager
+
+      // Should throw errors as event systems are now required
+      expect(() => {
+        new Player(mockGameNoEvents, 100, 300)
+      }).toThrow()
+    })
+  })
 
   describe('State Initialization', () => {
     it('should initialize player state using EffectManager', async () => {
-      const mockEventSystems = createMockEventSystems();
-      
-      mockGame.eventDispatcher = mockEventSystems.eventDispatcher;
-      mockGame.stateManager = mockEventSystems.stateManager;
-      mockGame.effectManager = mockEventSystems.effectManager;
-      
+      const mockEventSystems = createMockEventSystems()
+
+      mockGame.eventDispatcher = mockEventSystems.eventDispatcher
+      mockGame.stateManager = mockEventSystems.stateManager
+      mockGame.effectManager = mockEventSystems.effectManager
+
       // Spy on setState method
-      const stateSpy = vi.spyOn(mockEventSystems.stateManager, 'setState');
-      const player = new Player(mockGame, 100, 300);
-      
+      const stateSpy = vi.spyOn(mockEventSystems.stateManager, 'setState')
+      const player = new Player(mockGame, 100, 300)
+
       // Wait longer for async effects
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      expect(stateSpy).toHaveBeenCalledWith(PLAYER_STATES.HEALTH, player.health);
-      expect(stateSpy).toHaveBeenCalledWith(PLAYER_STATES.POSITION, { x: player.x, y: player.y });
-      expect(stateSpy).toHaveBeenCalledWith(PLAYER_STATES.MODE, player.mode);
-      expect(stateSpy).toHaveBeenCalledWith(PLAYER_STATES.SPEED, player.speed);
-      expect(stateSpy).toHaveBeenCalledWith(PLAYER_STATES.SHOOT_RATE, player.currentShootRate);
-    });
-  });
+      await new Promise(resolve => setTimeout(resolve, 50))
+      expect(stateSpy).toHaveBeenCalledWith(PLAYER_STATES.HEALTH, player.health)
+      expect(stateSpy).toHaveBeenCalledWith(PLAYER_STATES.POSITION, { x: player.x, y: player.y })
+      expect(stateSpy).toHaveBeenCalledWith(PLAYER_STATES.MODE, player.mode)
+      expect(stateSpy).toHaveBeenCalledWith(PLAYER_STATES.SPEED, player.speed)
+      expect(stateSpy).toHaveBeenCalledWith(PLAYER_STATES.SHOOT_RATE, player.currentShootRate)
+    })
+  })
 })

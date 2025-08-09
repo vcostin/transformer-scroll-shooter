@@ -12,12 +12,14 @@ A retro-style side-scrolling shooter game featuring a transforming vehicle with 
 ## 🎮 Game Features
 
 ### Core Gameplay
+
 - **Transforming Vehicle**: Switch between 4 different modes (Car, Scuba, Boat, Plane)
 - **Scroll Shooter Mechanics**: Classic side-scrolling action with enemies and projectiles
 - **Power-up System**: Collect offensive and defensive power-ups with synergy effects
 - **Parallax Backgrounds**: Multi-layered scrolling backgrounds for that retro feel
 
 ### Vehicle Modes
+
 Each transformation mode has unique characteristics:
 
 1. **🚗 Car Mode**
@@ -41,6 +43,7 @@ Each transformation mode has unique characteristics:
    - Rapid fire capability
 
 ### Power-up System
+
 - **❤️ Health**: Restore 25 HP
 - **🛡️ Shield**: Temporary energy protection
 - **⚡ Rapid Fire**: Dramatically increase fire rate (10s)
@@ -48,13 +51,16 @@ Each transformation mode has unique characteristics:
 - **🔄 Transform**: Instant transformation to next mode
 
 ### Synergy Effects
+
 Power-ups can combine for enhanced effects:
+
 - **Bullet Storm**: Rapid Fire + Multi-Shot = Even faster firing with spread
 - **Adaptive Defense**: Shield + Transform = Enhanced protection during transformation
 
 ## 🎯 Controls
 
 ### Keyboard
+
 - **WASD** or **Arrow Keys**: Move vehicle
 - **SPACE**: Shoot
 - **Q**: Transform to next mode
@@ -63,6 +69,7 @@ Power-ups can combine for enhanced effects:
 - **ESC**: Show help
 
 ### Mobile (Touch)
+
 - **Tap screen**: Shoot
 - **Drag**: Move vehicle
 - **Virtual buttons**: Transform and Shoot
@@ -72,6 +79,7 @@ Power-ups can combine for enhanced effects:
 ## 🛠️ Technical Details
 
 ### Pure Event-Driven Architecture
+
 - **🏗️ Event-Driven Core**: Complete EventDispatcher, StateManager, and EffectManager integration
 - **📦 ES Modules**: Clean, maintainable code structure
 - **🧪 Comprehensive Testing**: 700+ tests with Vitest
@@ -81,6 +89,7 @@ Power-ups can combine for enhanced effects:
 - **⚡ Performance Optimized**: Streamlined state management and event handling
 
 ### Architecture Highlights
+
 - **StateManager**: Enhanced immutable state management with **10x faster memory tracking**, **Ramda-style utilities**, and **robust async operations**
 - **EventDispatcher**: High-performance event system with wildcard pattern matching
 - **EffectManager**: Side effects coordination using pattern-based event handling
@@ -88,6 +97,7 @@ Power-ups can combine for enhanced effects:
 - **Zero Legacy Dependencies**: Clean, modern architecture without backward compatibility bridges
 
 ### Project Structure
+
 ```
 /
 ├── index.html              # Main HTML entry point
@@ -105,6 +115,7 @@ Power-ups can combine for enhanced effects:
 ```
 
 ### Core Systems
+
 - **🎯 EventDispatcher**: Central event routing with optimized wildcard pattern matching
 - **🗂️ StateManager**: Enhanced immutable state management with **pathOr**, **safeResolveReference**, **MemoryMonitor**, and **collision-resistant IDs**
 - **⚡ EffectManager**: Pattern-based side effects coordination and execution
@@ -112,6 +123,7 @@ Power-ups can combine for enhanced effects:
 - **🔧 PatternMatcher**: Advanced pattern matching for events and effects
 
 ### Technologies Used
+
 - **⚡ Vite**: Modern build tool and dev server
 - **🧪 Vitest**: Unit testing framework
 - **🎨 HTML5 Canvas**: High-performance rendering
@@ -123,26 +135,32 @@ Power-ups can combine for enhanced effects:
 ## 🚀 Getting Started
 
 ### Play Online
+
 🎮 **[Play the game live on GitHub Pages!](https://vcostin.github.io/transformer-scroll-shooter/)**
 
 ### Local Development
+
 1. **Clone the repository:**
+
    ```bash
    git clone https://github.com/vcostin/transformer-scroll-shooter.git
    cd transformer-scroll-shooter
    ```
 
 2. **Install dependencies:**
+
    ```bash
    npm install
    ```
 
 3. **Start development server:**
+
    ```bash
    npm run dev
    ```
 
 4. **Build for production:**
+
    ```bash
    npm run build
    ```
@@ -155,6 +173,7 @@ Power-ups can combine for enhanced effects:
    ```
 
 ### Version Management
+
 The game uses modern build-time version injection:
 
 - **📦 Single source**: `package.json` contains version information
@@ -163,6 +182,7 @@ The game uses modern build-time version injection:
 - **🚀 Auto-deployment**: GitHub Actions handles CI/CD
 
 To release a new version:
+
 ```bash
 npm version patch    # Bug fixes (1.0.0 → 1.0.1)
 npm version minor    # New features (1.0.0 → 1.1.0)
@@ -184,6 +204,7 @@ Each layer scrolls at different speeds to create depth and the classic retro gam
 ## 🔮 Future Enhancements
 
 Potential features for future development:
+
 - **🎵 Audio System**: Sound effects and background music
 - **👾 Boss Enemies**: Epic boss battles with unique patterns
 - **🌍 Multiple Levels**: Different environments and challenges
@@ -204,6 +225,7 @@ This project maintains high code quality with comprehensive testing:
 - **📋 Test Categories**: Game logic, collision detection, UI, integration
 
 Run tests locally:
+
 ```bash
 npm test              # Interactive test runner
 npm run test:run      # Single test run
@@ -213,6 +235,7 @@ npm run test:coverage # Generate coverage report
 ## 🎯 Game Design Philosophy
 
 This game captures the essence of classic arcade shooters while adding modern touches:
+
 - **Simple controls** but **deep mechanics**
 - **Visual feedback** for all actions
 - **Progression through power-ups** rather than just score
@@ -238,6 +261,7 @@ Contributions are welcome! Here's how you can help:
 7. **Open** a Pull Request
 
 ### Development Guidelines
+
 - 🧪 **Write tests** for new features
 - 📝 **Follow ES2022** standards
 - 🎨 **Maintain code style** consistency
@@ -245,6 +269,7 @@ Contributions are welcome! Here's how you can help:
 - 🔄 **Use npm version** for releases
 
 ### Ideas for Contributions
+
 - 🎵 Add comprehensive audio system
 - 🎨 Create advanced visual effects
 - 🤖 Implement boss enemy patterns
@@ -257,6 +282,7 @@ Contributions are welcome! Here's how you can help:
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ### What this means:
+
 - ✅ **Use** the code freely for personal or commercial projects
 - ✅ **Modify** and distribute the code
 - ✅ **Create** derivative works
@@ -289,6 +315,7 @@ The game now includes a comprehensive state management system designed for high-
 **📚 [Complete State Management Documentation](./docs/STATE_MANAGEMENT.md)**
 
 #### Key Features:
+
 - **🔒 Immutable Updates**: All state changes create new objects for data integrity
 - **🎯 Event-Driven**: Reactive programming with automatic event emission
 - **🌳 Nested State**: Use dot-notation paths (`'player.position.x'`)
@@ -298,28 +325,31 @@ The game now includes a comprehensive state management system designed for high-
 - **⚡ Performance**: O(1) operations, memory caching, batch updates
 
 #### Quick Example:
+
 ```javascript
-import { stateManager } from './src/systems/StateManager.js';
+import { stateManager } from './src/systems/StateManager.js'
 
 // Get state
-const playerHealth = stateManager.getState('player.health');
+const playerHealth = stateManager.getState('player.health')
 
 // Set state with automatic validation and events
-stateManager.setState('player.health', 80);
+stateManager.setState('player.health', 80)
 
 // Subscribe to changes
 const unsubscribe = stateManager.subscribe('player.health', (newValue, oldValue) => {
-    console.log(`Health changed: ${oldValue} → ${newValue}`);
-});
+  console.log(`Health changed: ${oldValue} → ${newValue}`)
+})
 
 // Async operations with loading states
-await stateManager.setStateAsync('player.data', 
-    fetch('/api/player').then(res => res.json()),
-    { loadingPath: 'ui.loading', errorPath: 'ui.error' }
-);
+await stateManager.setStateAsync(
+  'player.data',
+  fetch('/api/player').then(res => res.json()),
+  { loadingPath: 'ui.loading', errorPath: 'ui.error' }
+)
 ```
 
 #### Documentation:
+
 - **[📖 Complete API Reference](./docs/STATE_MANAGEMENT.md)** - Full documentation with examples
 - **[⚡ Quick Reference](./docs/STATE_MANAGEMENT_QUICK_REFERENCE.md)** - Essential APIs and patterns
 - **[� Historical Docs](./docs/archive/migration/)** - Migration guides and architectural planning
@@ -329,6 +359,7 @@ await stateManager.setStateAsync('player.data',
 📚 **[View Complete Architecture Documentation](./docs/README.md)**
 
 The **completed** architecture provides:
+
 - **Pure Event-Driven Design**: Zero legacy dependencies with consistent event patterns
 - **Centralized State Management**: Immutable state with validation and history
 - **High-Performance Event System**: Optimized pattern matching and memory management

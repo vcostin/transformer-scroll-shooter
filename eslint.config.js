@@ -5,12 +5,7 @@ import globals from 'globals'
 export default [
   // Ignore generated and external files
   {
-    ignores: [
-      'node_modules/**',
-      'dist/**',
-      'coverage/**',
-      '.github/**'
-    ]
+    ignores: ['node_modules/**', 'dist/**', 'coverage/**', '.github/**']
   },
   js.configs.recommended,
   {
@@ -62,13 +57,13 @@ export default [
         afterAll: 'readonly',
         beforeEach: 'readonly',
         afterEach: 'readonly',
-  vi: 'readonly',
-  gc: 'readonly'
+        vi: 'readonly',
+        gc: 'readonly'
       }
     },
     rules: {
-  'no-unused-vars': 'off',
-  'prefer-const': 'off',
+      'no-unused-vars': 'off',
+      'prefer-const': 'off',
       // Also forbid importing jest in test files explicitly
       'no-restricted-imports': [
         'error',

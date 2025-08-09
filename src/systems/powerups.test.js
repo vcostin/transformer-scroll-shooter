@@ -54,7 +54,7 @@ describe('Powerup Class', () => {
 
     it('should call setupType during construction', () => {
       const powerup = new Powerup(mockGame, 100, 200, 'health')
-      
+
       expect(powerup.color).toBe('#ff0000')
       expect(powerup.symbol).toBe('+')
       expect(powerup.description).toBe('Health Boost')

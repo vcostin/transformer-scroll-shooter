@@ -1,6 +1,6 @@
 /**
  * Vitest Setup - Phase 4 Testing Infrastructure
- * 
+ *
  * This file sets up the testing environment for the game modules
  */
 
@@ -37,11 +37,11 @@ global.Audio = vi.fn().mockImplementation(() => ({
   paused: true,
   ended: false,
   muted: false,
-  src: '',
+  src: ''
 }))
 
 // Mock requestAnimationFrame
-global.requestAnimationFrame = vi.fn((cb) => setTimeout(cb, 16))
+global.requestAnimationFrame = vi.fn(cb => setTimeout(cb, 16))
 global.cancelAnimationFrame = vi.fn()
 
 // Mock localStorage
@@ -49,13 +49,13 @@ const localStorageMock = {
   getItem: vi.fn(),
   setItem: vi.fn(),
   removeItem: vi.fn(),
-  clear: vi.fn(),
+  clear: vi.fn()
 }
 global.localStorage = localStorageMock
 
 // Mock performance.now
 global.performance = {
-  now: vi.fn(() => Date.now()),
+  now: vi.fn(() => Date.now())
 }
 
 // Reset all mocks before each test

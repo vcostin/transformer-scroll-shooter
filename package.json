@@ -9,13 +9,13 @@
     "preview": "vite preview",
     "start": "npm run dev",
     "serve": "vite preview",
-  "test": "echo 'q' | vitest",
+    "test": "echo 'q' | vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
-  "test:coverage": "vitest run --coverage",
-  "lint": "eslint .",
-  "format": "prettier --write .",
-  "format:check": "prettier --check ."
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "keywords": [
     "game",

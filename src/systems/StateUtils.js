@@ -1,12 +1,12 @@
 /**
  * StateUtils - Utility functions for StateManager
- * 
+ *
  * This module contains pure utility functions for:
  * - Deep cloning objects and arrays
  * - Path resolution (dot-notation)
  * - Object manipulation helpers
  * - Deep equality comparisons
- * 
+ *
  * All functions are stateless and can be tested independently.
  */
 
@@ -17,17 +17,17 @@
  * @returns {*} Value at path or undefined if not found
  */
 export function getValueByPath(obj, path) {
-    const parts = path.split('.');
-    let current = obj;
+  const parts = path.split('.')
+  let current = obj
 
-    for (const part of parts) {
-        if (current === null || current === undefined || !(part in current)) {
-            return undefined;
-        }
-        current = current[part];
+  for (const part of parts) {
+    if (current === null || current === undefined || !(part in current)) {
+      return undefined
     }
+    current = current[part]
+  }
 
-    return current;
+  return current
 }
 
 /**
@@ -40,45 +40,45 @@ export function getValueByPath(obj, path) {
  * @returns {Object} New object with value set
  */
 export function setValueByPath(obj, path, value, merge = false) {
-    const parts = path.split('.');
+  const parts = path.split('.')
 
-    // Create a shallow copy of the root
-    const newRoot = Array.isArray(obj) ? obj.slice() : { ...obj };
+  // Create a shallow copy of the root
+  const newRoot = Array.isArray(obj) ? obj.slice() : { ...obj }
 
-    let currentOld = obj;
-    let currentNew = newRoot;
+  let currentOld = obj
+  let currentNew = newRoot
 
-    for (let i = 0; i < parts.length - 1; i++) {
-        const part = parts[i];
-        const nextOld = currentOld && typeof currentOld === 'object' ? currentOld[part] : undefined;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const part = parts[i]
+    const nextOld = currentOld && typeof currentOld === 'object' ? currentOld[part] : undefined
 
-        // Create a shallow copy for the next level (or a new object if missing)
-        let nextNew;
-        if (nextOld && typeof nextOld === 'object') {
-            nextNew = Array.isArray(nextOld) ? nextOld.slice() : { ...nextOld };
-        } else {
-            nextNew = {};
-        }
-
-        currentNew[part] = nextNew;
-        currentOld = nextOld || {};
-        currentNew = nextNew;
-    }
-
-    const finalKey = parts[parts.length - 1];
-    const existing = currentOld && typeof currentOld === 'object' ? currentOld[finalKey] : undefined;
-
-    if (merge && existing && typeof existing === 'object' && typeof value === 'object') {
-        if (Array.isArray(existing) && Array.isArray(value)) {
-            currentNew[finalKey] = existing.concat(value);
-        } else {
-            currentNew[finalKey] = { ...existing, ...value };
-        }
+    // Create a shallow copy for the next level (or a new object if missing)
+    let nextNew
+    if (nextOld && typeof nextOld === 'object') {
+      nextNew = Array.isArray(nextOld) ? nextOld.slice() : { ...nextOld }
     } else {
-        currentNew[finalKey] = value;
+      nextNew = {}
     }
 
-    return newRoot;
+    currentNew[part] = nextNew
+    currentOld = nextOld || {}
+    currentNew = nextNew
+  }
+
+  const finalKey = parts[parts.length - 1]
+  const existing = currentOld && typeof currentOld === 'object' ? currentOld[finalKey] : undefined
+
+  if (merge && existing && typeof existing === 'object' && typeof value === 'object') {
+    if (Array.isArray(existing) && Array.isArray(value)) {
+      currentNew[finalKey] = existing.concat(value)
+    } else {
+      currentNew[finalKey] = { ...existing, ...value }
+    }
+  } else {
+    currentNew[finalKey] = value
+  }
+
+  return newRoot
 }
 
 /**
@@ -87,29 +87,29 @@ export function setValueByPath(obj, path, value, merge = false) {
  * @returns {*} Deep cloned object
  */
 export function deepClone(obj) {
-    // Use native structuredClone if available (modern browsers, Node 17+)
-    if (typeof structuredClone !== 'undefined') {
-        try {
-            return structuredClone(obj);
-        } catch {
-            // Fall back to manual cloning for non-cloneable objects
-        }
+  // Use native structuredClone if available (modern browsers, Node 17+)
+  if (typeof structuredClone !== 'undefined') {
+    try {
+      return structuredClone(obj)
+    } catch {
+      // Fall back to manual cloning for non-cloneable objects
     }
+  }
 
-    // Fallback manual cloning
-    if (obj === null || typeof obj !== 'object') return obj;
-    if (obj instanceof Date) return new Date(obj.getTime());
-    if (Array.isArray(obj)) return obj.map(item => deepClone(item));
-    if (typeof obj === 'object') {
-        const cloned = {};
-        for (const key in obj) {
-            if (Object.prototype.hasOwnProperty.call(obj, key)) {
-                cloned[key] = deepClone(obj[key]);
-            }
-        }
-        return cloned;
+  // Fallback manual cloning
+  if (obj === null || typeof obj !== 'object') return obj
+  if (obj instanceof Date) return new Date(obj.getTime())
+  if (Array.isArray(obj)) return obj.map(item => deepClone(item))
+  if (typeof obj === 'object') {
+    const cloned = {}
+    for (const key in obj) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        cloned[key] = deepClone(obj[key])
+      }
     }
-    return obj;
+    return cloned
+  }
+  return obj
 }
 
 /**
@@ -119,35 +119,35 @@ export function deepClone(obj) {
  * @returns {boolean} True if values are deeply equal
  */
 export function deepEqual(a, b) {
-    if (a === b) return true;
-    if (a == null || b == null) return false;
-    
-    // Check if both are arrays
-    if (Array.isArray(a) && Array.isArray(b)) {
-        if (a.length !== b.length) return false;
-        for (let i = 0; i < a.length; i++) {
-            if (!deepEqual(a[i], b[i])) return false;
-        }
-        return true;
+  if (a === b) return true
+  if (a == null || b == null) return false
+
+  // Check if both are arrays
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return false
+    for (let i = 0; i < a.length; i++) {
+      if (!deepEqual(a[i], b[i])) return false
     }
-    
-    // If one is array and other isn't, they're not equal
-    if (Array.isArray(a) || Array.isArray(b)) {
-        return false;
+    return true
+  }
+
+  // If one is array and other isn't, they're not equal
+  if (Array.isArray(a) || Array.isArray(b)) {
+    return false
+  }
+
+  // Check if both are objects (and not arrays)
+  if (typeof a === 'object' && typeof b === 'object') {
+    const keysA = Object.keys(a)
+    const keysB = Object.keys(b)
+    if (keysA.length !== keysB.length) return false
+    for (const key of keysA) {
+      if (!keysB.includes(key)) return false
+      if (!deepEqual(a[key], b[key])) return false
     }
-    
-    // Check if both are objects (and not arrays)
-    if (typeof a === 'object' && typeof b === 'object') {
-        const keysA = Object.keys(a);
-        const keysB = Object.keys(b);
-        if (keysA.length !== keysB.length) return false;
-        for (const key of keysA) {
-            if (!keysB.includes(key)) return false;
-            if (!deepEqual(a[key], b[key])) return false;
-        }
-        return true;
-    }
-    return false;
+    return true
+  }
+  return false
 }
 
 /**
@@ -160,34 +160,34 @@ export function deepEqual(a, b) {
  * @returns {*} Resolved value or defaultValue or original value
  */
 export function resolveReference(value, path, state, defaultValue = null) {
-    if (typeof value !== 'string') {
-        return value;
-    }
+  if (typeof value !== 'string') {
+    return value
+  }
 
-    // Check if it's a $ reference (starts with $)
-    if (value.startsWith('$')) {
-        const refPath = value.substring(1);
-        const resolvedValue = getValueByPath(state, refPath);
-        if (resolvedValue !== undefined) {
-            return resolvedValue;
-        }
-        // Return defaultValue if provided, otherwise return original value (backward compatibility)
-        return defaultValue !== null ? defaultValue : value;
-    }
-
-    // Handle schema-style references (relative to parent object)
-    // For example, if path is 'player.health' and value is 'maxHealth',
-    // resolve to 'player.maxHealth'
-    const pathParts = path.split('.');
-    const parentPath = pathParts.slice(0, -1).join('.');
-    const referencePath = parentPath ? `${parentPath}.${value}` : value;
-    
-    const resolvedValue = getValueByPath(state, referencePath);
+  // Check if it's a $ reference (starts with $)
+  if (value.startsWith('$')) {
+    const refPath = value.substring(1)
+    const resolvedValue = getValueByPath(state, refPath)
     if (resolvedValue !== undefined) {
-        return resolvedValue;
+      return resolvedValue
     }
     // Return defaultValue if provided, otherwise return original value (backward compatibility)
-    return defaultValue !== null ? defaultValue : value;
+    return defaultValue !== null ? defaultValue : value
+  }
+
+  // Handle schema-style references (relative to parent object)
+  // For example, if path is 'player.health' and value is 'maxHealth',
+  // resolve to 'player.maxHealth'
+  const pathParts = path.split('.')
+  const parentPath = pathParts.slice(0, -1).join('.')
+  const referencePath = parentPath ? `${parentPath}.${value}` : value
+
+  const resolvedValue = getValueByPath(state, referencePath)
+  if (resolvedValue !== undefined) {
+    return resolvedValue
+  }
+  // Return defaultValue if provided, otherwise return original value (backward compatibility)
+  return defaultValue !== null ? defaultValue : value
 }
 
 /**
@@ -199,12 +199,12 @@ export function resolveReference(value, path, state, defaultValue = null) {
  * @returns {*} Value at path or defaultValue
  */
 export function pathOr(defaultValue, path, obj) {
-    if (!obj || typeof obj !== 'object') {
-        return defaultValue;
-    }
-    
-    const value = getValueByPath(obj, path);
-    return value !== undefined ? value : defaultValue;
+  if (!obj || typeof obj !== 'object') {
+    return defaultValue
+  }
+
+  const value = getValueByPath(obj, path)
+  return value !== undefined ? value : defaultValue
 }
 
 /**
@@ -217,30 +217,40 @@ export function pathOr(defaultValue, path, obj) {
  * @param {boolean} expectNumeric - Whether to convert result to number
  * @returns {*} Safely resolved value
  */
-export function safeResolveReference(reference, path, state, fallback = null, expectNumeric = false) {
-    if (reference === undefined || reference === null) {
-        return fallback;
-    }
-    
-    const resolved = resolveReference(reference, path, state, fallback);
-    
-    // If resolveReference returned the original string and it was a reference,
-    // it means the resolution failed, so return fallback
-    if (typeof reference === 'string' && reference.startsWith('$') && resolved === reference) {
-        return fallback;
-    }
-    
-    // Only convert to numeric if explicitly requested or reference suggests numeric intent
-    const shouldConvertToNumeric = expectNumeric || 
-        (typeof reference === 'number') ||
-        (typeof reference === 'string' && !isNaN(Number(reference)) && reference !== '' && !/^[a-zA-Z]/.test(reference));
-    
-    if (shouldConvertToNumeric && resolved !== null && resolved !== undefined) {
-        const numericValue = Number(resolved);
-        return !isNaN(numericValue) ? numericValue : fallback;
-    }
-    
-    return resolved;
+export function safeResolveReference(
+  reference,
+  path,
+  state,
+  fallback = null,
+  expectNumeric = false
+) {
+  if (reference === undefined || reference === null) {
+    return fallback
+  }
+
+  const resolved = resolveReference(reference, path, state, fallback)
+
+  // If resolveReference returned the original string and it was a reference,
+  // it means the resolution failed, so return fallback
+  if (typeof reference === 'string' && reference.startsWith('$') && resolved === reference) {
+    return fallback
+  }
+
+  // Only convert to numeric if explicitly requested or reference suggests numeric intent
+  const shouldConvertToNumeric =
+    expectNumeric ||
+    typeof reference === 'number' ||
+    (typeof reference === 'string' &&
+      !isNaN(Number(reference)) &&
+      reference !== '' &&
+      !/^[a-zA-Z]/.test(reference))
+
+  if (shouldConvertToNumeric && resolved !== null && resolved !== undefined) {
+    const numericValue = Number(resolved)
+    return !isNaN(numericValue) ? numericValue : fallback
+  }
+
+  return resolved
 }
 
 /**
@@ -249,7 +259,7 @@ export function safeResolveReference(reference, path, state, fallback = null, ex
  * @returns {string[]} Array of path parts
  */
 export function splitPath(path) {
-    return path.split('.');
+  return path.split('.')
 }
 
 /**
@@ -258,7 +268,7 @@ export function splitPath(path) {
  * @returns {string} Dot-notation path
  */
 export function joinPath(parts) {
-    return parts.join('.');
+  return parts.join('.')
 }
 
 /**
@@ -267,7 +277,7 @@ export function joinPath(parts) {
  * @returns {boolean} True if path is valid
  */
 export function isValidPath(path) {
-    return typeof path === 'string' && path.length > 0;
+  return typeof path === 'string' && path.length > 0
 }
 
 /**
@@ -276,9 +286,9 @@ export function isValidPath(path) {
  * @returns {string} Parent path or empty string if no parent
  */
 export function getParentPath(path) {
-    const parts = splitPath(path);
-    if (parts.length <= 1) return '';
-    return joinPath(parts.slice(0, -1));
+  const parts = splitPath(path)
+  if (parts.length <= 1) return ''
+  return joinPath(parts.slice(0, -1))
 }
 
 /**
@@ -287,6 +297,6 @@ export function getParentPath(path) {
  * @returns {string} Last part of the path
  */
 export function getPathLeaf(path) {
-    const parts = splitPath(path);
-    return parts[parts.length - 1];
+  const parts = splitPath(path)
+  return parts[parts.length - 1]
 }

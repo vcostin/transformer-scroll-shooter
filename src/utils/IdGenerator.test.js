@@ -3,127 +3,127 @@
  * Comprehensive testing for secure ID generation with collision resistance
  */
 
-import { generateId, generateCounterId, generateSubscriptionId } from '@/utils/IdGenerator.js';
+import { generateId, generateCounterId, generateSubscriptionId } from '@/utils/IdGenerator.js'
 
 describe('IdGenerator', () => {
-    describe('generateId()', () => {
-        test('should generate unique IDs', () => {
-            const id1 = generateId();
-            const id2 = generateId();
-            
-            expect(id1).not.toBe(id2);
-            expect(typeof id1).toBe('string');
-            expect(id1.length).toBeGreaterThan(0);
-        });
+  describe('generateId()', () => {
+    test('should generate unique IDs', () => {
+      const id1 = generateId()
+      const id2 = generateId()
 
-        test('should support prefix', () => {
-            const id = generateId('test');
-            expect(id).toMatch(/^test_/);
-        });
+      expect(id1).not.toBe(id2)
+      expect(typeof id1).toBe('string')
+      expect(id1.length).toBeGreaterThan(0)
+    })
 
-        test('should generate UUID format when crypto.randomUUID is available', () => {
-            // Test that UUID format is used when available
-            const id = generateId();
-            expect(typeof id).toBe('string');
-            expect(id.length).toBeGreaterThan(0);
-            
-            // If crypto.randomUUID is available, it should return proper UUID format
-            if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-                expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
-            }
-        });
+    test('should support prefix', () => {
+      const id = generateId('test')
+      expect(id).toMatch(/^test_/)
+    })
 
-        test('should handle missing crypto gracefully', () => {
-            // Can't mock global.crypto in modern browsers, but our code should handle it
-            const id = generateId();
-            expect(typeof id).toBe('string');
-            expect(id.length).toBeGreaterThan(0);
-        });
-    });
+    test('should generate UUID format when crypto.randomUUID is available', () => {
+      // Test that UUID format is used when available
+      const id = generateId()
+      expect(typeof id).toBe('string')
+      expect(id.length).toBeGreaterThan(0)
 
-    describe('generateCounterId()', () => {
-        test('should generate sequential IDs', () => {
-            const id1 = generateCounterId();
-            const id2 = generateCounterId();
-            
-            const num1 = parseInt(id1.split('_')[1]);
-            const num2 = parseInt(id2.split('_')[1]);
-            
-            expect(num2).toBe(num1 + 1);
-        });
+      // If crypto.randomUUID is available, it should return proper UUID format
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+      }
+    })
 
-        test('should support custom prefix', () => {
-            const id = generateCounterId('counter');
-            expect(id).toMatch(/^counter_\d+$/);
-        });
-    });
+    test('should handle missing crypto gracefully', () => {
+      // Can't mock global.crypto in modern browsers, but our code should handle it
+      const id = generateId()
+      expect(typeof id).toBe('string')
+      expect(id.length).toBeGreaterThan(0)
+    })
+  })
 
-    describe('generateSubscriptionId()', () => {
-        test('should generate collision-resistant IDs', () => {
-            const ids = [];
-            for (let i = 0; i < 1000; i++) {
-                ids.push(generateSubscriptionId('test.path'));
-            }
-            
-            const uniqueIds = new Set(ids);
-            expect(uniqueIds.size).toBe(ids.length); // No collisions
-        });
+  describe('generateCounterId()', () => {
+    test('should generate sequential IDs', () => {
+      const id1 = generateCounterId()
+      const id2 = generateCounterId()
 
-        test('should include path in ID', () => {
-            const id = generateSubscriptionId('user.profile');
-            expect(id).toMatch(/^user\.profile_/);
-        });
+      const num1 = parseInt(id1.split('_')[1])
+      const num2 = parseInt(id2.split('_')[1])
 
-        test('should handle high-frequency generation', () => {
-            const startTime = Date.now();
-            const ids = [];
-            
-            // Generate many IDs in quick succession
-            for (let i = 0; i < 100; i++) {
-                ids.push(generateSubscriptionId('path'));
-            }
-            
-            const uniqueIds = new Set(ids);
-            expect(uniqueIds.size).toBe(ids.length);
-        });
+      expect(num2).toBe(num1 + 1)
+    })
 
-        test('should reset counter on timestamp change', async () => {
-            const id1 = generateSubscriptionId('test');
-            
-            // Wait for timestamp change
-            await new Promise(resolve => setTimeout(resolve, 5));
-            
-            const id2 = generateSubscriptionId('test');
-            
-            // Should have different timestamps
-            const timestamp1 = id1.split('_')[1];
-            const timestamp2 = id2.split('_')[1];
-            expect(timestamp1).not.toBe(timestamp2);
-        });
-    });
+    test('should support custom prefix', () => {
+      const id = generateCounterId('counter')
+      expect(id).toMatch(/^counter_\d+$/)
+    })
+  })
 
-    describe('Performance and Collision Testing', () => {
-        test('should handle burst generation without collisions', () => {
-            const ids = new Set();
-            const iterations = 10000;
-            
-            for (let i = 0; i < iterations; i++) {
-                ids.add(generateId());
-            }
-            
-            expect(ids.size).toBe(iterations);
-        });
+  describe('generateSubscriptionId()', () => {
+    test('should generate collision-resistant IDs', () => {
+      const ids = []
+      for (let i = 0; i < 1000; i++) {
+        ids.push(generateSubscriptionId('test.path'))
+      }
 
-        test('should maintain uniqueness across different generators', () => {
-            const ids = new Set();
-            
-            for (let i = 0; i < 1000; i++) {
-                ids.add(generateId());
-                ids.add(generateCounterId());
-                ids.add(generateSubscriptionId('test'));
-            }
-            
-            expect(ids.size).toBe(3000);
-        });
-    });
-});
+      const uniqueIds = new Set(ids)
+      expect(uniqueIds.size).toBe(ids.length) // No collisions
+    })
+
+    test('should include path in ID', () => {
+      const id = generateSubscriptionId('user.profile')
+      expect(id).toMatch(/^user\.profile_/)
+    })
+
+    test('should handle high-frequency generation', () => {
+      const startTime = Date.now()
+      const ids = []
+
+      // Generate many IDs in quick succession
+      for (let i = 0; i < 100; i++) {
+        ids.push(generateSubscriptionId('path'))
+      }
+
+      const uniqueIds = new Set(ids)
+      expect(uniqueIds.size).toBe(ids.length)
+    })
+
+    test('should reset counter on timestamp change', async () => {
+      const id1 = generateSubscriptionId('test')
+
+      // Wait for timestamp change
+      await new Promise(resolve => setTimeout(resolve, 5))
+
+      const id2 = generateSubscriptionId('test')
+
+      // Should have different timestamps
+      const timestamp1 = id1.split('_')[1]
+      const timestamp2 = id2.split('_')[1]
+      expect(timestamp1).not.toBe(timestamp2)
+    })
+  })
+
+  describe('Performance and Collision Testing', () => {
+    test('should handle burst generation without collisions', () => {
+      const ids = new Set()
+      const iterations = 10000
+
+      for (let i = 0; i < iterations; i++) {
+        ids.add(generateId())
+      }
+
+      expect(ids.size).toBe(iterations)
+    })
+
+    test('should maintain uniqueness across different generators', () => {
+      const ids = new Set()
+
+      for (let i = 0; i < 1000; i++) {
+        ids.add(generateId())
+        ids.add(generateCounterId())
+        ids.add(generateSubscriptionId('test'))
+      }
+
+      expect(ids.size).toBe(3000)
+    })
+  })
+})
