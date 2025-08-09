@@ -88,6 +88,7 @@ const all = stateManager.getState(''); // Complete state object
   - `skipValidation` (boolean): Skip data validation
   - `skipEvents` (boolean): Don't emit change events
   - `skipHistory` (boolean): Don't add to undo history
+  - `skipStats` (boolean): Skip performance tracking for this call
 
 **Returns:** 
 - `boolean`: true if state actually changed, false if value was the same
@@ -110,6 +111,17 @@ stateManager.setState('internal.flag', true, { skipEvents: true });
 // Don't track in history
 stateManager.setState('ui.mousePos', { x, y }, { skipHistory: true });
 ```
+
+**Immutable updates and structural sharing**
+
+- Updates use a path-copy strategy: shallow copy only the objects along the changed path; unrelated branches keep their references.
+- This preserves immutability with lower overhead than cloning the entire state.
+- If the new value is effectively equal to the current value at the path, the update is skipped and the method returns `false`.
+
+**Merge semantics**
+
+- When `merge: true`, plain objects at the target path are shallow-merged.
+- Arrays are replaced by default; build the new array before calling `setState`.
 
 **Path Creation:**
 ```javascript
@@ -300,6 +312,7 @@ class GameUI {
   - `atomic` (boolean): All updates succeed or all fail
   - `skipEvents` (boolean): Don't emit events during batch
   - `skipHistory` (boolean): Don't add to history
+  - `skipStats` (boolean): Skip performance tracking for this batch
 
 **Returns:**
 - `boolean`: true if all updates succeeded
@@ -614,6 +627,7 @@ interface SetStateOptions {
   skipValidation?: boolean;
   skipEvents?: boolean;
   skipHistory?: boolean;
+  skipStats?: boolean;
 }
 
 interface SetStateAsyncOptions extends SetStateOptions {
@@ -634,6 +648,7 @@ interface BatchUpdateOptions {
   atomic?: boolean;
   skipEvents?: boolean;
   skipHistory?: boolean;
+  skipStats?: boolean;
 }
 
 interface UpdateOperation {

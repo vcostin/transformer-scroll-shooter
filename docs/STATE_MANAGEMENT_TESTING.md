@@ -56,6 +56,10 @@ describe('State Management Tests', () => {
     vi.clearAllMocks();
   });
 });
+
+Note on structural sharing:
+- Updates create new object identities along the updated path only. In tests that rely on reference equality, assert at the most specific path you updated. Parents may be new objects, while siblings retain references.
+- When benchmarking or asserting performance-sensitive flows, you can set `{ skipStats: true }` in `setState`/`batchUpdate` to avoid stats tracking influencing timings.
 ```
 
 ### Mock Dependencies

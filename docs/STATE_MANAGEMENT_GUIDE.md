@@ -182,6 +182,9 @@ stateManager.setState('player.position', { x: 200, y: 250 });
 
 // Merge objects (preserves other properties)
 stateManager.setState('player', { health: 90 }, { merge: true });
+
+// Skip performance tracking for ultra-hot paths
+stateManager.setState('player.position', { x: 200, y: 250 }, { skipStats: true });
 ```
 
 ### 4. Subscribing to Changes
@@ -1004,6 +1007,13 @@ stateManager.subscribe('', updateUndoRedoButtons, { immediate: true });
 ### Memory Management
 
 The StateManager now includes **enhanced memory monitoring** using a custom MemoryMonitor that's 10x faster than JSON.stringify for large objects.
+
+### Structural Sharing for Faster Updates
+
+- Updates use a path-copy approach: only the nodes along the updated path are shallow-copied; unrelated branches retain references.
+- This preserves immutability with less work than cloning the full state tree and reduces GC pressure during game loops.
+- Parents along the updated path will have new object identities; use specific subscriptions to avoid broad re-renders.
+- Arrays are replaced (not merged) by default; when needed, construct the desired array before calling `setState`.
 
 ```javascript
 // Enhanced memory tracking is enabled by default
