@@ -11,8 +11,8 @@ describe('StateAsync Retry Logic', () => {
 
     beforeEach(() => {
         mockCallbacks = {
-            onSetState: jest.fn(),
-            onEmitEvent: jest.fn()
+            onSetState: vi.fn(),
+            onEmitEvent: vi.fn()
         };
         
         stateAsync = new StateAsync({
@@ -25,7 +25,7 @@ describe('StateAsync Retry Logic', () => {
 
     describe('withRetry()', () => {
         test('should succeed on first attempt when promise resolves', async () => {
-            const promiseFactory = jest.fn(() => Promise.resolve('success'));
+            const promiseFactory = vi.fn(() => Promise.resolve('success'));
             
             const result = await stateAsync.withRetry(promiseFactory, 2, 10);
             
@@ -33,9 +33,9 @@ describe('StateAsync Retry Logic', () => {
             expect(promiseFactory).toHaveBeenCalledTimes(1);
         });
 
-        test('should retry failed promises using factory function', async () => {
+    test('should retry failed promises using factory function', async () => {
             let attemptCount = 0;
-            const promiseFactory = jest.fn(() => {
+            const promiseFactory = vi.fn(() => {
                 attemptCount++;
                 if (attemptCount < 3) {
                     return Promise.reject(new Error(`Attempt ${attemptCount} failed`));
@@ -50,7 +50,7 @@ describe('StateAsync Retry Logic', () => {
         });
 
         test('should throw last error when all retries exhausted', async () => {
-            const promiseFactory = jest.fn(() => Promise.reject(new Error('Always fails')));
+            const promiseFactory = vi.fn(() => Promise.reject(new Error('Always fails')));
             
             await expect(stateAsync.withRetry(promiseFactory, 2, 1))
                 .rejects.toThrow('Always fails');
@@ -88,7 +88,7 @@ describe('StateAsync Retry Logic', () => {
         });
 
         test('should track retry statistics', async () => {
-            const promiseFactory = jest.fn()
+            const promiseFactory = vi.fn()
                 .mockReturnValueOnce(Promise.reject(new Error('Fail 1')))
                 .mockReturnValueOnce(Promise.reject(new Error('Fail 2')))
                 .mockReturnValueOnce(Promise.resolve('Success'));
@@ -186,7 +186,7 @@ describe('StateAsync Retry Logic', () => {
 
     describe('Edge cases and error handling', () => {
         test('should handle zero retries', async () => {
-            const promiseFactory = jest.fn(() => Promise.reject(new Error('Immediate failure')));
+            const promiseFactory = vi.fn(() => Promise.reject(new Error('Immediate failure')));
             
             await expect(stateAsync.withRetry(promiseFactory, 0, 10))
                 .rejects.toThrow('Immediate failure');

@@ -30,7 +30,23 @@ export default [
     rules: {
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       'no-console': 'off',
-      'prefer-const': 'warn'
+      'prefer-const': 'warn',
+      // Enforce Vitest-only usage (prevent accidental Jest usage)
+      'no-restricted-globals': [
+        'error',
+        { name: 'jest', message: 'Use Vitest (vi) APIs instead of Jest.' }
+      ],
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'jest',
+              message: 'Use vitest instead of jest.'
+            }
+          ]
+        }
+      ]
     }
   },
   // Test files: provide Vitest globals
@@ -46,8 +62,23 @@ export default [
         afterAll: 'readonly',
         beforeEach: 'readonly',
         afterEach: 'readonly',
-        vi: 'readonly'
+  vi: 'readonly',
+  gc: 'readonly'
       }
+    },
+    rules: {
+      // Also forbid importing jest in test files explicitly
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'jest',
+              message: 'Use vitest instead of jest.'
+            }
+          ]
+        }
+      ]
     }
   }
 ]

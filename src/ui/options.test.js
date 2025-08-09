@@ -414,7 +414,7 @@ describe('OptionsMenu', () => {
             // This tests the core functionality without the async timing complexity
             optionsMenu.options.forEach(option => {
                 const key = option.name.toLowerCase().replace(/\s+/g, '');
-                if (sampleSettings.hasOwnProperty(key)) {
+                if (Object.prototype.hasOwnProperty.call(sampleSettings, key)) {
                     const newVal = sampleSettings[key];
                     option.setValue(newVal);
                 }

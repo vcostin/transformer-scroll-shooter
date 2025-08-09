@@ -126,7 +126,7 @@ describe('MemoryUtils', () => {
         });
 
         test('should warn on high memory usage', () => {
-            const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+            const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
             
             const monitor = new MemoryMonitor({ maxSize: 10 }); // Very low threshold
             const largeObj = { data: 'x'.repeat(100) };
