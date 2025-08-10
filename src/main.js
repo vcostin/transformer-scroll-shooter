@@ -63,15 +63,45 @@ if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
   console.error('❌ Game initialization failed:', new Error('Test environment'))
 }
 
-// Initialize game in browser environments
+// Initialize game in browser environments after user starts it
 if (
   typeof window !== 'undefined' &&
   !(typeof process !== 'undefined' && process.env.NODE_ENV === 'test')
 ) {
-  // Expose instance for input handlers (use bracket notation to satisfy checkJs)
-  window['game'] = new Game()
-  window.addEventListener('keydown', handleSpecialKeys)
-  addMobileControls()
+  const startMenu = document.getElementById('startMenu')
+  const startButton = document.getElementById('startButton')
+  let gameStarted = false
+  /** @type {(e: KeyboardEvent) => void} */
+  // eslint-disable-next-line prefer-const
+  let keyStartHandler
+
+  const startGame = () => {
+    if (gameStarted) return
+    gameStarted = true
+    if (startMenu) startMenu.style.display = 'none'
+    // Expose instance for input handlers (use bracket notation to satisfy checkJs)
+    window['game'] = new Game()
+    window.addEventListener('keydown', handleSpecialKeys)
+    addMobileControls()
+    // Clean up the start key listener after game starts
+    if (keyStartHandler) {
+      window.removeEventListener('keydown', keyStartHandler)
+    }
+  }
+
+  // Click to start
+  if (startButton) {
+    startButton.addEventListener('click', startGame, { once: true })
+  }
+
+  // Enter/Space to start (no once; guard with explicit flag)
+  keyStartHandler = e => {
+    if (!gameStarted && (e.code === 'Enter' || e.code === 'Space')) {
+      e.preventDefault()
+      startGame()
+    }
+  }
+  window.addEventListener('keydown', keyStartHandler)
 }
 
 function handleSpecialKeys(event) {
