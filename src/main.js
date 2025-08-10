@@ -70,13 +70,18 @@ if (
 ) {
   const startMenu = document.getElementById('startMenu')
   const startButton = document.getElementById('startButton')
+  let gameStarted = false
 
   const startGame = () => {
+    if (gameStarted) return
+    gameStarted = true
     if (startMenu) startMenu.style.display = 'none'
     // Expose instance for input handlers (use bracket notation to satisfy checkJs)
     window['game'] = new Game()
     window.addEventListener('keydown', handleSpecialKeys)
     addMobileControls()
+    // Clean up the start key listener after game starts
+    window.removeEventListener('keydown', keyStartHandler)
   }
 
   // Click to start
@@ -84,17 +89,14 @@ if (
     startButton.addEventListener('click', startGame, { once: true })
   }
 
-  // Enter/Space to start
-  window.addEventListener(
-    'keydown',
-    e => {
-      if (!window['game'] && (e.code === 'Enter' || e.code === 'Space')) {
-        e.preventDefault()
-        startGame()
-      }
-    },
-    { once: true }
-  )
+  // Enter/Space to start (no once; guard with explicit flag)
+  const keyStartHandler = e => {
+    if (!gameStarted && (e.code === 'Enter' || e.code === 'Space')) {
+      e.preventDefault()
+      startGame()
+    }
+  }
+  window.addEventListener('keydown', keyStartHandler)
 }
 
 function handleSpecialKeys(event) {
