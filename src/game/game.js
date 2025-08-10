@@ -208,12 +208,13 @@ export class Game {
 
     // Optionally swap to spec-driven Level 1 parallax when requested
     if (this.shouldUseLevelParallax()) {
-      const dir = this.getParallaxDirection() // 'left' | 'right'
-      this.background = new ParallaxRenderer(LEVEL1_PARALLAX, {
+      const dir = this.getParallaxDirection() // 'left' | 'right' | undefined
+      const options = {
         baseSpeedPxPerSec: 120,
-        direction: dir,
         viewport: { width: this.width, height: this.height }
-      })
+      }
+      if (dir) options.direction = dir
+      this.background = new ParallaxRenderer(LEVEL1_PARALLAX, options)
     }
 
     // Store global reference for debugging and development tools
@@ -242,15 +243,19 @@ export class Game {
     }
   }
 
-  /** Optionally override scroll direction via URL (?dir=left|right) */
+  /**
+   * Optionally override scroll direction via URL (?dir=left|right)
+   * When absent or invalid, return undefined to allow the spec default to apply.
+   */
   getParallaxDirection() {
-    if (typeof window === 'undefined' || typeof window.location === 'undefined') return 'left'
+    if (typeof window === 'undefined' || typeof window.location === 'undefined') return undefined
     try {
       const params = new URLSearchParams(window.location.search)
       const d = params.get('dir')
-      return d === 'right' ? 'right' : 'left'
+      if (d === 'left' || d === 'right') return d
+      return undefined
     } catch {
-      return 'left'
+      return undefined
     }
   }
 
