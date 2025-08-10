@@ -118,6 +118,19 @@ export default class Bullet {
         ctx.shadowBlur = 0
         break
 
+      case 'seed':
+        // Draw seed as a small orb with a faint glow
+        ctx.beginPath()
+        ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.shadowColor = this.color
+        ctx.shadowBlur = 6
+        ctx.beginPath()
+        ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.shadowBlur = 0
+        break
+
       case 'torpedo':
         // Draw torpedo with trail
         ctx.fillRect(this.x, this.y, this.width, this.height)

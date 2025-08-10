@@ -706,6 +706,15 @@ export default class Enemy {
     ctx.fillStyle = this.color
 
     switch (this.type) {
+      case 'drone':
+        this.drawDrone(ctx)
+        break
+      case 'turret':
+        this.drawTurret(ctx)
+        break
+      case 'seeder':
+        this.drawSeeder(ctx)
+        break
       case 'fighter':
         this.drawFighter(ctx)
         break
@@ -733,6 +742,52 @@ export default class Enemy {
     if (this.health < this.maxHealth) {
       this.drawHealthBar(ctx)
     }
+  }
+
+  drawDrone(ctx) {
+    // Small agile flanker — reuse scout-like silhouette
+    // Body
+    ctx.fillRect(this.x, this.y + 4, this.width - 4, 6)
+    // Wings
+    ctx.fillRect(this.x + 4, this.y + 1, 10, 3)
+    ctx.fillRect(this.x + 4, this.y + this.height - 4, 10, 3)
+    // Nose
+    ctx.beginPath()
+    ctx.moveTo(this.x, this.y + this.height / 2)
+    ctx.lineTo(this.x - 6, this.y + this.height / 2 - 3)
+    ctx.lineTo(this.x - 6, this.y + this.height / 2 + 3)
+    ctx.closePath()
+    ctx.fill()
+  }
+
+  drawTurret(ctx) {
+    // Platform turret — heavier body akin to bomber but smaller
+    // Base/platform
+    ctx.fillStyle = '#556'
+    ctx.fillRect(this.x + 2, this.y + this.height - 4, this.width - 6, 4)
+    // Restore main color
+    ctx.fillStyle = this.color
+    // Body
+    ctx.fillRect(this.x + 2, this.y + 6, this.width - 8, this.height - 12)
+    // Barrel
+    ctx.fillRect(this.x - 10, this.y + this.height / 2 - 2, 12, 4)
+  }
+
+  drawSeeder(ctx) {
+    // Seeder — pod that drops seeds; mid-size body with a belly
+    // Main pod
+    ctx.fillRect(this.x, this.y + 5, this.width - 6, this.height - 10)
+    // Belly (lighter tint)
+    ctx.fillStyle = '#caff8a'
+    ctx.fillRect(this.x + 3, this.y + this.height / 2 - 3, this.width - 12, 6)
+    // Restore color and add nose
+    ctx.fillStyle = this.color
+    ctx.beginPath()
+    ctx.moveTo(this.x, this.y + this.height / 2)
+    ctx.lineTo(this.x - 8, this.y + this.height / 2 - 4)
+    ctx.lineTo(this.x - 8, this.y + this.height / 2 + 4)
+    ctx.closePath()
+    ctx.fill()
   }
 
   drawFighter(ctx) {
