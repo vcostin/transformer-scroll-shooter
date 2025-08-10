@@ -38,55 +38,6 @@
         overflow: hidden;
       }
 
-      .start-menu {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        background: rgba(0, 0, 0, 0.8);
-        color: #00ffcc;
-        text-align: center;
-        gap: 16px;
-        padding: 24px;
-      }
-
-      .start-menu h1 {
-        margin: 0 0 8px;
-        font-size: 28px;
-        color: #00ffee;
-        text-shadow: 0 0 12px rgba(0, 255, 255, 0.6);
-      }
-
-      .start-menu .subtitle {
-        margin: 0 0 16px;
-        font-size: 14px;
-        color: #99ffee;
-        opacity: 0.9;
-      }
-
-      .start-menu button {
-        background: #00a2ff;
-        color: #fff;
-        border: none;
-        padding: 10px 18px;
-        font-size: 16px;
-        border-radius: 6px;
-        cursor: pointer;
-        box-shadow: 0 0 10px rgba(0, 162, 255, 0.5);
-      }
-
-      .start-menu button:hover {
-        background: #00b8ff;
-      }
-
-      .start-menu .hint {
-        font-size: 12px;
-        color: #ffee88;
-        margin-top: 8px;
-      }
-
       #gameContainer {
         position: relative;
         display: flex;
@@ -150,13 +101,6 @@
   <body>
     <div id="gameContainer">
       <canvas id="gameCanvas" width="800" height="600"></canvas>
-      <!-- Start Menu Overlay -->
-      <div id="startMenu" class="start-menu" aria-label="Start Menu" role="dialog">
-        <h1>Transformer Scroll Shooter</h1>
-        <p class="subtitle">Arcade side-scroller prototype</p>
-        <button id="startButton" aria-label="Start Game">Start Game</button>
-        <div class="hint">Press Enter or Space to start</div>
-      </div>
       <div id="ui">
         <div>Score: <span id="score">0</span></div>
         <div>Health: <span id="health">100</span></div>

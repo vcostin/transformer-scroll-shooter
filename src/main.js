@@ -63,38 +63,15 @@ if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
   console.error('❌ Game initialization failed:', new Error('Test environment'))
 }
 
-// Initialize game in browser environments after user starts it
+// Initialize game in browser environments
 if (
   typeof window !== 'undefined' &&
   !(typeof process !== 'undefined' && process.env.NODE_ENV === 'test')
 ) {
-  const startMenu = document.getElementById('startMenu')
-  const startButton = document.getElementById('startButton')
-
-  const startGame = () => {
-    if (startMenu) startMenu.style.display = 'none'
-    // Expose instance for input handlers (use bracket notation to satisfy checkJs)
-    window['game'] = new Game()
-    window.addEventListener('keydown', handleSpecialKeys)
-    addMobileControls()
-  }
-
-  // Click to start
-  if (startButton) {
-    startButton.addEventListener('click', startGame, { once: true })
-  }
-
-  // Enter/Space to start
-  window.addEventListener(
-    'keydown',
-    e => {
-      if (!window['game'] && (e.code === 'Enter' || e.code === 'Space')) {
-        e.preventDefault()
-        startGame()
-      }
-    },
-    { once: true }
-  )
+  // Expose instance for input handlers (use bracket notation to satisfy checkJs)
+  window['game'] = new Game()
+  window.addEventListener('keydown', handleSpecialKeys)
+  addMobileControls()
 }
 
 function handleSpecialKeys(event) {
