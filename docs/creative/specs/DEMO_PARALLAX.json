@@ -7,8 +7,8 @@
     "tileHeight": 450,
     "layers": [
   { "id": "far",  "name": "Far",  "speed": 0.1,  "zIndex": 10, "opacity": 1,   "asset": "/assets/backgrounds/demo/checker.svg" },
-  { "id": "mid",  "name": "Mid",  "speed": 0.4,  "zIndex": 20, "opacity": 0.9, "asset": "/assets/backgrounds/demo/checker.svg" },
-  { "id": "near", "name": "Near", "speed": 0.8,  "zIndex": 30, "opacity": 0.8, "asset": "/assets/backgrounds/demo/checker.svg" }
+  { "id": "mid",  "name": "Mid",  "speed": 0.4,  "zIndex": 20, "opacity": 0.9, "asset": "/assets/backgrounds/demo/checker_mid.svg" },
+  { "id": "near", "name": "Near", "speed": 0.8,  "zIndex": 30, "opacity": 0.85, "asset": "/assets/backgrounds/demo/checker_near.svg" }
     ]
   }
 }
