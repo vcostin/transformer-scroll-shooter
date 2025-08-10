@@ -176,7 +176,7 @@ Power-ups can combine for enhanced effects:
 
 When running locally, you can toggle the spec-driven Level 1 parallax background and override direction using URL query params:
 
-- `?parallax=level1` — Use the Level 1 parallax spec (`docs/creative/specs/LEVEL1_PARALLAX.json`) for the background in-game.
+- `?parallax=level1` — Use the Level 1 parallax spec (`docs/creative/specs/LEVEL1_PARALLAX.json`) for the background in-game. Tip: this is also auto-enabled when `?enemies=level1` is present.
 - `?dir=left|right` — Optional override for scroll direction. If omitted or invalid, the default from the level spec is used (currently `right` for Level 1).
 
 Examples:

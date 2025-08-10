@@ -237,7 +237,10 @@ export class Game {
     try {
       const params = new URLSearchParams(window.location.search)
       const p = params.get('parallax')
-      return p === 'level1'
+      // Also auto-enable Level 1 parallax when testing Level 1 enemies
+      // so that http://localhost:8080/?enemies=level1 shows the spec background
+      const enemies = params.get('enemies')
+      return p === 'level1' || enemies === 'level1'
     } catch {
       return false
     }
@@ -615,7 +618,20 @@ export class Game {
   }
 
   spawnEnemy() {
-    const enemyTypes = ['fighter', 'bomber', 'scout']
+    // Default enemy set to preserve existing gameplay and tests
+    let enemyTypes = ['fighter', 'bomber', 'scout']
+    // Optional Level 1 set toggle via URL ?enemies=level1
+    if (this.shouldUseLevel1EnemySet()) {
+      enemyTypes = [
+        'fighter',
+        'bomber',
+        'scout',
+        'drone',
+        'drone', // slightly more common
+        'turret',
+        'seeder'
+      ]
+    }
     const randomType = enemyTypes[Math.floor(Math.random() * enemyTypes.length)]
     const enemy = new Enemy(
       this,
@@ -624,6 +640,20 @@ export class Game {
       randomType
     )
     this.enemies.push(enemy)
+  }
+
+  /**
+   * Feature toggle to enable Level 1 enemy set.
+   * Enable by adding ?enemies=level1 to the URL.
+   */
+  shouldUseLevel1EnemySet() {
+    if (typeof window === 'undefined' || typeof window.location === 'undefined') return false
+    try {
+      const params = new URLSearchParams(window.location.search)
+      return params.get('enemies') === 'level1'
+    } catch {
+      return false
+    }
   }
 
   spawnBoss() {
