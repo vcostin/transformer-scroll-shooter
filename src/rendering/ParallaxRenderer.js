@@ -43,7 +43,11 @@ export default class ParallaxRenderer {
    */
   constructor(spec, options = {}) {
     this.normalized = loadParallaxSpec(spec)
-    this.runtimeLayers = toRuntimeLayers(this.normalized, options)
+    // Allow direction override (e.g., via URL param) without mutating spec on disk
+    const normalizedWithDir = options.direction
+      ? { ...this.normalized, direction: options.direction }
+      : this.normalized
+    this.runtimeLayers = toRuntimeLayers(normalizedWithDir, options)
     // Sort by zIndex just in case
     this.runtimeLayers.sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0))
     this.images = new ImageCache()
