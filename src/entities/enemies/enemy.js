@@ -55,6 +55,49 @@ export default class Enemy {
 
   setupType() {
     switch (this.type) {
+      case 'drone': {
+        // Flanker zig-zag: fast, low HP, vertical zigzag
+        this.width = 18
+        this.height = 14
+        this.maxHealth = 8
+        this.health = this.maxHealth
+        this.speed = 140
+        this.damage = 8
+        this.points = 6
+        this.color = '#66ffcc'
+        this.shootRate = 2500
+        this.bulletSpeed = 180
+        this.zigDirection = 1
+        break
+      }
+      case 'turret': {
+        // Stationary-on-platform: slow horizontal drift, telegraphed slow shots
+        this.width = 26
+        this.height = 22
+        this.maxHealth = 30
+        this.health = this.maxHealth
+        this.speed = 40 // platform drift left
+        this.damage = 12
+        this.points = 12
+        this.color = '#88aaff'
+        this.shootRate = 3000
+        this.bulletSpeed = 140
+        break
+      }
+      case 'seeder': {
+        // Seeder: medium slow, drops homing seeds
+        this.width = 22
+        this.height = 18
+        this.maxHealth = 16
+        this.health = this.maxHealth
+        this.speed = 80
+        this.damage = 10
+        this.points = 14
+        this.color = '#aaff66'
+        this.shootRate = 2800
+        this.bulletSpeed = 100
+        break
+      }
       case 'fighter': {
         this.width = 30
         this.height = 20
@@ -177,6 +220,31 @@ export default class Enemy {
     const previousY = this.y
 
     switch (this.type) {
+      case 'drone': {
+        // Fast approach with vertical zig-zag
+        this.x -= moveSpeed
+        this.moveTimer += deltaTime
+        if (this.moveTimer > 300) {
+          this.moveTimer = 0
+          this.zigDirection = this.zigDirection === 1 ? -1 : 1
+        }
+        this.y += this.zigDirection * moveSpeed * 0.8
+        break
+      }
+      case 'turret': {
+        // Slow drift left, minimal vertical movement
+        this.x -= moveSpeed
+        // No vertical movement; acts like a platform-mounted gun
+        break
+      }
+      case 'seeder': {
+        // Slow, steady left movement; slight bob to feel alive
+        this.x -= moveSpeed
+        this.moveTimer += deltaTime
+        const bob = Math.sin((this.moveTimer / 1000) * Math.PI * 2) * 0.2 * moveSpeed
+        this.y += bob
+        break
+      }
       case 'fighter': {
         // Move straight towards player
         this.x -= moveSpeed
@@ -314,13 +382,16 @@ export default class Enemy {
       const velocityX = (dx / distance) * this.bulletSpeed
       const velocityY = (dy / distance) * this.bulletSpeed
 
+      // Seeder fires homing seeds
+      const bulletType = this.type === 'seeder' ? 'seed' : 'enemy'
+
       const bullet = new Bullet(
         this.game,
         this.x,
         this.y + this.height / 2,
         velocityX,
         velocityY,
-        'enemy',
+        bulletType,
         false // not friendly
       )
 

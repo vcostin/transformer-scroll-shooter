@@ -57,13 +57,41 @@ export default class Bullet {
         this.damage = 5
         this.color = '#ff4444'
         break
+
+      case 'seed':
+        // Slow homing seed from Seeder enemy
+        this.width = 6
+        this.height = 6
+        this.damage = 6
+        this.color = '#aaff66'
+        this.turnRate = 0.003 // radians per ms approx
+        this.speed = 110
+        break
     }
   }
 
   update(deltaTime) {
-    const speed = deltaTime / 1000
-    this.x += this.velocityX * speed
-    this.y += this.velocityY * speed
+    const t = deltaTime / 1000
+
+    if (this.type === 'seed') {
+      // Home slowly toward player
+      const player = this.game.player
+      if (player) {
+        const dx = player.x - this.x
+        const dy = player.y - this.y
+        const dist = Math.hypot(dx, dy) || 1
+        // Desired velocity towards player at seed speed
+        const desiredVX = (dx / dist) * this.speed
+        const desiredVY = (dy / dist) * this.speed
+        // Interpolate velocity slightly toward desired
+        const alpha = Math.min(1, this.turnRate * deltaTime)
+        this.velocityX = this.velocityX + (desiredVX - this.velocityX) * alpha
+        this.velocityY = this.velocityY + (desiredVY - this.velocityY) * alpha
+      }
+    }
+
+    this.x += this.velocityX * t
+    this.y += this.velocityY * t
 
     // Mark for deletion if off screen
     if (
