@@ -28,9 +28,16 @@ class ImageCache {
     if (!src) return null
     if (this.map.has(src)) return this.map.get(src)
     const img = new Image()
-    // Normalize to absolute root path to avoid /demo/ prefix issues when importing from nested routes
-    const isAbsolute = /^(https?:)?\//.test(src)
-    img.src = isAbsolute ? src : `/${src}`
+    // Normalize path robustly using URL API to support non-root base paths
+    try {
+      const isAbsolute = /^(https?:)?\//.test(src)
+      img.src = isAbsolute
+        ? src
+        : new URL(src, window?.location?.href || 'http://localhost/').toString()
+    } catch {
+      // Fallback to previous behavior
+      img.src = src
+    }
     this.map.set(src, img)
     return img
   }

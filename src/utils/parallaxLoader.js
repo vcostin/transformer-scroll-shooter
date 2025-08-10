@@ -15,9 +15,9 @@ export function loadParallaxSpec(spec) {
   const px = spec.parallax
   if (!px || typeof px !== 'object') throw new Error('Invalid spec: missing parallax section')
 
-  const direction = px.scrollDirection || 'left'
-  const tileWidth = Number(px.tileWidth) || 1280
-  const tileHeight = Number(px.tileHeight) || 720
+  const direction = px.scrollDirection === 'right' ? 'right' : 'left'
+  const tileWidth = Number(px.tileWidth ?? 1280)
+  const tileHeight = Number(px.tileHeight ?? 720)
 
   if (!Array.isArray(px.layers) || px.layers.length === 0) {
     throw new Error('Invalid spec: parallax.layers must be a non-empty array')

@@ -409,7 +409,7 @@ export class Game {
     if (
       typeof process !== 'undefined' &&
       process.env.NODE_ENV === 'test' &&
-      // Detect vitest safely without TS complaints
+      // Detect vitest safely without type checking complaints
       typeof globalThis !== 'undefined' &&
       'vitest' in globalThis
     ) {
