@@ -172,6 +172,19 @@ Power-ups can combine for enhanced effects:
    npm run test:coverage # With coverage report
    ```
 
+### Dev feature toggles (URL params)
+
+When running locally, you can toggle the spec-driven Level 1 parallax background and override direction using URL query params:
+
+- `?parallax=level1` — Use the Level 1 parallax spec (`docs/creative/specs/LEVEL1_PARALLAX.json`) for the background in-game.
+- `?dir=left|right` — Optional override for scroll direction. If omitted or invalid, the default from the level spec is used (currently `right` for Level 1).
+
+Examples:
+
+- http://localhost:8080/?parallax=level1
+- http://localhost:8080/?parallax=level1&dir=left
+- http://localhost:8080/?parallax=level1&dir=right
+
 ### Version Management
 
 The game uses modern build-time version injection:

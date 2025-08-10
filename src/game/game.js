@@ -9,6 +9,8 @@ import { BOSS_TYPES, BOSS_MESSAGES } from '@/constants/boss-constants.js'
 import { AudioManager } from '@/systems/audio.js'
 import { OptionsMenu } from '@/ui/options.js'
 import { Background } from '@/rendering/background.js'
+import ParallaxRenderer from '@/rendering/ParallaxRenderer.js'
+import LEVEL1_PARALLAX from '../../docs/creative/specs/LEVEL1_PARALLAX.json'
 import { Explosion, PowerupEffect } from '@/rendering/effects.js'
 import { Powerup, PowerupSpawner } from '@/systems/powerups.js'
 import Player from '@/entities/player.js'
@@ -204,6 +206,17 @@ export class Game {
     this.player = new Player(this, 100, this.height / 2)
     this.background = new Background(this)
 
+    // Optionally swap to spec-driven Level 1 parallax when requested
+    if (this.shouldUseLevelParallax()) {
+      const dir = this.getParallaxDirection() // 'left' | 'right' | undefined
+      const options = {
+        baseSpeedPxPerSec: 120,
+        viewport: { width: this.width, height: this.height }
+      }
+      if (dir) options.direction = dir
+      this.background = new ParallaxRenderer(LEVEL1_PARALLAX, options)
+    }
+
     // Store global reference for debugging and development tools
     // Expose for debugging (use bracket access for checkJs)
     window['game'] = this
@@ -213,6 +226,37 @@ export class Game {
 
     // Start game loop
     this.gameLoop()
+  }
+
+  /**
+   * Feature toggle to enable spec-driven Level 1 parallax in the game.
+   * Enable by adding ?parallax=level1 to the URL.
+   */
+  shouldUseLevelParallax() {
+    if (typeof window === 'undefined' || typeof window.location === 'undefined') return false
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const p = params.get('parallax')
+      return p === 'level1'
+    } catch {
+      return false
+    }
+  }
+
+  /**
+   * Optionally override scroll direction via URL (?dir=left|right)
+   * When absent or invalid, return undefined to allow the spec default to apply.
+   */
+  getParallaxDirection() {
+    if (typeof window === 'undefined' || typeof window.location === 'undefined') return undefined
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const d = params.get('dir')
+      if (d === 'left' || d === 'right') return d
+      return undefined
+    } catch {
+      return undefined
+    }
   }
 
   // Event-driven game state methods
@@ -365,9 +409,9 @@ export class Game {
     if (
       typeof process !== 'undefined' &&
       process.env.NODE_ENV === 'test' &&
-      // Detect vitest safely in checkJs
+      // Detect vitest safely without type checking complaints
       typeof globalThis !== 'undefined' &&
-      typeof globalThis['vitest'] !== 'undefined'
+      Object.prototype.hasOwnProperty.call(globalThis, 'vitest')
     ) {
       return true
     }

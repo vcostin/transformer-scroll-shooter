@@ -7,7 +7,7 @@
     "budgetNotes": "Chosen within ART_DIRECTION.md constraints: parallaxLayers 4–6, particleBurstPeak 200–400"
   },
   "parallax": {
-    "scrollDirection": "left",
+  "scrollDirection": "right",
     "tileWidth": 1280,
     "tileHeight": 720,
     "layers": [
