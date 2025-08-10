@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Level 1 Parallax Preview</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: #0b1022;
+        color: #e6f0ff;
+        font-family: system-ui, sans-serif;
+      }
+      .wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        padding: 12px;
+      }
+      canvas {
+        background: #0b1022;
+        box-shadow: 0 0 0 1px #1a1f3b inset;
+      }
+      .controls {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .controls label {
+        font-size: 12px;
+        opacity: 0.85;
+      }
+      input[type='range'] {
+        width: 260px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h3>Level 1: City Above Clouds — Parallax</h3>
+      <div class="controls">
+        <label>Base speed <span id="spdVal">120</span> px/s</label>
+        <input id="speed" type="range" min="40" max="300" value="120" />
+      </div>
+      <canvas id="c" width="1280" height="720"></canvas>
+    </div>
+    <script type="module" src="./level1-parallax.js"></script>
+  </body>
+</html>
