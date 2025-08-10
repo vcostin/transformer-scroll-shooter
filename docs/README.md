@@ -64,6 +64,7 @@ Enemy system implementation using event-driven patterns.
 1. **State Management**: Start with [State Management Guide](./STATE_MANAGEMENT_GUIDE.md#getting-started)
 2. **Event System**: See [Implementation Reference](./IMPLEMENTATION_REFERENCE.md)
 3. **Testing**: Follow [State Management Testing Guide](./STATE_MANAGEMENT_TESTING.md)
+4. **Dev URL Toggles**: During local dev, you can enable the Level 1 spec-driven parallax background via `?parallax=level1` and optionally override direction with `?dir=left|right`. See the root `README.md` for examples.
 
 ### For New Team Members
 1. **Overview**: Read [Development Plan](./DEVELOPMENT_PLAN.md)
