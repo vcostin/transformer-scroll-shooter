@@ -30,10 +30,12 @@ class ImageCache {
     const img = new Image()
     // Normalize path robustly using URL API to support non-root base paths
     try {
-      const isAbsolute = /^(https?:)?\//.test(src)
+      const isAbsolute = /^(https?:)?\/\//.test(src)
       img.src = isAbsolute
         ? src
-        : new URL(src, window?.location?.href || 'http://localhost/').toString()
+        : window?.location?.href
+          ? new URL(src, window.location.href).toString()
+          : src
     } catch {
       // Fallback to previous behavior
       img.src = src

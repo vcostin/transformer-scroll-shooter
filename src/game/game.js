@@ -411,7 +411,7 @@ export class Game {
       process.env.NODE_ENV === 'test' &&
       // Detect vitest safely without type checking complaints
       typeof globalThis !== 'undefined' &&
-      'vitest' in globalThis
+      Object.prototype.hasOwnProperty.call(globalThis, 'vitest')
     ) {
       return true
     }
