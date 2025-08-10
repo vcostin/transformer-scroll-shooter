@@ -185,12 +185,6 @@ Examples:
 - http://localhost:8080/?parallax=level1&dir=left
 - http://localhost:8080/?parallax=level1&dir=right
 
-Tip: For a standalone preview page of Level 1 parallax (outside the full game loop), you can also run:
-
-```bash
-npm run demo:level1
-```
-
 ### Version Management
 
 The game uses modern build-time version injection:

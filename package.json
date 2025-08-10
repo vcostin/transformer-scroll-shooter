@@ -5,8 +5,6 @@
   "main": "index.html",
   "scripts": {
     "dev": "vite",
-    "demo": "vite --open demo/parallax-demo.html",
-    "demo:level1": "vite --open demo/level1-parallax.html",
     "build": "vite build",
     "preview": "vite preview",
     "start": "npm run dev",
