@@ -28,7 +28,9 @@ class ImageCache {
     if (!src) return null
     if (this.map.has(src)) return this.map.get(src)
     const img = new Image()
-    img.src = src
+    // Normalize to absolute root path to avoid /demo/ prefix issues when importing from nested routes
+    const isAbsolute = /^(https?:)?\//.test(src)
+    img.src = isAbsolute ? src : `/${src}`
     this.map.set(src, img)
     return img
   }
@@ -61,6 +63,10 @@ export default class ParallaxRenderer {
       if (!layer.asset || layer.asset === 'generated') continue
       const img = this.images.get(layer.asset)
       if (!img || !img.complete) continue
+      const iw = img.naturalWidth || img.width || 0
+      const ih = img.naturalHeight || img.height || 0
+      // Skip images that failed to decode (broken state)
+      if (iw <= 0 || ih <= 0) continue
 
       const [x1, x2] = computeTiledPositions(layer.offsetX, layer.width)
       const y = 0 // full-height strip; assets should encode their own parallax horizon
@@ -71,28 +77,8 @@ export default class ParallaxRenderer {
       ctx.globalAlpha = layer.opacity ?? 1
       // Draw two tiles to cover the screen; if viewport wider than one tile,
       // consumers can draw more, but this meets MVP (tile width == viewport width).
-      ctx.drawImage(
-        img,
-        0,
-        0,
-        img.naturalWidth || img.width,
-        img.naturalHeight || img.height,
-        x1,
-        y,
-        w,
-        h
-      )
-      ctx.drawImage(
-        img,
-        0,
-        0,
-        img.naturalWidth || img.width,
-        img.naturalHeight || img.height,
-        x2,
-        y,
-        w,
-        h
-      )
+      ctx.drawImage(img, 0, 0, iw, ih, x1, y, w, h)
+      ctx.drawImage(img, 0, 0, iw, ih, x2, y, w, h)
       ctx.restore()
     }
   }
