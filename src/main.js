@@ -71,6 +71,9 @@ if (
   const startMenu = document.getElementById('startMenu')
   const startButton = document.getElementById('startButton')
   let gameStarted = false
+  /** @type {(e: KeyboardEvent) => void} */
+  // eslint-disable-next-line prefer-const
+  let keyStartHandler
 
   const startGame = () => {
     if (gameStarted) return
@@ -81,7 +84,9 @@ if (
     window.addEventListener('keydown', handleSpecialKeys)
     addMobileControls()
     // Clean up the start key listener after game starts
-    window.removeEventListener('keydown', keyStartHandler)
+    if (keyStartHandler) {
+      window.removeEventListener('keydown', keyStartHandler)
+    }
   }
 
   // Click to start
@@ -90,7 +95,7 @@ if (
   }
 
   // Enter/Space to start (no once; guard with explicit flag)
-  const keyStartHandler = e => {
+  keyStartHandler = e => {
     if (!gameStarted && (e.code === 'Enter' || e.code === 'Space')) {
       e.preventDefault()
       startGame()
