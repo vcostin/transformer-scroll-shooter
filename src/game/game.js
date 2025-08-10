@@ -237,7 +237,10 @@ export class Game {
     try {
       const params = new URLSearchParams(window.location.search)
       const p = params.get('parallax')
-      return p === 'level1'
+      // Also auto-enable Level 1 parallax when testing Level 1 enemies
+      // so that http://localhost:8080/?enemies=level1 shows the spec background
+      const enemies = params.get('enemies')
+      return p === 'level1' || enemies === 'level1'
     } catch {
       return false
     }
