@@ -79,9 +79,9 @@ describe('ParallaxRenderer', () => {
     const imgLayerCount = pr.runtimeLayers.filter(l => l.asset && l.asset !== 'generated').length
     expect(calls.length).toBe(imgLayerCount * 2)
 
-    // Verify offsets moved negative (left direction)
+    // Verify offsets moved positive (right direction by default in spec)
     const offsets = pr.runtimeLayers.map(l => l.offsetX)
-    // far_clouds should move by -5 (0.5s * 10px/s)
-    expect(offsets[0]).toBeCloseTo(-5, 3)
+    // far_clouds should move by +5 (0.5s * 10px/s)
+    expect(offsets[0]).toBeCloseTo(5, 3)
   })
 })
