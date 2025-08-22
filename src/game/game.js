@@ -19,6 +19,14 @@ import { EventDispatcher } from '@/systems/EventDispatcher.js'
 import { stateManager } from '@/systems/StateManager.js'
 import { EffectManager } from '@/systems/EffectManager.js'
 
+// Import story system
+import {
+  createStoryState,
+  updateStoryProgress,
+  getStoryContent,
+  getBossNarrative
+} from '@/systems/story.js'
+
 export class Game {
   constructor() {
     /** @type {HTMLCanvasElement} */
@@ -88,6 +96,11 @@ export class Game {
     this.stateManager.setState('game.enemiesPerLevel', GAME_CONSTANTS.ENEMIES_PER_LEVEL)
     this.stateManager.setState('game.bossActive', false)
     this.stateManager.setState('game.bossSpawnedThisLevel', false)
+
+    // Initialize story state
+    this.stateManager.setState('story', createStoryState())
+    this.stateManager.setState('game.powerupsCollected', 0)
+    this.stateManager.setState('game.bossesDefeated', 0)
   }
 
   // Game state accessors
@@ -154,6 +167,20 @@ export class Game {
   }
   set bossSpawnedThisLevel(value) {
     this.stateManager.setState('game.bossSpawnedThisLevel', value)
+  }
+
+  get bossesDefeated() {
+    return this.stateManager.getState('game.bossesDefeated')
+  }
+  set bossesDefeated(value) {
+    this.stateManager.setState('game.bossesDefeated', value)
+  }
+
+  get powerupsCollected() {
+    return this.stateManager.getState('game.powerupsCollected')
+  }
+  set powerupsCollected(value) {
+    this.stateManager.setState('game.powerupsCollected', value)
   }
 
   setupEffects() {
@@ -267,6 +294,31 @@ export class Game {
     this.eventDispatcher.emit(GAME_EVENTS.GAME_START, {
       timestamp: Date.now()
     })
+
+    // Display initial story content
+    this.displayInitialStory()
+  }
+
+  displayInitialStory() {
+    const storyState = this.stateManager.getState('story')
+    const gameState = {
+      level: this.level,
+      bossesDefeated: this.bossesDefeated,
+      powerupsCollected: this.powerupsCollected
+    }
+
+    const content = getStoryContent(gameState, storyState, 'levelStart')
+    if (content && content.title) {
+      // Show prologue story
+      this.eventDispatcher.emit('UI_STORY_NOTIFICATION', {
+        message: content.title,
+        description: content.description || 'The terraformers have gone silent...',
+        type: 'story',
+        duration: 6000
+      })
+
+      this.addMessage('Signal of the Last City', '#ffcc00', 5000)
+    }
   }
 
   pauseGame() {
@@ -709,6 +761,60 @@ export class Game {
     }
   }
 
+  /**
+   * Update story progress based on game events
+   */
+  updateStoryProgress(progressData) {
+    const storyState = this.stateManager.getState('story')
+    if (storyState && updateStoryProgress) {
+      const oldStoryState = { ...storyState }
+      const updatedStoryState = updateStoryProgress(storyState, progressData)
+      this.stateManager.setState('story', updatedStoryState)
+
+      // Only show story notifications for significant milestones (not powerups)
+      const isSignificantMilestone =
+        progressData.level !== undefined || progressData.bossesDefeated !== undefined
+
+      if (isSignificantMilestone) {
+        // Check if we actually unlocked new story content
+        const oldChapter = oldStoryState.currentChapter
+        const newChapter = updatedStoryState.currentChapter
+
+        if (oldChapter !== newChapter) {
+          // New chapter unlocked - show notification
+          const gameState = {
+            level: this.level,
+            bossesDefeated: this.bossesDefeated,
+            powerupsCollected: this.powerupsCollected
+          }
+
+          const content = getStoryContent(gameState, updatedStoryState, 'levelStart')
+          if (content && content.title) {
+            // Emit UI notification event for better integration
+            this.eventDispatcher.emit('UI_STORY_NOTIFICATION', {
+              message: content.title,
+              description: content.description,
+              type: 'story',
+              duration: 5000
+            })
+
+            // Also add to game messages as fallback
+            this.addMessage(content.title, '#ffcc00', 4000)
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Get total enemies killed (including across levels)
+   */
+  getTotalEnemiesKilled() {
+    // For now, return current enemies killed
+    // In future, this could track cumulative across all levels
+    return this.enemiesKilled + (this.level - 1) * this.enemiesPerLevel
+  }
+
   updateMessages() {
     for (let i = this.messages.length - 1; i >= 0; i--) {
       this.messages[i].age += 16 // Approximate deltaTime
@@ -743,15 +849,28 @@ export class Game {
                   '#00ff00',
                   GAME_CONSTANTS.MESSAGE_DURATION.LEVEL_UP
                 )
+
+                // Update story progress for level progression
+                this.updateStoryProgress({
+                  level: this.level,
+                  enemiesKilled: this.getTotalEnemiesKilled()
+                })
               }
 
               if (this.isBoss(enemy)) {
                 this.bossActive = false
+                this.bossesDefeated++
                 this.score += GAME_CONSTANTS.BOSS_BONUS_SCORE
                 this.player.health = Math.min(
                   this.player.maxHealth,
                   this.player.health + GAME_CONSTANTS.BOSS_HEALTH_RESTORE
                 )
+
+                // Update story progress for boss defeat
+                this.updateStoryProgress({
+                  bossesDefeated: this.bossesDefeated,
+                  level: this.level
+                })
               }
 
               this.effects.push(new Explosion(this, enemy.x, enemy.y, 'medium'))
@@ -779,9 +898,16 @@ export class Game {
     this.powerups.forEach(powerup => {
       if (this.checkCollision(this.player, powerup)) {
         this.player.collectPowerup(powerup)
+        this.powerupsCollected++
         this.effects.push(new PowerupEffect(this, powerup.x, powerup.y, powerup.color))
         this.audio.playSound('powerup')
         powerup.markedForDeletion = true
+
+        // Update story progress for powerup collection
+        this.updateStoryProgress({
+          powerupsCollected: this.powerupsCollected,
+          level: this.level
+        })
       }
     })
 
