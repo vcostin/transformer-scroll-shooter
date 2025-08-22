@@ -12,6 +12,10 @@
  * - Composition over inheritance
  */
 
+// Performance optimization cache for getAvailableLogs
+let _availableLogsCache = null
+let _lastGameStateHash = null
+
 // Story State Schema (Plain Objects)
 const createStoryState = () => ({
   currentChapter: 'prologue',
@@ -125,15 +129,30 @@ const isUnlocked = (element, gameState) => {
 }
 
 /**
- * Get all available story logs for current game state
+ * Get all available story logs for current game state (memoized for performance)
  * @param {Object} gameState - Current game state
  * @param {Set} viewedLogs - Set of already viewed log IDs
  * @returns {Array} - Array of available log objects
  */
 const getAvailableLogs = (gameState, viewedLogs = new Set()) => {
-  return Object.values(STORY_LOGS)
+  // Simple cache key based on relevant game state properties
+  const gameStateHash = `${gameState.level}-${gameState.powerupsCollected}-${gameState.score}-${gameState.bossesDefeated}`
+
+  // Return cached result if game state hasn't changed
+  if (_lastGameStateHash === gameStateHash && _availableLogsCache) {
+    return _availableLogsCache
+  }
+
+  // Compute fresh result
+  const result = Object.values(STORY_LOGS)
     .filter(log => isUnlocked(log, gameState))
     .filter(log => !viewedLogs.has(log.id))
+
+  // Cache the result
+  _availableLogsCache = result
+  _lastGameStateHash = gameStateHash
+
+  return result
 }
 
 /**
@@ -170,9 +189,14 @@ const updateStoryProgress = (storyState, gameState) => {
   const currentChapter = getCurrentChapter(gameState)
   const availableLogs = getAvailableLogs(gameState, storyState.unlockedLogs)
 
-  // Add newly unlocked logs to unlocked set
-  const newUnlockedLogs = new Set(storyState.unlockedLogs)
-  availableLogs.forEach(log => newUnlockedLogs.add(log.id))
+  // Only create new Set if there are new logs to unlock (performance optimization)
+  let newUnlockedLogs
+  if (availableLogs.length > 0) {
+    newUnlockedLogs = new Set(storyState.unlockedLogs)
+    availableLogs.forEach(log => newUnlockedLogs.add(log.id))
+  } else {
+    newUnlockedLogs = storyState.unlockedLogs
+  }
 
   return {
     ...storyState,
