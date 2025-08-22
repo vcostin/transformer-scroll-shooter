@@ -26,6 +26,34 @@ export default [
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       'no-console': 'off',
       'prefer-const': 'warn',
+      // Formatting rules that work with Prettier
+      'lines-around-comment': [
+        'error',
+        {
+          beforeBlockComment: true,
+          afterBlockComment: false,
+          beforeLineComment: false,
+          afterLineComment: false,
+          allowBlockStart: true,
+          allowBlockEnd: true,
+          allowObjectStart: true,
+          allowObjectEnd: true,
+          allowArrayStart: true,
+          allowArrayEnd: true,
+          allowClassStart: true,
+          allowClassEnd: true,
+          // This should catch JSDoc comments
+          applyDefaultIgnorePatterns: false
+        }
+      ],
+      'spaced-comment': ['error', 'always', { exceptions: ['-', '+', '*'] }],
+      // Add padding lines around blocks
+      'padding-line-between-statements': [
+        'error',
+        { blankLine: 'always', prev: 'block-like', next: 'block-like' },
+        { blankLine: 'always', prev: 'function', next: '*' },
+        { blankLine: 'always', prev: '*', next: 'function' }
+      ],
       // Enforce Vitest-only usage (prevent accidental Jest usage)
       'no-restricted-globals': [
         'error',

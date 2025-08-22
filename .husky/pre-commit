@@ -3,16 +3,31 @@
 echo "husky pre-commit: checking formatting..."
 if npm run -s format:check; then
   echo "Formatting OK."
-  exit 0
+else
+  echo "Formatting issues found. Running prettier --write ..."
+  if npm run -s format; then
+    # Add any changes produced by formatter
+    git add --update
+    echo "Formatting complete, changes staged."
+  else
+    echo "Formatter failed. Aborting commit."
+    exit 1
+  fi
 fi
 
-echo "Formatting issues found. Running prettier --write ..."
-if npm run -s format; then
-  # Add any changes produced by formatter
-  git add --update
-  # Formatting complete, changes staged.
+echo "husky pre-commit: checking linting..."
+if npm run -s lint; then
+  echo "Linting OK."
   exit 0
 else
-  echo "Formatter failed. Aborting commit."
-  exit 1
+  echo "Linting issues found. Running eslint --fix ..."
+  if npm run -s lint:fix; then
+    # Add any changes produced by linter
+    git add --update
+    echo "Linting auto-fixes applied, changes staged."
+    exit 0
+  else
+    echo "ESLint auto-fix failed or remaining issues need manual fix. Aborting commit."
+    exit 1
+  fi
 fi

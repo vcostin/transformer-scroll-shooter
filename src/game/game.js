@@ -530,6 +530,7 @@ export class Game {
       if (array[i] && typeof array[i].update === 'function') {
         array[i].update(deltaTime)
       }
+
       if (array[i] && array[i].markedForDeletion) {
         array.splice(i, 1)
       }
@@ -834,6 +835,7 @@ export class Game {
   updateUI() {
     // Update HTML UI elements
     document.getElementById('score').textContent = this.score
+
     /** @type {HTMLElement|null} */
     const healthEl = document.getElementById('health')
     if (healthEl) healthEl.textContent = String(this.player.health)

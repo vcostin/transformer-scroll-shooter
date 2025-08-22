@@ -65,6 +65,7 @@ describe('PatternMatcher', () => {
 
     it('should register multiple patterns', () => {
       const handler1 = () => {}
+
       const handler2 = () => {}
 
       patternMatcher.register('test1', handler1)

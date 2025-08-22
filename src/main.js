@@ -71,6 +71,7 @@ if (
   const startMenu = document.getElementById('startMenu')
   const startButton = document.getElementById('startButton')
   let gameStarted = false
+
   /** @type {(e: KeyboardEvent) => void} */
   // eslint-disable-next-line prefer-const
   let keyStartHandler

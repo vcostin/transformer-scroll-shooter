@@ -8,6 +8,7 @@ How we use this folder
 - Prefer reusable patterns over one-off assets.
 
 Index
+- **Backstory & World Bible**: ./SIGNAL_OF_THE_LAST_CITY.md ⭐ **NEW!**
 - Backstory options: ./BACKSTORY.md
 - Art direction & palettes: ./ART_DIRECTION.md
 - Level design & parallax: ./LEVELS_AND_PARALLAX.md
@@ -21,6 +22,10 @@ Index
  - **Character Lore: The Relay Warden Legend**: ./lore/RELAY_WARDEN_LORE.md
  - Parallax spec (Level 1): ./specs/LEVEL1_PARALLAX.json
  - Palette: ./palettes/NEON_RUINS.json
+
+**Technical Implementation:**
+- **Story System (POJO + Functional)**: ../src/systems/story.js ⭐ **NEW!**
+- **Story System Tests**: ../src/systems/story.test.js ⭐ **NEW!**
 
 Working style
 - Make a small pitch (1–2 paragraphs + 3 bullets), get feedback, then build a tiny prototype.
