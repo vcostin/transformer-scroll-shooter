@@ -18,6 +18,7 @@ Index
 - Roadmap: ./ROADMAP.md
 - Templates: ./templates/
  - Lore (by level): ./lore/LEVEL1.md
+ - **Character Lore: The Relay Warden Legend**: ./lore/RELAY_WARDEN_LORE.md
  - Parallax spec (Level 1): ./specs/LEVEL1_PARALLAX.json
  - Palette: ./palettes/NEON_RUINS.json
 
