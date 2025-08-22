@@ -11,7 +11,7 @@ export const BOSS_MESSAGES = {
   boss_heavy: 'HEAVY ASSAULT BOSS INCOMING!',
   boss_fast: 'FAST ATTACK BOSS DETECTED!',
   boss_sniper: 'SNIPER BOSS TARGETING YOU!',
-  relay_warden: 'RELAY WARDEN SYSTEMS ONLINE!'
+  relay_warden: "I'M NO BOSS! I AM THE RELAY WARDEN SYSTEMS ONLINE!"
 }
 
 // Boss configuration data structure
