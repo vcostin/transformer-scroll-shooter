@@ -12,10 +12,6 @@
  * - Composition over inheritance
  */
 
-// Performance optimization cache for getAvailableLogs
-let _availableLogsCache = null
-let _lastGameStateHash = null
-
 // Story State Schema (Plain Objects)
 const createStoryState = () => ({
   currentChapter: 'prologue',
@@ -129,33 +125,16 @@ const isUnlocked = (element, gameState) => {
 }
 
 /**
- * Get all available story logs for current game state (memoized for performance)
+ * Get all available story logs for current game state
  * @param {Object} gameState - Current game state
  * @param {Set} viewedLogs - Set of already viewed log IDs
  * @returns {Array} - Array of available log objects
  */
 const getAvailableLogs = (gameState, viewedLogs = new Set()) => {
-  // Simple cache key based on relevant game state properties
-  const gameStateHash = `${gameState.level}-${gameState.powerupsCollected}-${gameState.score}-${gameState.bossesDefeated}`
-
-  // Return cached result if game state hasn't changed
-  if (_lastGameStateHash === gameStateHash && _availableLogsCache) {
-    return _availableLogsCache
-  }
-
-  // Compute fresh result
-  const result = Object.values(STORY_LOGS)
+  return Object.values(STORY_LOGS)
     .filter(log => isUnlocked(log, gameState))
     .filter(log => !viewedLogs.has(log.id))
-
-  // Cache the result
-  _availableLogsCache = result
-  _lastGameStateHash = gameStateHash
-
-  return result
-}
-
-/**
+} /**
  * Get current chapter based on game progress
  * @param {Object} gameState - Current game state
  * @returns {Object|null} - Current chapter object or null
