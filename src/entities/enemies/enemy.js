@@ -22,6 +22,10 @@ const MOVEMENT_SPEED_MULTIPLIER = 0.8
 const DRONE_SPAWN_PROBABILITY = 0.2
 const CONNECTION_BEAM_LENGTH = 100
 const CONNECTION_BEAM_OFFSET_Y = -50
+const PHASE2_POSITION_X_FACTOR = 0.75
+const PHASE2_POSITION_Y_FACTOR = 0.25
+const PHASE2_TARGET_Y_RANGE = 0.6
+const PHASE2_TARGET_Y_OFFSET = 0.2
 
 export default class Enemy {
   constructor(game, x, y, type) {
@@ -978,8 +982,8 @@ export default class Enemy {
       this.phaseTransitionTriggered = true
       this.nodeMode = true
       // Position this boss as the primary node in Phase 2
-      this.x = this.game.width * 0.75
-      this.y = this.game.height * 0.25
+      this.x = this.game.width * PHASE2_POSITION_X_FACTOR
+      this.y = this.game.height * PHASE2_POSITION_Y_FACTOR
       // Note: Future enhancement could spawn a second synchronized node
     }
 
@@ -1024,7 +1028,9 @@ export default class Enemy {
 
     // Change target position every 2 seconds
     if (this.moveTimer > 2000) {
-      this.targetY = Math.random() * (this.game.height * 0.6) + this.game.height * 0.2
+      this.targetY =
+        Math.random() * (this.game.height * PHASE2_TARGET_Y_RANGE) +
+        this.game.height * PHASE2_TARGET_Y_OFFSET
       this.moveTimer = 0
     }
 
