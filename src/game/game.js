@@ -27,6 +27,11 @@ import {
   getBossNarrative
 } from '@/systems/story.js'
 
+// Import UI components
+import ChapterTransition from '@/ui/ChapterTransition.js'
+import BossDialogue from '@/ui/BossDialogue.js'
+import StoryJournal from '@/ui/StoryJournal.js'
+
 export class Game {
   constructor() {
     /** @type {HTMLCanvasElement} */
@@ -65,8 +70,14 @@ export class Game {
     this.effectManager = new EffectManager(this.eventDispatcher)
     this.options = new OptionsMenu(this, this.eventDispatcher, this.stateManager)
 
+    // Initialize UI systems
+    this.chapterTransition = new ChapterTransition(this.canvas, this.eventDispatcher)
+    this.bossDialogue = new BossDialogue(this.canvas, this.eventDispatcher)
+    this.storyJournal = new StoryJournal(stateManager)
+
     // Additional properties that need to be available
     this.enemiesPerLevel = GAME_CONSTANTS.ENEMIES_PER_LEVEL
+    this.currentBossType = null // Track current boss type for narratives
 
     // Frame counter for events
     this.frameNumber = 0
@@ -101,6 +112,9 @@ export class Game {
     this.stateManager.setState('story', createStoryState())
     this.stateManager.setState('game.powerupsCollected', 0)
     this.stateManager.setState('game.bossesDefeated', 0)
+
+    // Setup UI event listeners
+    this.storyJournal.setupEventListeners()
   }
 
   // Game state accessors
@@ -309,14 +323,12 @@ export class Game {
 
     const content = getStoryContent(gameState, storyState, 'levelStart')
     if (content && content.title) {
-      // Show prologue story
-      this.eventDispatcher.emit('UI_STORY_NOTIFICATION', {
-        message: content.title,
-        description: content.description || 'The terraformers have gone silent...',
-        type: 'story',
-        duration: 6000
-      })
+      // Show cinematic prologue transition with delay
+      setTimeout(() => {
+        this.showChapterTransition(content)
+      }, 1000) // Small delay for game to initialize
 
+      // Also show fallback message
       this.addMessage('Signal of the Last City', '#ffcc00', 5000)
     }
   }
@@ -418,6 +430,14 @@ export class Game {
         case 'KeyR':
           if (this.gameOver) {
             this.restart()
+          }
+          break
+        case 'KeyJ':
+          // Toggle story journal
+          if (this.storyJournal.isVisible) {
+            this.storyJournal.close()
+          } else {
+            this.storyJournal.open()
           }
           break
         case 'Escape':
@@ -559,6 +579,20 @@ export class Game {
     this.updateEntities('powerups', this.powerups, deltaTime)
     this.updateEntities('effects', this.effects, deltaTime)
 
+    // Update UI systems
+    if (this.chapterTransition) {
+      this.chapterTransition.update(deltaTime)
+    }
+
+    if (this.bossDialogue) {
+      this.bossDialogue.update(deltaTime)
+    }
+
+    if (this.storyJournal) {
+      // StoryJournal doesn't need delta time updates but we keep consistency
+      // Future animation features might need deltaTime
+    }
+
     // Update messages
     this.updateMessages()
 
@@ -626,6 +660,16 @@ export class Game {
 
     // Render messages
     this.renderMessages()
+
+    // Render chapter transition (should be on top)
+    if (this.chapterTransition) {
+      this.chapterTransition.render()
+    }
+
+    // Render boss dialogue (should be on top of everything)
+    if (this.bossDialogue) {
+      this.bossDialogue.render()
+    }
 
     // Render game over screen
     if (this.gameOver) {
@@ -728,6 +772,10 @@ export class Game {
     this.enemies.push(boss)
     this.bossActive = true
     this.bossSpawnedThisLevel = true
+    this.currentBossType = selectedBossType // Track current boss type
+
+    // Show boss introduction narrative
+    this.showBossNarrative(selectedBossType, 'intro')
 
     this.addMessage(
       BOSS_MESSAGES[selectedBossType],
@@ -790,16 +838,16 @@ export class Game {
 
           const content = getStoryContent(gameState, updatedStoryState, 'levelStart')
           if (content && content.title) {
-            // Emit UI notification event for better integration
+            // Show cinematic chapter transition
+            this.showChapterTransition(content)
+
+            // Also emit UI notification as backup
             this.eventDispatcher.emit('UI_STORY_NOTIFICATION', {
               message: content.title,
               description: content.description,
               type: 'story',
               duration: 5000
             })
-
-            // Also add to game messages as fallback
-            this.addMessage(content.title, '#ffcc00', 4000)
           }
         }
       }
@@ -813,6 +861,86 @@ export class Game {
     // For now, return current enemies killed
     // In future, this could track cumulative across all levels
     return this.enemiesKilled + (this.level - 1) * this.enemiesPerLevel
+  }
+
+  /**
+   * Show cinematic chapter transition
+   * @param {Object} content - Story content with title and description
+   */
+  showChapterTransition(content) {
+    if (this.chapterTransition && !this.chapterTransition.active) {
+      // Pause game during transition
+      const wasPaused = this.paused
+      this.paused = true
+
+      this.chapterTransition.showTransition(content, () => {
+        // Resume game after transition if it wasn't paused before
+        if (!wasPaused) {
+          this.paused = false
+        }
+      })
+    }
+  }
+
+  /**
+   * Show boss narrative dialogue
+   * @param {string} bossType - Type of boss (e.g., 'relay_warden', 'terraformer')
+   * @param {string} event - Narrative event ('intro', 'defeat', 'phaseTransition')
+   */
+  showBossNarrative(bossType, event) {
+    const narrativeText = getBossNarrative(bossType, event)
+
+    if (narrativeText && this.bossDialogue && !this.bossDialogue.active) {
+      // Pause game during dialogue for dramatic effect
+      const wasPaused = this.paused
+      this.paused = true
+
+      const speakerName = this.getBossDisplayName(bossType)
+
+      this.bossDialogue.showDialogue(
+        {
+          speaker: speakerName,
+          text: narrativeText,
+          style: this.getBossDialogueStyle(event)
+        },
+        () => {
+          // Resume game after dialogue if it wasn't paused before
+          if (!wasPaused) {
+            this.paused = false
+          }
+        }
+      )
+    }
+  }
+
+  /**
+   * Get display name for boss type
+   * @param {string} bossType - Boss type identifier
+   * @returns {string} - Display name for the boss
+   */
+  getBossDisplayName(bossType) {
+    const bossNames = {
+      relay_warden: 'Relay Warden',
+      terraformer_prime: 'Terraformer Prime',
+      default: 'Unknown Entity'
+    }
+    return bossNames[bossType] || bossNames.default
+  }
+
+  /**
+   * Map boss narrative events to dialogue styles
+   * @param {string} event - Boss narrative event
+   * @returns {string} - Dialogue style
+   */
+  getBossDialogueStyle(event) {
+    const styleMap = {
+      preIntro: 'introduction',
+      intro: 'introduction',
+      phaseTransition: 'taunt',
+      defeat: 'victory',
+      postDefeat: 'victory'
+    }
+    return styleMap[event] || 'introduction'
   }
 
   updateMessages() {
@@ -865,6 +993,11 @@ export class Game {
                   this.player.maxHealth,
                   this.player.health + GAME_CONSTANTS.BOSS_HEALTH_RESTORE
                 )
+
+                // Show boss defeat narrative
+                const bossType = this.currentBossType || 'relay_warden' // Fallback
+                this.showBossNarrative(bossType, 'defeat')
+                this.currentBossType = null // Clear boss type
 
                 // Update story progress for boss defeat
                 this.updateStoryProgress({
