@@ -85,6 +85,7 @@ export default class Enemy {
         this.bulletSpeed = 180
         break
       }
+
       case 'turret': {
         // Stationary-on-platform: slow horizontal drift, telegraphed slow shots
         this.width = 26
@@ -99,6 +100,7 @@ export default class Enemy {
         this.bulletSpeed = 140
         break
       }
+
       case 'seeder': {
         // Seeder: medium slow, drops homing seeds
         this.width = 22
@@ -113,6 +115,7 @@ export default class Enemy {
         this.bulletSpeed = 100
         break
       }
+
       case 'fighter': {
         this.width = 30
         this.height = 20
@@ -126,6 +129,7 @@ export default class Enemy {
         this.bulletSpeed = 200
         break
       }
+
       case 'bomber': {
         this.width = 45
         this.height = 35
@@ -139,6 +143,7 @@ export default class Enemy {
         this.bulletSpeed = 150
         break
       }
+
       case 'scout': {
         this.width = 20
         this.height = 15
@@ -174,6 +179,7 @@ export default class Enemy {
         }
         break
       }
+
       default: {
         // Default to fighter type
         this.width = 30
@@ -258,12 +264,14 @@ export default class Enemy {
         this.y += this.zigDirection * moveSpeed * MOVEMENT_SPEED_MULTIPLIER
         break
       }
+
       case 'turret': {
         // Slow drift left, minimal vertical movement
         this.x -= moveSpeed
         // No vertical movement; acts like a platform-mounted gun
         break
       }
+
       case 'seeder': {
         // Slow, steady left movement; slight bob to feel alive
         this.x -= moveSpeed
@@ -275,6 +283,7 @@ export default class Enemy {
         this.y += bob
         break
       }
+
       case 'fighter': {
         // Move straight towards player
         this.x -= moveSpeed
@@ -288,11 +297,13 @@ export default class Enemy {
         }
         break
       }
+
       case 'bomber': {
         // Slow, steady movement
         this.x -= moveSpeed
         break
       }
+
       case 'scout': {
         // Erratic movement pattern
         this.x -= moveSpeed
@@ -309,6 +320,7 @@ export default class Enemy {
         }
         break
       }
+
       case 'boss': {
         // Boss movement - slower horizontal movement with vertical tracking
         this.x -= moveSpeed * 0.5 // Move slower than other enemies
@@ -326,6 +338,7 @@ export default class Enemy {
         }
         break
       }
+
       case 'boss_heavy': {
         // Heavy boss - very slow but steady movement
         this.x -= moveSpeed * 0.3 // Even slower than regular boss
@@ -340,6 +353,7 @@ export default class Enemy {
         }
         break
       }
+
       case 'boss_fast': {
         // Fast boss - quick horizontal movement with aggressive tracking
         this.x -= moveSpeed * MOVEMENT_SPEED_MULTIPLIER // Faster than regular boss
@@ -357,6 +371,7 @@ export default class Enemy {
         }
         break
       }
+
       case 'boss_sniper': {
         // Sniper boss - maintains distance, minimal horizontal movement
         this.x -= moveSpeed * 0.2 // Very slow horizontal movement
@@ -374,6 +389,7 @@ export default class Enemy {
         }
         break
       }
+
       case 'relay_warden': {
         // Relay Warden boss - phase-based behavior
         this.updateRelayWardenBehavior(deltaTime, moveSpeed, player)
@@ -658,6 +674,7 @@ export default class Enemy {
         this.aiState = AI_STATES.MOVING
         break
       }
+
       case AI_STATES.MOVING: {
         // Check if we should switch to attacking
         if (this.game.player) {
@@ -665,6 +682,7 @@ export default class Enemy {
         }
         break
       }
+
       case AI_STATES.ATTACKING: {
         // Handle shooting while moving
         this.shootTimer += deltaTime
@@ -674,6 +692,7 @@ export default class Enemy {
         }
         break
       }
+
       case AI_STATES.SEARCHING: {
         // Look for targets
         const player = this.game.player
@@ -685,6 +704,7 @@ export default class Enemy {
         }
         break
       }
+
       case AI_STATES.FLEEING: {
         // Special fleeing behavior could go here
         break

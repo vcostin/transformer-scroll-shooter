@@ -48,6 +48,7 @@ export function validateValue(path, value, currentState) {
     if (resolvedMin !== null && value < resolvedMin) {
       return `Value must be >= ${resolvedMin}`
     }
+
     if (resolvedMax !== null && value > resolvedMax) {
       return `Value must be <= ${resolvedMax}`
     }
@@ -58,9 +59,11 @@ export function validateValue(path, value, currentState) {
     if (rules.minLength !== undefined && value.length < rules.minLength) {
       return `String must be at least ${rules.minLength} characters long`
     }
+
     if (rules.maxLength !== undefined && value.length > rules.maxLength) {
       return `String must be no more than ${rules.maxLength} characters long`
     }
+
     if (rules.pattern && !new RegExp(rules.pattern).test(value)) {
       return `String does not match required pattern: ${rules.pattern}`
     }
@@ -71,9 +74,11 @@ export function validateValue(path, value, currentState) {
     if (rules.minItems !== undefined && value.length < rules.minItems) {
       return `Array must have at least ${rules.minItems} items`
     }
+
     if (rules.maxItems !== undefined && value.length > rules.maxItems) {
       return `Array must have no more than ${rules.maxItems} items`
     }
+
     if (rules.uniqueItems && hasDuplicates(value)) {
       return `Array items must be unique`
     }
@@ -87,6 +92,7 @@ export function validateValue(path, value, currentState) {
         return `Missing required properties: ${missingKeys.join(', ')}`
       }
     }
+
     if (rules.properties) {
       for (const [key, keyValue] of Object.entries(value)) {
         if (rules.properties[key]) {

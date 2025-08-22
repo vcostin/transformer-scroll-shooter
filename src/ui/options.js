@@ -11,6 +11,7 @@ export class OptionsMenu {
     if (!eventDispatcher) {
       throw new Error("OptionsMenu: 'eventDispatcher' is required and cannot be null or undefined.")
     }
+
     if (!stateManager) {
       throw new Error("OptionsMenu: 'stateManager' is required and cannot be null or undefined.")
     }

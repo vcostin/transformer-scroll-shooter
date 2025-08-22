@@ -530,6 +530,7 @@ export class Game {
       if (array[i] && typeof array[i].update === 'function') {
         array[i].update(deltaTime)
       }
+
       if (array[i] && array[i].markedForDeletion) {
         array.splice(i, 1)
       }

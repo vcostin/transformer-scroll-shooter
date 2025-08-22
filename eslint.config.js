@@ -41,10 +41,19 @@ export default [
           allowArrayStart: true,
           allowArrayEnd: true,
           allowClassStart: true,
-          allowClassEnd: true
+          allowClassEnd: true,
+          // This should catch JSDoc comments
+          applyDefaultIgnorePatterns: false
         }
       ],
       'spaced-comment': ['error', 'always', { exceptions: ['-', '+', '*'] }],
+      // Add padding lines around blocks
+      'padding-line-between-statements': [
+        'error',
+        { blankLine: 'always', prev: 'block-like', next: 'block-like' },
+        { blankLine: 'always', prev: 'function', next: '*' },
+        { blankLine: 'always', prev: '*', next: 'function' }
+      ],
       // Enforce Vitest-only usage (prevent accidental Jest usage)
       'no-restricted-globals': [
         'error',
