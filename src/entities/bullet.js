@@ -74,19 +74,22 @@ export default class Bullet {
     const t = deltaTime / 1000
 
     if (this.type === 'seed') {
-      // Home slowly toward player
+      // Home slowly toward player, but only if within homing range
       const player = this.game.player
       if (player) {
         const dx = player.x - this.x
         const dy = player.y - this.y
         const dist = Math.hypot(dx, dy) || 1
-        // Desired velocity towards player at seed speed
-        const desiredVX = (dx / dist) * this.speed
-        const desiredVY = (dy / dist) * this.speed
-        // Interpolate velocity slightly toward desired
-        const alpha = Math.min(1, this.turnRate * deltaTime)
-        this.velocityX = this.velocityX + (desiredVX - this.velocityX) * alpha
-        this.velocityY = this.velocityY + (desiredVY - this.velocityY) * alpha
+        // Only home if within reasonable range (e.g., 400 pixels)
+        if (dist < 400) {
+          // Desired velocity towards player at seed speed
+          const desiredVX = (dx / dist) * this.speed
+          const desiredVY = (dy / dist) * this.speed
+          // Interpolate velocity slightly toward desired
+          const alpha = Math.min(1, this.turnRate * deltaTime)
+          this.velocityX = this.velocityX + (desiredVX - this.velocityX) * alpha
+          this.velocityY = this.velocityY + (desiredVY - this.velocityY) * alpha
+        }
       }
     }
 

@@ -13,6 +13,9 @@ import { ENEMY_EVENTS, ENEMY_STATES, ENEMY_BEHAVIORS, AI_STATES } from '@/consta
 // Constants
 const OFF_SCREEN_BOUNDARY = -100
 const CRITICAL_HEALTH_THRESHOLD = 0.25
+const BOB_PERIOD_MS = 1000
+const BOB_WAVE_CYCLE = Math.PI * 2
+const BOB_AMPLITUDE_FACTOR = 0.2
 
 export default class Enemy {
   constructor(game, x, y, type) {
@@ -31,6 +34,9 @@ export default class Enemy {
     this.targetY = y
     this.aiState = AI_STATES.SPAWNING
     this.behavior = ENEMY_BEHAVIORS.AGGRESSIVE
+
+    // Initialize enemy-specific properties
+    this.zigDirection = 1 // Used by drone for zig-zag movement
 
     this.eventDispatcher = game.eventDispatcher
     this.stateManager = game.stateManager
@@ -67,7 +73,6 @@ export default class Enemy {
         this.color = '#66ffcc'
         this.shootRate = 2500
         this.bulletSpeed = 180
-        this.zigDirection = 1
         break
       }
       case 'turret': {
@@ -241,7 +246,10 @@ export default class Enemy {
         // Slow, steady left movement; slight bob to feel alive
         this.x -= moveSpeed
         this.moveTimer += deltaTime
-        const bob = Math.sin((this.moveTimer / 1000) * Math.PI * 2) * 0.2 * moveSpeed
+        const bob =
+          Math.sin((this.moveTimer / BOB_PERIOD_MS) * BOB_WAVE_CYCLE) *
+          BOB_AMPLITUDE_FACTOR *
+          moveSpeed
         this.y += bob
         break
       }
