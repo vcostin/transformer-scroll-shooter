@@ -8,6 +8,7 @@
 // Constants
 const SEED_HOMING_RANGE = 400
 const MIN_DISTANCE_EPSILON = 1e-6
+const SEED_BULLET_TTL = 8000 // 8 seconds time-to-live for homing bullets
 
 export default class Bullet {
   constructor(game, x, y, velocityX, velocityY, type, friendly) {
@@ -20,6 +21,10 @@ export default class Bullet {
     this.friendly = friendly
     this.owner = friendly ? 'player' : 'enemy' // Set owner based on friendly flag
     this.markedForDeletion = false
+
+    // Time tracking for bullets with TTL
+    this.age = 0
+    this.timeToLive = null
 
     // Set properties based on type
     this.setupType()
@@ -70,12 +75,20 @@ export default class Bullet {
         this.color = '#aaff66'
         this.turnRate = 0.003 // radians per ms approx
         this.speed = 110
+        this.timeToLive = SEED_BULLET_TTL // 8 seconds TTL for homing bullets
         break
     }
   }
 
   update(deltaTime) {
     const t = deltaTime / 1000
+
+    // Update age and check for TTL expiration
+    this.age += deltaTime
+    if (this.timeToLive !== null && this.age >= this.timeToLive) {
+      this.markedForDeletion = true
+      return
+    }
 
     if (this.type === 'seed') {
       // Home slowly toward player, but only if within homing range
