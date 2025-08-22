@@ -28,9 +28,9 @@ import {
 } from '@/systems/story.js'
 
 // Import UI components
-import ChapterTransition from '@/ui/ChapterTransition.js'
-import BossDialogue from '@/ui/BossDialogue.js'
-import StoryJournal from '@/ui/StoryJournal.js'
+import createChapterTransition from '@/ui/ChapterTransition.js'
+import createBossDialogue from '@/ui/BossDialogue.js'
+import createStoryJournal from '@/ui/StoryJournal.js'
 
 export class Game {
   constructor() {
@@ -71,13 +71,14 @@ export class Game {
     this.options = new OptionsMenu(this, this.eventDispatcher, this.stateManager)
 
     // Initialize UI systems
-    this.chapterTransition = new ChapterTransition(this.canvas, this.eventDispatcher)
-    this.bossDialogue = new BossDialogue(this.canvas, this.eventDispatcher)
-    this.storyJournal = new StoryJournal(stateManager)
+    this.chapterTransition = createChapterTransition(this.canvas, this.eventDispatcher)
+    this.bossDialogue = createBossDialogue(this.canvas, this.eventDispatcher)
+    this.storyJournal = createStoryJournal(this.eventDispatcher, this.stateManager)
 
     // Additional properties that need to be available
     this.enemiesPerLevel = GAME_CONSTANTS.ENEMIES_PER_LEVEL
     this.currentBossType = null // Track current boss type for narratives
+    this.lastShownTransition = null // Track last shown transition to prevent duplicates
 
     // Frame counter for events
     this.frameNumber = 0
@@ -323,9 +324,15 @@ export class Game {
 
     const content = getStoryContent(gameState, storyState, 'levelStart')
     if (content && content.title) {
-      // Show cinematic prologue transition with delay
+      // Show cinematic prologue transition with delay and error handling
       setTimeout(() => {
-        this.showChapterTransition(content)
+        try {
+          this.showChapterTransition(content)
+        } catch (error) {
+          console.error('Error showing chapter transition:', error)
+          // Ensure game doesn't stay paused if transition fails
+          this.paused = false
+        }
       }, 1000) // Small delay for game to initialize
 
       // Also show fallback message
@@ -500,28 +507,37 @@ export class Game {
       return
     }
 
-    const deltaTime = currentTime - this.lastTime
+    this.deltaTime = currentTime - this.lastTime
     this.lastTime = currentTime
     this.frameNumber++
 
     // Emit frame event
     this.eventDispatcher.emit(GAME_EVENTS.GAME_FRAME, {
-      deltaTime,
+      deltaTime: this.deltaTime,
       currentTime,
       frame: this.frameNumber
     })
 
     // Emit performance frame time event
     this.eventDispatcher.emit(GAME_EVENTS.PERFORMANCE_FRAME_TIME, {
-      deltaTime,
+      deltaTime: this.deltaTime,
       timestamp: currentTime
     })
 
     // Calculate FPS using the new method
-    this.calculateFPS(deltaTime)
+    this.calculateFPS(this.deltaTime)
+
+    // Update UI systems that should work even when paused
+    if (this.chapterTransition) {
+      this.chapterTransition.update(this.deltaTime)
+    }
+
+    if (this.bossDialogue) {
+      this.bossDialogue.update(this.deltaTime)
+    }
 
     if (!this.paused && !this.gameOver) {
-      this.update(deltaTime)
+      this.update(this.deltaTime)
     }
 
     this.render()
@@ -579,15 +595,6 @@ export class Game {
     this.updateEntities('powerups', this.powerups, deltaTime)
     this.updateEntities('effects', this.effects, deltaTime)
 
-    // Update UI systems
-    if (this.chapterTransition) {
-      this.chapterTransition.update(deltaTime)
-    }
-
-    if (this.bossDialogue) {
-      this.bossDialogue.update(deltaTime)
-    }
-
     if (this.storyJournal) {
       // StoryJournal doesn't need delta time updates but we keep consistency
       // Future animation features might need deltaTime
@@ -603,7 +610,7 @@ export class Game {
     this.cleanup()
 
     // Check for game over condition
-    if (this.player.health <= 0) {
+    if (this.player && this.player.health <= 0) {
       this.gameOver = true
     }
 
@@ -639,7 +646,7 @@ export class Game {
     // Emit render event
     this.eventDispatcher.emit(GAME_EVENTS.GAME_RENDER, {
       ctx: this.ctx,
-      deltaTime: this.lastTime
+      deltaTime: this.deltaTime
     })
 
     // Clear canvas
@@ -869,16 +876,47 @@ export class Game {
    */
   showChapterTransition(content) {
     if (this.chapterTransition && !this.chapterTransition.active) {
+      // Prevent showing the same transition multiple times
+      const contentKey = `${content.title}-${content.description}`
+      if (this.lastShownTransition === contentKey) {
+        console.log('Skipping duplicate transition:', content.title)
+        return
+      }
+
       // Pause game during transition
       const wasPaused = this.paused
       this.paused = true
 
-      this.chapterTransition.showTransition(content, () => {
-        // Resume game after transition if it wasn't paused before
-        if (!wasPaused) {
-          this.paused = false
-        }
-      })
+      try {
+        this.lastShownTransition = contentKey
+        this.chapterTransition.showTransition(content, () => {
+          try {
+            // Mark cutscene as viewed when transition completes
+            if (content.cutsceneKey) {
+              const storyState = this.stateManager.getState('story')
+              if (storyState) {
+                const updatedStoryState = {
+                  ...storyState,
+                  viewedCutscenes: new Set([...storyState.viewedCutscenes, content.cutsceneKey])
+                }
+                this.stateManager.setState('story', updatedStoryState)
+              }
+            }
+
+            // Resume game after transition if it wasn't paused before
+            if (!wasPaused) {
+              this.paused = false
+            }
+          } catch (error) {
+            console.error('Error in chapter transition callback:', error)
+            this.paused = false // Ensure game doesn't stay paused
+          }
+        })
+      } catch (error) {
+        console.error('Error starting chapter transition:', error)
+        this.paused = wasPaused // Restore original pause state
+        this.lastShownTransition = null // Reset on error
+      }
     }
   }
 
@@ -1038,8 +1076,7 @@ export class Game {
 
         // Update story progress for powerup collection
         this.updateStoryProgress({
-          powerupsCollected: this.powerupsCollected,
-          level: this.level
+          powerupsCollected: this.powerupsCollected
         })
       }
     })
@@ -1092,16 +1129,21 @@ export class Game {
   }
 
   updateUI() {
-    // Update HTML UI elements
-    document.getElementById('score').textContent = this.score
+    // Update HTML UI elements safely
+    const scoreEl = document.getElementById('score')
+    if (scoreEl) scoreEl.textContent = this.score
 
     /** @type {HTMLElement|null} */
     const healthEl = document.getElementById('health')
-    if (healthEl) healthEl.textContent = String(this.player.health)
-    document.getElementById('mode').textContent = this.player.mode
-      ? this.player.mode.toUpperCase()
-      : 'UNKNOWN'
-    document.getElementById('level').textContent = this.level
+    if (healthEl) healthEl.textContent = String(this.player ? this.player.health : 100)
+
+    const modeEl = document.getElementById('mode')
+    if (modeEl)
+      modeEl.textContent =
+        this.player && this.player.mode ? this.player.mode.toUpperCase() : 'UNKNOWN'
+
+    const levelEl = document.getElementById('level')
+    if (levelEl) levelEl.textContent = this.level
   }
 
   getDifficultyMultiplier() {

@@ -247,14 +247,22 @@ const getStoryContent = (gameState, storyState, context) => {
   switch (context) {
     case 'levelStart': {
       const chapter = getCurrentChapter(gameState)
-      return chapter
-        ? {
-            type: 'title_card',
-            title: chapter.title,
-            description: chapter.description,
-            duration: 3000
-          }
-        : null
+      if (!chapter) return null
+
+      // Check if this chapter transition has already been viewed
+      const cutsceneKey = `chapter_${chapter.id}`
+
+      if (storyState.viewedCutscenes?.has(cutsceneKey)) {
+        return null // Don't show the same chapter transition again
+      }
+
+      return {
+        type: 'title_card',
+        title: chapter.title,
+        description: chapter.description,
+        duration: 3000,
+        cutsceneKey // Include the key so it can be marked as viewed
+      }
     }
 
     case 'newLogAvailable': {
