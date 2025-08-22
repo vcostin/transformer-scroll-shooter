@@ -657,15 +657,30 @@ export class Game {
   }
 
   spawnBoss() {
-    // Select random boss type
-    const randomBossType = BOSS_TYPES[Math.floor(Math.random() * BOSS_TYPES.length)]
+    // Select boss type based on enemy set configuration
+    let selectedBossType
 
-    const boss = new Enemy(this, this.width - 100, this.height / 2 - 30, randomBossType)
+    if (this.shouldUseLevel1EnemySet()) {
+      // In Level 1 mode, prefer Relay Warden with fallback to other bosses
+      selectedBossType =
+        Math.random() < 0.7
+          ? 'relay_warden'
+          : BOSS_TYPES[Math.floor(Math.random() * BOSS_TYPES.length)]
+    } else {
+      // Default behavior - random boss from all types
+      selectedBossType = BOSS_TYPES[Math.floor(Math.random() * BOSS_TYPES.length)]
+    }
+
+    const boss = new Enemy(this, this.width - 100, this.height / 2 - 30, selectedBossType)
     this.enemies.push(boss)
     this.bossActive = true
     this.bossSpawnedThisLevel = true
 
-    this.addMessage(BOSS_MESSAGES[randomBossType], '#ff0000', GAME_CONSTANTS.MESSAGE_DURATION.BOSS)
+    this.addMessage(
+      BOSS_MESSAGES[selectedBossType],
+      '#ff0000',
+      GAME_CONSTANTS.MESSAGE_DURATION.BOSS
+    )
   }
 
   spawnPowerup() {

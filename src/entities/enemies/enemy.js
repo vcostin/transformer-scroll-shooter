@@ -18,6 +18,15 @@ const BOB_WAVE_CYCLE = Math.PI * 2
 const BOB_AMPLITUDE_FACTOR = 0.2
 const MOVEMENT_SPEED_MULTIPLIER = 0.8
 
+// Relay Warden specific constants
+const DRONE_SPAWN_PROBABILITY = 0.2
+const CONNECTION_BEAM_LENGTH = 100
+const CONNECTION_BEAM_OFFSET_Y = -50
+const PHASE2_POSITION_X_FACTOR = 0.75
+const PHASE2_POSITION_Y_FACTOR = 0.25
+const PHASE2_TARGET_Y_RANGE = 0.6
+const PHASE2_TARGET_Y_OFFSET = 0.2
+
 export default class Enemy {
   constructor(game, x, y, type) {
     this.game = game
@@ -146,11 +155,23 @@ export default class Enemy {
       case 'boss':
       case 'boss_heavy':
       case 'boss_fast':
-      case 'boss_sniper': {
+      case 'boss_sniper':
+      case 'relay_warden': {
         // Use centralized boss configuration
         const config = BOSS_CONFIGS[this.type]
         Object.assign(this, config)
         this.health = this.maxHealth
+
+        // Special initialization for Relay Warden
+        if (this.type === 'relay_warden') {
+          this.phase = 1
+          this.sweepAngle = 0
+          this.sweepDirection = 1
+          this.vulnerabilityTimer = 0
+          this.ringBeamActive = false
+          this.nodeMode = false
+          this.phaseTransitionTriggered = false
+        }
         break
       }
       default: {
@@ -353,6 +374,11 @@ export default class Enemy {
         }
         break
       }
+      case 'relay_warden': {
+        // Relay Warden boss - phase-based behavior
+        this.updateRelayWardenBehavior(deltaTime, moveSpeed, player)
+        break
+      }
     }
 
     // Emit movement events if position changed
@@ -381,6 +407,12 @@ export default class Enemy {
 
     // Only shoot if player exists
     if (!player) return
+
+    // Special shooting behavior for Relay Warden
+    if (this.type === 'relay_warden') {
+      this.relayWardenShoot(player)
+      return
+    }
 
     // Calculate direction to player
     const dx = player.x - this.x
@@ -421,6 +453,85 @@ export default class Enemy {
       // Update state manager
       this.stateManager.setState(ENEMY_STATES.SHOOT_TIMER, this.shootTimer)
     }
+  }
+
+  relayWardenShoot(player) {
+    const centerX = this.x + this.width / 2
+    const centerY = this.y + this.height / 2
+
+    if (this.phase === 1) {
+      // Phase 1: Fan bullets + occasional drone adds
+      this.firePhase1Pattern(centerX, centerY, player)
+    } else {
+      // Phase 2: Alternating sweep patterns during vulnerability windows
+      this.firePhase2Pattern(centerX, centerY, player)
+    }
+  }
+
+  firePhase1Pattern(centerX, centerY, player) {
+    // Fan bullet pattern - 5 bullets in a spread
+    const fanCount = 5
+    const fanSpread = Math.PI / 3 // 60 degree spread
+
+    // Calculate angle to player
+    const dx = player.x - centerX
+    const dy = player.y - centerY
+    const playerAngle = Math.atan2(dy, dx)
+
+    for (let i = 0; i < fanCount; i++) {
+      const angleOffset = (i - 2) * (fanSpread / (fanCount - 1))
+      const bulletAngle = playerAngle + angleOffset
+
+      const velocityX = Math.cos(bulletAngle) * this.bulletSpeed
+      const velocityY = Math.sin(bulletAngle) * this.bulletSpeed
+
+      const bullet = new Bullet(this.game, centerX, centerY, velocityX, velocityY, 'enemy', false)
+
+      this.game.addBullet(bullet)
+    }
+
+    // Occasionally spawn drone adds (20% chance)
+    if (Math.random() < DRONE_SPAWN_PROBABILITY) {
+      this.spawnDroneAdd()
+    }
+  }
+
+  firePhase2Pattern(centerX, centerY, player) {
+    // Only fire during vulnerability windows
+    if (this.vulnerabilityTimer > 2000 && this.vulnerabilityTimer < 3000) {
+      // Alternating sweep pattern - 3 bullets in a line
+      const sweepCount = 3
+      const baseAngle = Math.atan2(player.y - centerY, player.x - centerX)
+
+      for (let i = 0; i < sweepCount; i++) {
+        const angleOffset = (i - 1) * 0.2 // Small spread
+        const bulletAngle = baseAngle + angleOffset
+
+        const velocityX = Math.cos(bulletAngle) * this.bulletSpeed * 0.8
+        const velocityY = Math.sin(bulletAngle) * this.bulletSpeed * 0.8
+
+        const bullet = new Bullet(this.game, centerX, centerY, velocityX, velocityY, 'enemy', false)
+
+        this.game.addBullet(bullet)
+      }
+    }
+  }
+
+  spawnDroneAdd() {
+    // Spawn a drone enemy as reinforcement
+    const spawnX = this.game.width + 50
+    const spawnY = Math.random() * (this.game.height - 50) + 25
+
+    // Create and add a drone directly to the game
+    const droneAdd = new Enemy(this.game, spawnX, spawnY, 'drone')
+    this.game.enemies.push(droneAdd)
+
+    // Emit event for the spawn
+    this.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_SPAWNED, {
+      enemy: droneAdd,
+      spawner: this,
+      type: 'drone_add'
+    })
   }
 
   takeDamage(damage) {
@@ -745,6 +856,9 @@ export default class Enemy {
       case 'boss_sniper':
         this.drawBossSniper(ctx)
         break
+      case 'relay_warden':
+        this.drawRelayWarden(ctx)
+        break
     }
 
     // Draw health bar for damaged enemies
@@ -854,6 +968,89 @@ export default class Enemy {
     ctx.lineTo(this.x - 6, this.y + this.height / 2 + 3)
     ctx.closePath()
     ctx.fill()
+  }
+
+  /**
+   * Relay Warden boss behavior - implements two-phase mechanics
+   * Phase 1: Ring-beam sweeps with rotating gaps + fan bullets + occasional adds
+   * Phase 2: Split into two nodes with alternating sweep patterns
+   */
+  updateRelayWardenBehavior(deltaTime, moveSpeed, player) {
+    // Check for phase transition at 50% health
+    if (this.health <= this.maxHealth * 0.5 && !this.phaseTransitionTriggered) {
+      this.phase = 2
+      this.phaseTransitionTriggered = true
+      this.nodeMode = true
+      // Position this boss as the primary node in Phase 2
+      this.x = this.game.width * PHASE2_POSITION_X_FACTOR
+      this.y = this.game.height * PHASE2_POSITION_Y_FACTOR
+      // Note: Future enhancement could spawn a second synchronized node
+    }
+
+    if (this.phase === 1) {
+      this.updatePhase1Behavior(deltaTime, moveSpeed, player)
+    } else {
+      this.updatePhase2Behavior(deltaTime, moveSpeed, player)
+    }
+  }
+
+  updatePhase1Behavior(deltaTime, moveSpeed, player) {
+    // Slow horizontal movement - stays in back portion of screen
+    this.x -= moveSpeed * 0.15
+
+    // Gentle vertical movement - stays roughly centered
+    if (player) {
+      const centerY = this.game.height / 2 - this.height / 2
+      const dy = centerY - this.y
+      if (Math.abs(dy) > 30) {
+        this.y += Math.sign(dy) * moveSpeed * 0.2
+      }
+    }
+
+    // Update ring beam sweep
+    this.sweepAngle += this.sweepDirection * deltaTime * 0.001 // Slow sweep
+    if (this.sweepAngle > Math.PI * 2) {
+      this.sweepAngle = 0
+    }
+
+    // Ring beam active periods
+    this.moveTimer += deltaTime
+    if (this.moveTimer > 3000) {
+      // Every 3 seconds
+      this.ringBeamActive = !this.ringBeamActive
+      this.moveTimer = 0
+    }
+  }
+
+  updatePhase2Behavior(deltaTime, moveSpeed, _player) {
+    // Node behavior - more erratic movement
+    this.moveTimer += deltaTime
+
+    // Change target position every 2 seconds
+    if (this.moveTimer > 2000) {
+      this.targetY =
+        Math.random() * (this.game.height * PHASE2_TARGET_Y_RANGE) +
+        this.game.height * PHASE2_TARGET_Y_OFFSET
+      this.moveTimer = 0
+    }
+
+    // Move toward target
+    if (this.targetY) {
+      const dy = this.targetY - this.y
+      if (Math.abs(dy) > 5) {
+        this.y += Math.sign(dy) * moveSpeed * 0.3
+      }
+    }
+
+    // Slower horizontal movement in phase 2
+    this.x -= moveSpeed * 0.1
+
+    // Vulnerability windows
+    this.vulnerabilityTimer += deltaTime
+    if (this.vulnerabilityTimer > 4000) {
+      // 4 second cycles
+      this.vulnerabilityTimer = 0
+    }
   }
 
   drawBoss(ctx) {
@@ -991,5 +1188,120 @@ export default class Enemy {
     const healthPercent = this.health / this.maxHealth
     ctx.fillStyle = healthPercent > 0.5 ? '#00ff00' : healthPercent > 0.25 ? '#ffff00' : '#ff0000'
     ctx.fillRect(x, y, barWidth * healthPercent, barHeight)
+  }
+
+  drawRelayWarden(ctx) {
+    if (this.phase === 1) {
+      this.drawRelayWardenPhase1(ctx)
+    } else {
+      this.drawRelayWardenPhase2(ctx)
+    }
+  }
+
+  drawRelayWardenPhase1(ctx) {
+    // Phase 1: Large central core with ring structure
+    const centerX = this.x + this.width / 2
+    const centerY = this.y + this.height / 2
+
+    // Outer ring structure
+    ctx.strokeStyle = this.color
+    ctx.lineWidth = 4
+    ctx.beginPath()
+    ctx.arc(centerX, centerY, this.width * 0.4, 0, Math.PI * 2)
+    ctx.stroke()
+
+    // Inner core
+    ctx.fillStyle = this.color
+    ctx.fillRect(
+      this.x + this.width * 0.3,
+      this.y + this.height * 0.3,
+      this.width * 0.4,
+      this.height * 0.4
+    )
+
+    // Central energy core
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(
+      this.x + this.width * 0.4,
+      this.y + this.height * 0.4,
+      this.width * 0.2,
+      this.height * 0.2
+    )
+
+    // Ring beam sweep visualization (when active)
+    if (this.ringBeamActive) {
+      ctx.strokeStyle = '#ffff00'
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.moveTo(centerX, centerY)
+      ctx.lineTo(
+        centerX + Math.cos(this.sweepAngle) * this.width * 0.6,
+        centerY + Math.sin(this.sweepAngle) * this.width * 0.6
+      )
+      ctx.stroke()
+
+      // Rotating safe gap indicator
+      const gapAngle = this.sweepAngle + Math.PI
+      ctx.strokeStyle = '#00ff00'
+      ctx.beginPath()
+      ctx.moveTo(centerX, centerY)
+      ctx.lineTo(
+        centerX + Math.cos(gapAngle) * this.width * 0.6,
+        centerY + Math.sin(gapAngle) * this.width * 0.6
+      )
+      ctx.stroke()
+    }
+
+    // External relay nodes
+    for (let i = 0; i < 4; i++) {
+      const angle = (i / 4) * Math.PI * 2
+      const nodeX = centerX + Math.cos(angle) * this.width * 0.35
+      const nodeY = centerY + Math.sin(angle) * this.width * 0.35
+
+      ctx.fillStyle = '#00cccc'
+      ctx.fillRect(nodeX - 3, nodeY - 3, 6, 6)
+    }
+  }
+
+  drawRelayWardenPhase2(ctx) {
+    // Phase 2: Smaller node form
+    const centerX = this.x + this.width / 2
+    const centerY = this.y + this.height / 2
+
+    // Node body - smaller and more angular
+    ctx.fillStyle = this.color
+    ctx.fillRect(
+      this.x + this.width * 0.2,
+      this.y + this.height * 0.2,
+      this.width * 0.6,
+      this.height * 0.6
+    )
+
+    // Energy core - pulsing effect based on vulnerability timer
+    const pulseIntensity = Math.sin((this.vulnerabilityTimer / 1000) * Math.PI * 2) * 0.3 + 0.7
+    ctx.fillStyle = `rgba(255, 255, 255, ${pulseIntensity})`
+    ctx.fillRect(
+      this.x + this.width * 0.35,
+      this.y + this.height * 0.35,
+      this.width * 0.3,
+      this.height * 0.3
+    )
+
+    // Vulnerable window indicator
+    if (this.vulnerabilityTimer > 2000 && this.vulnerabilityTimer < 3000) {
+      ctx.strokeStyle = '#ff0000'
+      ctx.lineWidth = 3
+      ctx.strokeRect(this.x, this.y, this.width, this.height)
+    }
+
+    // Connection beam (visual effect)
+    ctx.strokeStyle = '#00ffff'
+    ctx.lineWidth = 1
+    ctx.setLineDash([5, 5])
+    ctx.beginPath()
+    ctx.moveTo(centerX, centerY)
+    ctx.lineTo(centerX + CONNECTION_BEAM_LENGTH, centerY + CONNECTION_BEAM_OFFSET_Y) // Pointing toward where node 2 would be
+    ctx.stroke()
+    ctx.setLineDash([])
   }
 }
