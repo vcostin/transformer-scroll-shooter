@@ -129,7 +129,9 @@ describe('Game', () => {
       expect(game.bullets).toEqual([])
       expect(game.powerups).toEqual([])
       expect(game.effects).toEqual([])
-      expect(game.messages).toEqual([])
+      // Game now shows initial story message, so we expect 1 message
+      expect(game.messages).toHaveLength(1)
+      expect(game.messages[0].text).toBe('Signal of the Last City')
     })
 
     it('should initialize FPS variables correctly', () => {
@@ -238,17 +240,18 @@ describe('Game', () => {
     it('should add boss message', () => {
       game.spawnBoss()
 
-      expect(game.messages.length).toBe(1)
+      // Game has initial story message + boss message = 2 total
+      expect(game.messages.length).toBe(2)
       // Boss messages can be specific (like "RELAY WARDEN SYSTEMS ONLINE!") or generic (containing "BOSS")
-      const message = game.messages[0].text
+      const bossMessage = game.messages[1].text // Boss message should be the second one
       const isValidBossMessage =
-        message.includes('BOSS') ||
-        message.includes('RELAY WARDEN') ||
-        message.includes('APPROACHING') ||
-        message.includes('INCOMING') ||
-        message.includes('DETECTED') ||
-        message.includes('TARGETING') ||
-        message.includes('ONLINE')
+        bossMessage.includes('BOSS') ||
+        bossMessage.includes('RELAY WARDEN') ||
+        bossMessage.includes('APPROACHING') ||
+        bossMessage.includes('INCOMING') ||
+        bossMessage.includes('DETECTED') ||
+        bossMessage.includes('TARGETING') ||
+        bossMessage.includes('ONLINE')
       expect(isValidBossMessage).toBe(true)
     })
   })
@@ -450,10 +453,12 @@ describe('Game', () => {
     it('should add message to messages array', () => {
       game.addMessage('Test Message', '#ff0000', 2000)
 
-      expect(game.messages.length).toBe(1)
-      expect(game.messages[0].text).toBe('Test Message')
-      expect(game.messages[0].color).toBe('#ff0000')
-      expect(game.messages[0].duration).toBe(2000)
+      // Game has initial story message + new message = 2 total
+      expect(game.messages.length).toBe(2)
+      const testMessage = game.messages[1] // Our new message should be second
+      expect(testMessage.text).toBe('Test Message')
+      expect(testMessage.color).toBe('#ff0000')
+      expect(testMessage.duration).toBe(2000)
     })
 
     it('should limit maximum messages', () => {
@@ -478,6 +483,8 @@ describe('Game', () => {
     })
 
     it('should remove expired messages', () => {
+      // Clear initial messages first to test cleanly
+      game.messages = []
       game.addMessage('Test', '#ffffff', 0)
 
       game.updateMessages()

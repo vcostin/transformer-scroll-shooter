@@ -249,7 +249,7 @@ const getStoryContent = (gameState, storyState, context) => {
       const chapter = getCurrentChapter(gameState)
       if (!chapter) return null
 
-      // Check if this chapter transition has already been viewed
+      // Check if the chapter transition has already been viewed
       const cutsceneKey = `chapter_${chapter.id}`
 
       if (storyState.viewedCutscenes?.has(cutsceneKey)) {
