@@ -16,6 +16,7 @@ const CRITICAL_HEALTH_THRESHOLD = 0.25
 const BOB_PERIOD_MS = 1000
 const BOB_WAVE_CYCLE = Math.PI * 2
 const BOB_AMPLITUDE_FACTOR = 0.2
+const MOVEMENT_SPEED_MULTIPLIER = 0.8
 
 export default class Enemy {
   constructor(game, x, y, type) {
@@ -233,7 +234,7 @@ export default class Enemy {
           this.moveTimer = 0
           this.zigDirection = this.zigDirection === 1 ? -1 : 1
         }
-        this.y += this.zigDirection * moveSpeed * 0.8
+        this.y += this.zigDirection * moveSpeed * MOVEMENT_SPEED_MULTIPLIER
         break
       }
       case 'turret': {
@@ -283,7 +284,7 @@ export default class Enemy {
 
         const scoutTargetDy = this.targetY - this.y
         if (Math.abs(scoutTargetDy) > 5) {
-          this.y += Math.sign(scoutTargetDy) * moveSpeed * 0.8
+          this.y += Math.sign(scoutTargetDy) * moveSpeed * MOVEMENT_SPEED_MULTIPLIER
         }
         break
       }
@@ -320,7 +321,7 @@ export default class Enemy {
       }
       case 'boss_fast': {
         // Fast boss - quick horizontal movement with aggressive tracking
-        this.x -= moveSpeed * 0.8 // Faster than regular boss
+        this.x -= moveSpeed * MOVEMENT_SPEED_MULTIPLIER // Faster than regular boss
 
         // Aggressive vertical tracking
         if (player) {

@@ -5,6 +5,10 @@
  * Supports multiple bullet types with different properties.
  */
 
+// Constants
+const SEED_HOMING_RANGE = 400
+const MIN_DISTANCE_EPSILON = 1e-6
+
 export default class Bullet {
   constructor(game, x, y, velocityX, velocityY, type, friendly) {
     this.game = game
@@ -79,9 +83,9 @@ export default class Bullet {
       if (player) {
         const dx = player.x - this.x
         const dy = player.y - this.y
-        const dist = Math.hypot(dx, dy) || 1
-        // Only home if within reasonable range (e.g., 400 pixels)
-        if (dist < 400) {
+        const dist = Math.hypot(dx, dy)
+        // Only home if within reasonable range and not too close to avoid division issues
+        if (dist < SEED_HOMING_RANGE && dist > MIN_DISTANCE_EPSILON) {
           // Desired velocity towards player at seed speed
           const desiredVX = (dx / dist) * this.speed
           const desiredVY = (dy / dist) * this.speed
