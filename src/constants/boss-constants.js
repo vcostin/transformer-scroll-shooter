@@ -3,14 +3,15 @@
  */
 
 // Boss type definitions - centralized to avoid duplication
-export const BOSS_TYPES = ['boss', 'boss_heavy', 'boss_fast', 'boss_sniper']
+export const BOSS_TYPES = ['boss', 'boss_heavy', 'boss_fast', 'boss_sniper', 'relay_warden']
 
 // Boss message mappings
 export const BOSS_MESSAGES = {
   boss: 'BOSS APPROACHING!',
   boss_heavy: 'HEAVY ASSAULT BOSS INCOMING!',
   boss_fast: 'FAST ATTACK BOSS DETECTED!',
-  boss_sniper: 'SNIPER BOSS TARGETING YOU!'
+  boss_sniper: 'SNIPER BOSS TARGETING YOU!',
+  relay_warden: 'RELAY WARDEN SYSTEMS ONLINE!'
 }
 
 // Boss configuration data structure
@@ -58,5 +59,25 @@ export const BOSS_CONFIGS = {
     color: '#9400D3',
     shootRate: 1500,
     bulletSpeed: 400
+  },
+  relay_warden: {
+    width: 120,
+    height: 100,
+    maxHealth: 400,
+    speed: 30,
+    damage: 60,
+    points: 1000,
+    color: '#00FFFF',
+    shootRate: 2000,
+    bulletSpeed: 200,
+    // Phase-specific properties
+    phase: 1,
+    sweepAngle: 0,
+    sweepDirection: 1,
+    vulnerabilityTimer: 0,
+    ringBeamActive: false,
+    nodeMode: false,
+    node1: null,
+    node2: null
   }
 }
