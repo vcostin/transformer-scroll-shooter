@@ -176,13 +176,15 @@ Power-ups can combine for enhanced effects:
 
 When running locally, you can toggle the spec-driven Level 1 parallax background and override direction using URL query params:
 
-- `?parallax=level1` — Use the Level 1 parallax spec (`docs/creative/specs/LEVEL1_PARALLAX.json`) for the background in-game.
+- `?parallax=level1` — Use the Level 1 parallax spec (`docs/creative/specs/LEVEL1_PARALLAX.json`) for the background in-game. Tip: this is also auto-enabled when `?enemies=level1` is present.
+- `?enemies=level1` — Enable the Level 1 enemy set (Drone, Turret, Seeder) with new behaviors and homing seed bullets. Also auto-enables Level 1 parallax.
 - `?dir=left|right` — Optional override for scroll direction. If omitted or invalid, the default from the level spec is used (currently `right` for Level 1).
 
 Examples:
 
 - http://localhost:8080/?parallax=level1
-- http://localhost:8080/?parallax=level1&dir=left
+- http://localhost:8080/?enemies=level1 (includes parallax)
+- http://localhost:8080/?enemies=level1&dir=left
 - http://localhost:8080/?parallax=level1&dir=right
 
 ### Version Management
