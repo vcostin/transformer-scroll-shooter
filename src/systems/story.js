@@ -22,7 +22,18 @@ const createStoryState = () => ({
   lastMessageTime: 0
 })
 
-// Story Content Database (Immutable Data)
+/**
+ * Story chapters define major narrative milestones and environmental context
+ * @constant {Object} STORY_CHAPTERS
+ * @property {Object} prologue - Starting chapter for new players
+ * @property {Object} cloudline - First major zone: Neon Ossuary
+ * @property {Object} relay07 - Relay Warden zone: Broken Chorus
+ * @property {Object} bloomfront - Terraformer zone: Greenfire Horizon
+ *
+ * @example
+ * const chapter = STORY_CHAPTERS.cloudline
+ * // { id: 'cloudline', title: 'Cloudline: Neon Ossuary', description: '...', unlockCondition: fn }
+ */
 const STORY_CHAPTERS = {
   prologue: {
     id: 'prologue',
@@ -53,6 +64,18 @@ const STORY_CHAPTERS = {
   }
 }
 
+/**
+ * Story logs are collectible narrative fragments that unlock based on player progress
+ * @constant {Object} STORY_LOGS
+ * @property {Object} terraformer_signal - Enemy kill milestone (5+ enemies)
+ * @property {Object} relay_warden_memory - Boss defeat milestone (1+ bosses)
+ * @property {Object} morphing_core_awakening - Powerup milestone (3+ powerups)
+ * @property {Object} city_memory - Level progression milestone (level 3+)
+ *
+ * @example
+ * const log = STORY_LOGS.terraformer_signal
+ * // { id: 'terraformer_signal', title: 'Last Transmission', content: '...', unlockCondition: fn, category: 'transmission' }
+ */
 const STORY_LOGS = {
   terraformer_signal: {
     id: 'terraformer_signal',
@@ -91,6 +114,16 @@ const STORY_LOGS = {
   }
 }
 
+/**
+ * Boss narratives provide context and personality for boss encounters across all phases
+ * @constant {Object} BOSS_NARRATIVES
+ * @property {Object} relay_warden - Level 1 boss: Confused AI guardian with identity crisis
+ * @property {Object} terraformer_prime - Future boss: Orbital terraforming platform
+ *
+ * @example
+ * const narrative = BOSS_NARRATIVES.relay_warden
+ * // { id: 'relay_warden', preIntro: '...', intro: "I'M NO BOSS!", phaseTransition: '...', defeat: '...', postDefeat: '...' }
+ */
 const BOSS_NARRATIVES = {
   relay_warden: {
     id: 'relay_warden',
