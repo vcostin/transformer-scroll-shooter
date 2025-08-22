@@ -18,6 +18,11 @@ const BOB_WAVE_CYCLE = Math.PI * 2
 const BOB_AMPLITUDE_FACTOR = 0.2
 const MOVEMENT_SPEED_MULTIPLIER = 0.8
 
+// Relay Warden specific constants
+const DRONE_SPAWN_PROBABILITY = 0.2
+const CONNECTION_BEAM_LENGTH = 100
+const CONNECTION_BEAM_OFFSET_Y = -50
+
 export default class Enemy {
   constructor(game, x, y, type) {
     this.game = game
@@ -482,7 +487,7 @@ export default class Enemy {
     }
 
     // Occasionally spawn drone adds (20% chance)
-    if (Math.random() < 0.2) {
+    if (Math.random() < DRONE_SPAWN_PROBABILITY) {
       this.spawnDroneAdd()
     }
   }
@@ -972,9 +977,10 @@ export default class Enemy {
       this.phase = 2
       this.phaseTransitionTriggered = true
       this.nodeMode = true
-      // Position this enemy as node 1, we'll spawn node 2 separately
+      // Position this boss as the primary node in Phase 2
       this.x = this.game.width * 0.75
       this.y = this.game.height * 0.25
+      // Note: Future enhancement could spawn a second synchronized node
     }
 
     if (this.phase === 1) {
@@ -1288,7 +1294,7 @@ export default class Enemy {
     ctx.setLineDash([5, 5])
     ctx.beginPath()
     ctx.moveTo(centerX, centerY)
-    ctx.lineTo(centerX + 100, centerY - 50) // Pointing toward where node 2 would be
+    ctx.lineTo(centerX + CONNECTION_BEAM_LENGTH, centerY + CONNECTION_BEAM_OFFSET_Y) // Pointing toward where node 2 would be
     ctx.stroke()
     ctx.setLineDash([])
   }
