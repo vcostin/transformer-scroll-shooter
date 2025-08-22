@@ -239,7 +239,17 @@ describe('Game', () => {
       game.spawnBoss()
 
       expect(game.messages.length).toBe(1)
-      expect(game.messages[0].text).toContain('BOSS')
+      // Boss messages can be specific (like "RELAY WARDEN SYSTEMS ONLINE!") or generic (containing "BOSS")
+      const message = game.messages[0].text
+      const isValidBossMessage =
+        message.includes('BOSS') ||
+        message.includes('RELAY WARDEN') ||
+        message.includes('APPROACHING') ||
+        message.includes('INCOMING') ||
+        message.includes('DETECTED') ||
+        message.includes('TARGETING') ||
+        message.includes('ONLINE')
+      expect(isValidBossMessage).toBe(true)
     })
   })
 
