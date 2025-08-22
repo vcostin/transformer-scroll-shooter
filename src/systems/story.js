@@ -134,7 +134,9 @@ const getAvailableLogs = (gameState, viewedLogs = new Set()) => {
   return Object.values(STORY_LOGS)
     .filter(log => isUnlocked(log, gameState))
     .filter(log => !viewedLogs.has(log.id))
-} /**
+}
+
+/**
  * Get current chapter based on game progress
  * @param {Object} gameState - Current game state
  * @returns {Object|null} - Current chapter object or null
