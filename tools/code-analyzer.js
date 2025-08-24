@@ -1,427 +1,296 @@
 #!/usr/bin/env node
 
 /**
- * Custom Code Analysis for Transformer Scroll Shooter
+ * POJO+Functional Architecture Analyzer
  *
- * Performs local static analysis to catch patterns before GitHub PR review
- * Focuses on POJO + Functional architecture compliance and code quality
+ * General code analyzer for POJO+Functional architecture compliance
+ * Detects ES6 class usage, architecture violations, and migration opportunities
+ * Supports the ongoing migration from ES6 classes to factory functions
  */
 
 import { readFileSync, existsSync } from 'fs'
 import { glob } from 'glob'
 import path from 'path'
+import { MIGRATED_FILES, TOOL_FILES, LEGACY_FILES } from './migration-config.js'
 
-class CodeAnalyzer {
+class ArchitectureAnalyzer {
   constructor() {
     this.issues = []
     this.stats = {
       filesAnalyzed: 0,
       totalLines: 0,
-      issuesFound: 0
+      issuesFound: 0,
+      migratedFiles: 0,
+      legacyFiles: 0
     }
 
-    this.patterns = {
-      // POJO + Functional violations
-      thisKeywords: {
-        regex: /\bthis\./g,
-        severity: 'high',
-        category: 'architecture',
-        message: 'Using "this" keyword - violates POJO + Functional pattern',
-        suggestion: 'Convert to factory function with closures instead of class'
-      },
+    // Use shared configuration
+    this.migratedFiles = MIGRATED_FILES
+    this.toolFiles = TOOL_FILES
+    this.legacyFiles = LEGACY_FILES
 
-      classConstructors: {
-        regex: /class\s+\w+.*{/g,
+    this.patterns = {
+      // Core POJO+Functional Architecture Violations
+      classDeclarations: {
+        regex: /class\s+(\w+).*{/g,
         severity: 'high',
         category: 'architecture',
-        message: 'ES6 class usage - should use factory pattern',
+        message: 'ES6 class detected - should use factory function pattern',
         suggestion: 'Replace with createComponentName() factory function'
       },
 
-      // Performance issues
+      thisKeywordUsage: {
+        regex: /\bthis\./g,
+        severity: 'high',
+        category: 'architecture',
+        message: 'Using "this" keyword - violates POJO+Functional pattern',
+        suggestion: 'Use closure variables and factory functions instead'
+      },
+
+      constructorPatterns: {
+        regex: /constructor\s*\([^)]*\)\s*{/g,
+        severity: 'high',
+        category: 'architecture',
+        message: 'ES6 constructor detected - convert to factory function',
+        suggestion: 'Replace constructor with initialization parameters in factory function'
+      },
+
+      newKeywordUsage: {
+        regex: /new\s+[A-Z]\w*\(/g,
+        severity: 'medium',
+        category: 'architecture',
+        message: 'Using "new" keyword - consider factory function',
+        suggestion: 'Use createComponentName() factory function instead of "new"'
+      },
+
+      methodBinding: {
+        regex: /\w+\.bind\(this\)/g,
+        severity: 'high',
+        category: 'architecture',
+        message: 'Method binding with "this" - indicates class usage',
+        suggestion: 'Use closure variables to eliminate need for binding'
+      },
+
+      // Factory Function Pattern Detection (Good Patterns)
+      factoryFunctions: {
+        regex: /function\s+create[A-Z]\w*\(/g,
+        severity: 'good',
+        category: 'architecture',
+        message: 'Factory function detected - good POJO+Functional pattern',
+        suggestion: 'Continue using factory function patterns'
+      },
+
+      // Common Migration Opportunities
+      staticMethods: {
+        regex: /static\s+\w+\s*\(/g,
+        severity: 'medium',
+        category: 'migration',
+        message: 'Static method detected - can be extracted to pure function',
+        suggestion: 'Move static methods to pure functions outside the class'
+      },
+
+      // Performance and Quality Patterns
       inefficientLoops: {
-        regex: /for.*in.*Object\.(keys|values|entries)/g,
+        regex: /for\s*\(\s*\w+\s+in\s+Object\.(keys|values|entries)/g,
         severity: 'medium',
         category: 'performance',
         message: 'Inefficient object iteration pattern',
         suggestion: 'Use for...of with Object.entries() directly'
       },
 
-      repeatedCalculations: {
-        regex: /\w+\(\)\s*[+\-*/]/g,
-        severity: 'medium',
-        category: 'performance',
-        message: 'Potential repeated function call in calculation',
-        suggestion: 'Cache function result in variable'
-      },
-
-      getTotalCalls: {
-        regex: /getTotalEnemiesKilled\(\)/g,
-        severity: 'medium',
-        category: 'performance',
-        message: 'Using expensive calculation method',
-        suggestion: 'Use direct enemiesKilled property instead'
-      },
-
-      // Security concerns
       directDOMAccess: {
-        regex: /document\.(getElementById|querySelector)/g,
-        severity: 'medium',
-        category: 'security',
-        message: 'Direct DOM access - potential XSS risk',
-        suggestion: 'Use canvas-based rendering or validated DOM access'
-      },
-
-      consoleLeftovers: {
-        regex: /console\.(log|debug)(?!\s*\/\/)/g,
-        severity: 'low',
-        category: 'cleanup',
-        message: 'Debug console statement left in code',
-        suggestion: 'Remove debug console.log or use proper logging'
-      },
-
-      // Architecture smells
-      circularDeps: {
-        regex: /import.*from.*\.\./g,
+        regex: /document\.(getElementById|querySelector|createElement)/g,
         severity: 'medium',
         category: 'architecture',
-        message: 'Relative import - potential circular dependency',
-        suggestion: 'Use absolute imports or restructure dependencies'
+        message: 'Direct DOM access - consider canvas-based approach',
+        suggestion: 'Use canvas rendering or encapsulated DOM access'
       },
 
-      magicNumbers: {
-        regex: /\b(?<!\/\/.*)\d{3,}\b(?![px%ms])/g,
+      consoleStatements: {
+        regex: /console\.(log|debug|warn)(?!\s*\/\/)/g,
         severity: 'low',
-        category: 'maintainability',
-        message: 'Magic number - should be named constant',
-        suggestion: 'Extract to named constant in constants file'
+        category: 'cleanup',
+        message: 'Console statement in code',
+        suggestion: 'Remove debug statements or use proper logging'
       },
 
-      // Error handling
-      bareThrows: {
-        regex: /throw\s+new\s+Error\s*\(/g,
-        severity: 'medium',
-        category: 'error-handling',
-        message: 'Generic Error throw - should be specific',
-        suggestion: 'Use specific error types or custom error classes'
-      },
-
+      // Error Handling
       uncaughtPromises: {
-        regex: /\.then\(.*\)(?!\s*\.catch)/g,
+        regex: /\.then\([^)]*\)(?!\s*\.catch)/g,
         severity: 'high',
         category: 'error-handling',
         message: 'Promise without error handling',
         suggestion: 'Add .catch() handler for promise rejection'
       }
     }
+  }
 
-    // Architecture-specific rules for different directories
-    this.architectureRules = {
-      'src/ui/': {
-        name: 'UI Components POJO+Functional',
-        rules: [
-          {
-            pattern: /class\s+\w+/,
-            message: 'UI component should use factory pattern, not ES6 class',
-            severity: 'high'
-          },
-          {
-            pattern: /\bthis\./,
-            message: 'UI component should use closures, not "this" keyword',
-            severity: 'high'
-          }
-        ]
-      },
-      'src/entities/': {
-        name: 'Entity Architecture',
-        rules: [
-          {
-            pattern: /new\s+\w+\(/,
-            message: 'Consider using factory pattern for entities',
-            severity: 'medium'
-          }
-        ]
-      },
-      'src/systems/': {
-        name: 'System Architecture',
-        rules: [
-          {
-            pattern: /setTimeout|setInterval/,
-            message: 'Use requestAnimationFrame or event-driven patterns',
-            severity: 'medium'
-          }
-        ]
+  isToolFile(filePath) {
+    return this.toolFiles.some(pattern => {
+      // Convert glob pattern to simple directory check
+      if (pattern.includes('/**')) {
+        const baseDir = pattern.replace('/**', '')
+        return filePath.includes(baseDir)
       }
-    }
+      // For simple patterns, just check if path contains the pattern
+      return filePath.includes(pattern.replace(/\*/g, ''))
+    })
+  }
+
+  isMigratedFile(filePath) {
+    return this.migratedFiles.some(migrated => filePath.includes(migrated))
   }
 
   analyzeFile(filePath) {
-    if (!existsSync(filePath)) return
-
-    const content = readFileSync(filePath, 'utf8')
-    const relativePath = path.relative(process.cwd(), filePath)
-
-    // Skip test files, node_modules, and build output
-    if (
-      relativePath.includes('test') ||
-      relativePath.includes('node_modules') ||
-      relativePath.includes('dist') ||
-      relativePath.includes('coverage')
-    ) {
-      return
+    if (this.isToolFile(filePath)) {
+      return // Skip tool files
     }
 
-    this.stats.filesAnalyzed++
-    this.stats.totalLines += content.split('\n').length
+    try {
+      const content = readFileSync(filePath, 'utf8')
+      const lines = content.split('\n')
 
-    this.checkPatterns(content, relativePath)
-    this.checkArchitecturalRules(content, relativePath)
-    this.checkSpecificIssues(content, relativePath)
-  }
+      this.stats.filesAnalyzed++
+      this.stats.totalLines += lines.length
 
-  checkPatterns(content, filePath) {
-    const lines = content.split('\n')
+      // Track migration status
+      if (this.isMigratedFile(filePath)) {
+        this.stats.migratedFiles++
+      } else {
+        this.stats.legacyFiles++
+      }
 
-    Object.entries(this.patterns).forEach(([patternName, patternConfig]) => {
-      lines.forEach((line, index) => {
-        const matches = line.match(patternConfig.regex)
-        if (matches) {
-          matches.forEach(match => {
-            this.issues.push({
-              type: 'pattern',
-              severity: patternConfig.severity,
-              category: patternConfig.category,
-              file: filePath,
-              line: index + 1,
-              pattern: patternName,
-              code: line.trim(),
-              match: match,
-              message: patternConfig.message,
-              suggestion: patternConfig.suggestion
-            })
+      Object.entries(this.patterns).forEach(([patternName, pattern]) => {
+        const matches = content.match(pattern.regex) || []
+
+        matches.forEach(match => {
+          const lineIndex = content.substring(0, content.indexOf(match)).split('\n').length
+
+          this.issues.push({
+            file: filePath,
+            line: lineIndex,
+            pattern: patternName,
+            severity: pattern.severity,
+            category: pattern.category,
+            message: pattern.message,
+            suggestion: pattern.suggestion,
+            code: match,
+            migrated: this.isMigratedFile(filePath)
           })
-        }
-      })
-    })
-  }
-
-  checkArchitecturalRules(content, filePath) {
-    Object.entries(this.architectureRules).forEach(([directory, ruleSet]) => {
-      if (filePath.includes(directory)) {
-        ruleSet.rules.forEach(rule => {
-          if (content.match(rule.pattern)) {
-            this.issues.push({
-              type: 'architecture',
-              severity: rule.severity,
-              category: 'architecture',
-              file: filePath,
-              rule: ruleSet.name,
-              message: rule.message,
-              suggestion: 'Follow POJO + Functional architecture patterns'
-            })
-          }
         })
-      }
-    })
-  }
-
-  checkSpecificIssues(content, filePath) {
-    // Check for proper error boundaries
-    if (content.includes('try {') && !content.includes('finally {')) {
-      this.issues.push({
-        type: 'error-handling',
-        severity: 'medium',
-        category: 'error-handling',
-        file: filePath,
-        message: 'Try-catch should consider cleanup in finally block',
-        suggestion: 'Add finally block for resource cleanup'
       })
-    }
-
-    // Check for missing JSDoc on exported functions
-    const exportedFunctions = content.match(/export\s+(function|const\s+\w+\s*=)/g)
-    const jsdocBlocks = content.match(/\/\*\*[\s\S]*?\*\//g) || []
-
-    if (exportedFunctions && exportedFunctions.length > jsdocBlocks.length) {
-      this.issues.push({
-        type: 'documentation',
-        severity: 'low',
-        category: 'maintainability',
-        file: filePath,
-        message: 'Missing JSDoc documentation on exported functions',
-        suggestion: 'Add JSDoc comments for better code documentation'
-      })
-    }
-
-    // Check for POJO+Functional compliance in UI components
-    if (filePath.includes('src/ui/') && !filePath.includes('.test.js')) {
-      if (content.includes('class ') && !content.includes('// Legacy class')) {
-        this.issues.push({
-          type: 'architecture',
-          severity: 'high',
-          category: 'architecture',
-          file: filePath,
-          message: 'UI component should use factory pattern, not ES6 classes',
-          suggestion: 'Convert to createComponentName() factory function'
-        })
-      }
+    } catch (error) {
+      console.error(`Error analyzing ${filePath}:`, error.message)
     }
   }
 
   generateReport() {
-    this.stats.issuesFound = this.issues.length
+    // Filter out issues from migrated files (for legacy wrapper compatibility)
+    const activeIssues = this.issues.filter(issue => !issue.migrated || issue.severity === 'high')
 
-    const grouped = this.issues.reduce((acc, issue) => {
-      const key = `${issue.severity}`
-      acc[key] = acc[key] || []
-      acc[key].push(issue)
-      return acc
-    }, {})
+    this.stats.issuesFound = activeIssues.length
 
-    const categoryGroups = this.issues.reduce((acc, issue) => {
-      const key = issue.category || 'other'
-      acc[key] = acc[key] || []
-      acc[key].push(issue)
-      return acc
-    }, {})
+    console.log('\n📊 POJO+Functional Architecture Analysis Report')
+    console.log('='.repeat(60))
 
-    console.log('\n🔍 LOCAL CODE ANALYSIS REPORT')
-    console.log('='.repeat(50))
-    console.log(`📊 Files Analyzed: ${this.stats.filesAnalyzed}`)
-    console.log(`📏 Total Lines: ${this.stats.totalLines}`)
-    console.log(`⚠️  Issues Found: ${this.stats.issuesFound}`)
-    console.log('='.repeat(50))
+    // Migration Progress
+    console.log('\n🚀 Migration Progress:')
+    console.log(`   Migrated Files: ${this.stats.migratedFiles}`)
+    console.log(`   Legacy Files: ${this.stats.legacyFiles}`)
+    const migrationPercent = Math.round(
+      (this.stats.migratedFiles / (this.stats.migratedFiles + this.stats.legacyFiles)) * 100
+    )
+    console.log(`   Progress: ${migrationPercent}% migrated to POJO+Functional`)
 
-    if (this.issues.length === 0) {
-      console.log('✅ No issues found! Code quality looks good.')
+    // Overall Stats
+    console.log('\n📈 Analysis Statistics:')
+    console.log(`   Files Analyzed: ${this.stats.filesAnalyzed}`)
+    console.log(`   Total Lines: ${this.stats.totalLines}`)
+    console.log(`   Issues Found: ${this.stats.issuesFound}`)
+
+    if (activeIssues.length === 0) {
+      console.log('\n✅ No architecture violations found!')
+      console.log('   All analyzed code follows POJO+Functional patterns')
       return
     }
 
-    // Summary by severity
-    console.log('\n📈 ISSUE SUMMARY:')
-    Object.entries(grouped).forEach(([severity, issues]) => {
-      const icon = severity === 'high' ? '🚨' : severity === 'medium' ? '⚠️' : 'ℹ️'
-      console.log(`${icon} ${severity.toUpperCase()}: ${issues.length} issues`)
-    })
-
-    // Summary by category
-    console.log('\n🏷️  BY CATEGORY:')
-    Object.entries(categoryGroups).forEach(([category, issues]) => {
-      const icon = this.getCategoryIcon(category)
-      console.log(`${icon} ${category}: ${issues.length} issues`)
-    })
-
-    // Detailed issues
-    console.log('\n📋 DETAILED ISSUES:')
-    console.log('-'.repeat(50))
-
-    // Sort by severity (high -> medium -> low)
-    const severityOrder = { high: 0, medium: 1, low: 2 }
-    const sortedIssues = this.issues.sort(
-      (a, b) => severityOrder[a.severity] - severityOrder[b.severity]
-    )
-
-    sortedIssues.forEach((issue, index) => {
-      const icon = issue.severity === 'high' ? '🚨' : issue.severity === 'medium' ? '⚠️' : 'ℹ️'
-      const categoryIcon = this.getCategoryIcon(issue.category)
-
-      console.log(
-        `\n${index + 1}. ${icon} ${issue.severity.toUpperCase()} - ${categoryIcon} ${issue.category}`
-      )
-      console.log(`   📄 ${issue.file}${issue.line ? ':' + issue.line : ''}`)
-      console.log(`   � ${issue.message}`)
-      if (issue.code) {
-        console.log(`   📝 Code: ${issue.code}`)
-      }
-
-      if (issue.match) {
-        console.log(`   🎯 Match: ${issue.match}`)
-      }
-      console.log(`   💡 ${issue.suggestion}`)
-    })
-
-    console.log('\n' + '='.repeat(50))
-    this.generateSuggestions()
-  }
-
-  getCategoryIcon(category) {
-    const icons = {
-      architecture: '🏗️',
-      performance: '⚡',
-      security: '🔒',
-      'error-handling': '🛡️',
-      maintainability: '🔧',
-      cleanup: '🧹',
-      documentation: '📚'
-    }
-    return icons[category] || '❓'
-  }
-
-  generateSuggestions() {
-    const highSeverityCount = this.issues.filter(i => i.severity === 'high').length
-    const architectureIssues = this.issues.filter(i => i.category === 'architecture').length
-
-    console.log('🎯 RECOMMENDATIONS:')
-
-    if (highSeverityCount > 0) {
-      console.log(`⚠️  Address ${highSeverityCount} high-severity issues first`)
+    // Group issues by severity and category
+    const severityGroups = {
+      high: activeIssues.filter(issue => issue.severity === 'high'),
+      medium: activeIssues.filter(issue => issue.severity === 'medium'),
+      low: activeIssues.filter(issue => issue.severity === 'low'),
+      good: activeIssues.filter(issue => issue.severity === 'good')
     }
 
-    if (architectureIssues > 0) {
-      console.log(
-        `🏗️  ${architectureIssues} architecture issues found - consider POJO+Functional migration`
-      )
+    // High priority issues
+    if (severityGroups.high.length > 0) {
+      console.log('\n🚨 High Priority Architecture Issues:')
+      severityGroups.high.forEach(issue => {
+        console.log(`   ${issue.file}:${issue.line}`)
+        console.log(`     Issue: ${issue.message}`)
+        console.log(`     Fix: ${issue.suggestion}`)
+        console.log(`     Code: ${issue.code.trim()}`)
+        console.log('')
+      })
     }
 
-    const performanceIssues = this.issues.filter(i => i.category === 'performance').length
-    if (performanceIssues > 0) {
-      console.log(`⚡ ${performanceIssues} performance optimizations available`)
+    // Medium priority issues
+    if (severityGroups.medium.length > 0) {
+      console.log('\n⚠️  Medium Priority Issues:')
+      severityGroups.medium.forEach(issue => {
+        console.log(`   ${issue.file}:${issue.line} - ${issue.message}`)
+      })
     }
 
-    console.log('\n💡 NEXT STEPS:')
-    console.log('1. Fix high-severity issues first')
-    console.log('2. Run `npm run analyze:watch` for continuous monitoring')
-    console.log('3. Consider setting up pre-commit hooks for automatic checks')
-    console.log('4. Use GitHub Copilot reviews for complex architectural decisions')
+    // Good patterns found
+    if (severityGroups.good.length > 0) {
+      console.log('\n✅ Good POJO+Functional Patterns Found:')
+      severityGroups.good.forEach(issue => {
+        console.log(`   ${issue.file}:${issue.line} - ${issue.message}`)
+      })
+    }
+
+    // Migration recommendations
+    console.log('\n🔧 Next Steps:')
+    console.log('1. Fix high-severity architecture violations first')
+    console.log('2. Focus migration efforts on files with most violations')
+    console.log('3. Use factory function patterns for new code')
+    console.log('4. Consider Phase 4 migration for remaining systems')
   }
 
   async run() {
-    console.log('🔍 Starting Custom Code Analysis...')
-    console.log('Focusing on POJO + Functional Architecture Compliance\n')
+    console.log('🏗️  Starting POJO+Functional Architecture Analysis...')
+    console.log('Analyzing codebase for migration opportunities\n')
+
+    const patterns = [
+      'src/**/*.js',
+      '!src/**/*.test.js',
+      '!test/**/*.js',
+      '!tests/**/*.js',
+      '!tools/**/*.js'
+    ]
 
     try {
-      const files = await glob(['src/**/*.js', '!src/**/*.test.js', '!src/**/*.spec.js'])
+      const files = await glob(patterns)
 
       if (files.length === 0) {
-        console.log('❌ No JavaScript files found to analyze')
+        console.log('No JavaScript files found to analyze')
         return
       }
 
-      console.log(`📁 Found ${files.length} files to analyze...`)
-
       files.forEach(file => this.analyzeFile(file))
-
       this.generateReport()
-
-      // Exit code for CI integration
-      const criticalIssues = this.issues.filter(i => i.severity === 'high').length
-      if (criticalIssues > 0) {
-        console.log(`\n❌ Analysis failed: ${criticalIssues} high-severity issues found`)
-        process.exit(1)
-      } else {
-        console.log('\n✅ Analysis passed: No critical issues found')
-        process.exit(0)
-      }
     } catch (error) {
-      console.error('❌ Analysis failed with error:', error.message)
+      console.error('Analysis failed:', error.message)
       process.exit(1)
     }
   }
 }
 
-// Run if called directly
+// Run the analyzer if called directly
 if (import.meta.url === `file://${process.argv[1]}`) {
-  new CodeAnalyzer().run()
+  const analyzer = new ArchitectureAnalyzer()
+  analyzer.run()
 }
 
-export { CodeAnalyzer }
+export { ArchitectureAnalyzer }

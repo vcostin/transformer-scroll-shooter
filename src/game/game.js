@@ -1,6 +1,7 @@
 /**
- * Main Game Class - ES Module Version
+ * Game POJO+Functional - Core Engine Module
  * Core game engine handling game loop, state management, and coordination
+ * Migrated to POJO+Functional pattern for better testability and composition.
  */
 
 import { GAME_CONSTANTS } from '@/constants/game-constants.js'
@@ -32,74 +33,113 @@ import createChapterTransition from '@/ui/ChapterTransition.js'
 import createBossDialogue from '@/ui/BossDialogue.js'
 import createStoryJournal from '@/ui/StoryJournal.js'
 
-export class Game {
-  constructor() {
-    /** @type {HTMLCanvasElement} */
-    this.canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('gameCanvas'))
-    this.ctx = this.canvas.getContext('2d')
-    this.width = this.canvas.width
-    this.height = this.canvas.height
+/**
+ * Create a new game state object
+ * @returns {Object} Game state object
+ */
+export function createGame() {
+  /** @type {HTMLCanvasElement} */
+  const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('gameCanvas'))
+  const ctx = canvas.getContext('2d')
+
+  const game = {
+    canvas,
+    ctx,
+    width: canvas.width,
+    height: canvas.height,
 
     // Game objects
-    this.player = null
-    this.enemies = []
-    this.bullets = []
-    this.powerups = []
-    this.effects = []
-    this.background = null
-    this.messages = []
+    player: null,
+    enemies: [],
+    bullets: [],
+    powerups: [],
+    effects: [],
+    background: null,
+    messages: [],
 
     // Timing
-    this.lastTime = 0
-    this.deltaTime = 0
-    this.enemySpawnTimer = 0
-    this.powerupSpawnTimer = 0
-    this.fps = 60
-    this.frameCount = 0
-    this.fpsTimer = 0
-    this.animationFrameId = null
+    lastTime: 0,
+    deltaTime: 0,
+    enemySpawnTimer: 0,
+    powerupSpawnTimer: 0,
+    fps: 60,
+    frameCount: 0,
+    fpsTimer: 0,
+    animationFrameId: null,
 
     // Animation frame aliases for easier testing
-    this.requestAnimationFrame = requestAnimationFrame.bind(window)
-    this.cancelAnimationFrame = cancelAnimationFrame.bind(window)
+    requestAnimationFrame: requestAnimationFrame.bind(window),
+    cancelAnimationFrame: cancelAnimationFrame.bind(window),
 
-    // Systems
-    this.eventDispatcher = new EventDispatcher()
-    this.stateManager = stateManager
-    this.audio = new AudioManager()
-    this.effectManager = new EffectManager(this.eventDispatcher)
-    this.options = new OptionsMenu(this, this.eventDispatcher, this.stateManager)
-
-    // Initialize UI systems with error handling
-    try {
-      this.chapterTransition = createChapterTransition(this.canvas, this.eventDispatcher)
-      this.bossDialogue = createBossDialogue(this.canvas, this.eventDispatcher)
-      this.storyJournal = createStoryJournal(this.eventDispatcher, this.stateManager)
-    } catch (err) {
-      console.error('UI system initialization failed:', err)
-      this.chapterTransition = null
-      this.bossDialogue = null
-      this.storyJournal = null
-    }
-
-    // Additional properties that need to be available
-    this.enemiesPerLevel = GAME_CONSTANTS.ENEMIES_PER_LEVEL
-    this.currentBossType = null // Track current boss type for narratives
-    this.lastShownTransition = null // Track last shown transition to prevent duplicates
-
-    // Frame counter for events
-    this.frameNumber = 0
+    // Additional properties
+    enemiesPerLevel: GAME_CONSTANTS.ENEMIES_PER_LEVEL,
+    currentBossType: null, // Track current boss type for narratives
+    lastShownTransition: null, // Track last shown transition to prevent duplicates
+    frameNumber: 0,
 
     // Input handling
-    this.keys = {}
+    keys: {}
+  }
+
+  // Initialize systems
+  return initializeGameSystems(game)
+}
+
+/**
+ * Initialize game systems and event-driven architecture
+ * @param {Object} game - Game state object
+ * @returns {Object} Game state with initialized systems
+ */
+function initializeGameSystems(game) {
+  const systems = {
+    eventDispatcher: new EventDispatcher(),
+    stateManager: stateManager,
+    audio: new AudioManager(),
+    effectManager: null, // Will be initialized after eventDispatcher
+    options: null // Will be initialized after other systems
+  }
+
+  // Initialize effect manager with event dispatcher
+  systems.effectManager = new EffectManager(systems.eventDispatcher)
+
+  // Create a temporary game object with systems for OptionsMenu
+  const gameWithSystems = { ...game, ...systems }
+
+  // Initialize options with dependencies
+  systems.options = new OptionsMenu(gameWithSystems, systems.eventDispatcher, systems.stateManager)
+
+  // Initialize UI systems with error handling
+  let chapterTransition = null
+  let bossDialogue = null
+  let storyJournal = null
+
+  try {
+    chapterTransition = createChapterTransition(game.canvas, systems.eventDispatcher)
+    bossDialogue = createBossDialogue(game.canvas, systems.eventDispatcher)
+    storyJournal = createStoryJournal(systems.eventDispatcher, systems.stateManager)
+  } catch (err) {
+    console.error('UI system initialization failed:', err)
+  }
+
+  return {
+    ...game,
+    ...systems,
+    chapterTransition,
+    bossDialogue,
+    storyJournal
+  }
+}
+
+// Legacy class wrapper for backward compatibility during migration
+export class Game {
+  constructor() {
+    // Create the POJO state and assign properties to this
+    Object.assign(this, createGame())
+
+    // Complete initialization with class-based methods
     this.setupInput()
-
-    // Initialize pure event-driven architecture after StateManager is ready
     this.initializeGameState()
-
-    // Setup effects-based event handling
     this.setupEffects()
-
     this.init()
   }
 

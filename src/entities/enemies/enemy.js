@@ -1,9 +1,10 @@
 /**
- * Enemy Base Class - Event-Driven Architecture
+ * Enemy POJO+Functional - Event-Driven Architecture
  *
- * Base class for all enemy types in the game.
+ * Base entity for all enemy types in the game.
  * Provides common functionality for movement, shooting, and rendering.
  * Uses event-driven architecture for AI updates, state management, and communication.
+ * Migrated to POJO+Functional pattern for better testability and composition.
  */
 
 import Bullet from '@/entities/bullet.js'
@@ -27,35 +28,201 @@ const PHASE2_POSITION_Y_FACTOR = 0.25
 const PHASE2_TARGET_Y_RANGE = 0.6
 const PHASE2_TARGET_Y_OFFSET = 0.2
 
-export default class Enemy {
-  constructor(game, x, y, type) {
-    this.game = game
-    this.x = x
-    this.y = y
-    this.type = type
-    this.markedForDeletion = false
-
-    // Set properties based on type
-    this.setupType()
+/**
+ * Create a new enemy state object
+ * @param {Object} game - Game instance reference
+ * @param {number} x - Initial x position
+ * @param {number} y - Initial y position
+ * @param {string} type - Enemy type
+ * @returns {Object} Enemy state object
+ */
+export function createEnemy(game, x, y, type) {
+  const enemy = {
+    game,
+    x,
+    y,
+    type,
+    markedForDeletion: false,
 
     // AI and behavior
-    this.shootTimer = 0
-    this.moveTimer = 0
-    this.targetY = y
-    this.aiState = AI_STATES.SPAWNING
-    this.behavior = ENEMY_BEHAVIORS.AGGRESSIVE
+    shootTimer: 0,
+    moveTimer: 0,
+    targetY: y,
+    aiState: AI_STATES.SPAWNING,
+    behavior: ENEMY_BEHAVIORS.AGGRESSIVE,
 
     // Initialize enemy-specific properties
-    this.zigDirection = 1 // Used by drone for zig-zag movement
+    zigDirection: 1, // Used by drone for zig-zag movement
 
-    this.eventDispatcher = game.eventDispatcher
-    this.stateManager = game.stateManager
-    this.effectManager = game.effectManager
+    // Event-driven architecture references
+    eventDispatcher: game.eventDispatcher,
+    stateManager: game.stateManager,
+    effectManager: game.effectManager
+  }
 
-    // Setup effects-based event handling
+  // Set properties based on type
+  return setupEnemyType(enemy)
+}
+
+/**
+ * Set up enemy properties based on type
+ * @param {Object} enemy - Enemy state object
+ * @returns {Object} Updated enemy state with type-specific properties
+ */
+function setupEnemyType(enemy) {
+  switch (enemy.type) {
+    case 'drone': {
+      // Flanker zig-zag: fast, low HP, vertical zigzag
+      return {
+        ...enemy,
+        width: 18,
+        height: 14,
+        maxHealth: 8,
+        health: 8,
+        speed: 140,
+        damage: 8,
+        points: 6,
+        color: '#66ffcc',
+        shootRate: 2500,
+        bulletSpeed: 180
+      }
+    }
+
+    case 'turret': {
+      // Stationary-on-platform: slow horizontal drift, telegraphed slow shots
+      return {
+        ...enemy,
+        width: 26,
+        height: 22,
+        maxHealth: 30,
+        health: 30,
+        speed: 40, // platform drift left
+        damage: 12,
+        points: 12,
+        color: '#88aaff',
+        shootRate: 3000,
+        bulletSpeed: 140
+      }
+    }
+
+    case 'seeder': {
+      // Seeder: medium slow, drops homing seeds
+      return {
+        ...enemy,
+        width: 22,
+        height: 18,
+        maxHealth: 16,
+        health: 16,
+        speed: 80,
+        damage: 10,
+        points: 14,
+        color: '#aaff66',
+        shootRate: 2800,
+        bulletSpeed: 100
+      }
+    }
+
+    case 'fighter': {
+      return {
+        ...enemy,
+        width: 30,
+        height: 20,
+        maxHealth: 20,
+        health: 20,
+        speed: 100,
+        damage: 15,
+        points: 10,
+        color: '#ff4444',
+        shootRate: 2000,
+        bulletSpeed: 200
+      }
+    }
+
+    case 'bomber': {
+      return {
+        ...enemy,
+        width: 45,
+        height: 35,
+        maxHealth: 40,
+        health: 40,
+        speed: 60,
+        damage: 25,
+        points: 25,
+        color: '#ff8844',
+        shootRate: 3000,
+        bulletSpeed: 150
+      }
+    }
+
+    case 'scout': {
+      return {
+        ...enemy,
+        width: 20,
+        height: 15,
+        maxHealth: 10,
+        health: 10,
+        speed: 180,
+        damage: 10,
+        points: 5,
+        color: '#44ff44',
+        shootRate: 1500,
+        bulletSpeed: 250
+      }
+    }
+
+    case 'boss':
+    case 'boss_heavy':
+    case 'boss_fast':
+    case 'boss_sniper':
+    case 'relay_warden': {
+      // Use centralized boss configuration
+      const config = BOSS_CONFIGS[enemy.type]
+      const bossEnemy = { ...enemy, ...config, health: config.maxHealth }
+
+      // Special initialization for Relay Warden
+      if (enemy.type === 'relay_warden') {
+        return {
+          ...bossEnemy,
+          phase: 1,
+          sweepAngle: 0,
+          sweepDirection: 1,
+          vulnerabilityTimer: 0,
+          ringBeamActive: false,
+          nodeMode: false,
+          phaseTransitionTriggered: false
+        }
+      }
+      return bossEnemy
+    }
+
+    default: {
+      // Default to fighter type
+      return {
+        ...enemy,
+        width: 30,
+        height: 20,
+        maxHealth: 20,
+        health: 20,
+        speed: 100,
+        damage: 15,
+        points: 10,
+        color: '#ff4444',
+        shootRate: 2000,
+        bulletSpeed: 200,
+        type: 'fighter'
+      }
+    }
+  }
+}
+
+// Legacy class wrapper for backward compatibility during migration
+export default class Enemy {
+  constructor(game, x, y, type) {
+    // Create the POJO state and assign properties to this
+    Object.assign(this, createEnemy(game, x, y, type))
+
+    // Complete initialization with class-based methods
     this.setupEffects()
-
-    // Initialize state
     this.initializeState()
 
     // Emit creation event
@@ -67,135 +234,6 @@ export default class Enemy {
       health: this.health,
       maxHealth: this.maxHealth
     })
-  }
-
-  setupType() {
-    switch (this.type) {
-      case 'drone': {
-        // Flanker zig-zag: fast, low HP, vertical zigzag
-        this.width = 18
-        this.height = 14
-        this.maxHealth = 8
-        this.health = this.maxHealth
-        this.speed = 140
-        this.damage = 8
-        this.points = 6
-        this.color = '#66ffcc'
-        this.shootRate = 2500
-        this.bulletSpeed = 180
-        break
-      }
-
-      case 'turret': {
-        // Stationary-on-platform: slow horizontal drift, telegraphed slow shots
-        this.width = 26
-        this.height = 22
-        this.maxHealth = 30
-        this.health = this.maxHealth
-        this.speed = 40 // platform drift left
-        this.damage = 12
-        this.points = 12
-        this.color = '#88aaff'
-        this.shootRate = 3000
-        this.bulletSpeed = 140
-        break
-      }
-
-      case 'seeder': {
-        // Seeder: medium slow, drops homing seeds
-        this.width = 22
-        this.height = 18
-        this.maxHealth = 16
-        this.health = this.maxHealth
-        this.speed = 80
-        this.damage = 10
-        this.points = 14
-        this.color = '#aaff66'
-        this.shootRate = 2800
-        this.bulletSpeed = 100
-        break
-      }
-
-      case 'fighter': {
-        this.width = 30
-        this.height = 20
-        this.maxHealth = 20
-        this.health = this.maxHealth
-        this.speed = 100
-        this.damage = 15
-        this.points = 10
-        this.color = '#ff4444'
-        this.shootRate = 2000
-        this.bulletSpeed = 200
-        break
-      }
-
-      case 'bomber': {
-        this.width = 45
-        this.height = 35
-        this.maxHealth = 40
-        this.health = this.maxHealth
-        this.speed = 60
-        this.damage = 25
-        this.points = 25
-        this.color = '#ff8844'
-        this.shootRate = 3000
-        this.bulletSpeed = 150
-        break
-      }
-
-      case 'scout': {
-        this.width = 20
-        this.height = 15
-        this.maxHealth = 10
-        this.health = this.maxHealth
-        this.speed = 180
-        this.damage = 10
-        this.points = 5
-        this.color = '#44ff44'
-        this.shootRate = 1500
-        this.bulletSpeed = 250
-        break
-      }
-      case 'boss':
-      case 'boss_heavy':
-      case 'boss_fast':
-      case 'boss_sniper':
-      case 'relay_warden': {
-        // Use centralized boss configuration
-        const config = BOSS_CONFIGS[this.type]
-        Object.assign(this, config)
-        this.health = this.maxHealth
-
-        // Special initialization for Relay Warden
-        if (this.type === 'relay_warden') {
-          this.phase = 1
-          this.sweepAngle = 0
-          this.sweepDirection = 1
-          this.vulnerabilityTimer = 0
-          this.ringBeamActive = false
-          this.nodeMode = false
-          this.phaseTransitionTriggered = false
-        }
-        break
-      }
-
-      default: {
-        // Default to fighter type
-        this.width = 30
-        this.height = 20
-        this.maxHealth = 20
-        this.health = this.maxHealth
-        this.speed = 100
-        this.damage = 15
-        this.points = 10
-        this.color = '#ff4444'
-        this.shootRate = 2000
-        this.bulletSpeed = 200
-        this.type = 'fighter'
-        break
-      }
-    }
   }
 
   update(deltaTime) {
