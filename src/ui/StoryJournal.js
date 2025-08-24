@@ -43,6 +43,21 @@ const createJournalState = (eventDispatcher, stateManager, config = {}) => ({
 })
 
 /**
+ * Safe interface method caller - validates interface and calls method
+ * @param {Object} iface - Interface object
+ * @param {string} methodName - Method name to call
+ * @param {...any} args - Arguments to pass to method
+ * @returns {any} Method result or null if interface invalid
+ */
+const safeInterfaceCall = (iface, methodName, ...args) => {
+  if (!iface || typeof iface[methodName] !== 'function') {
+    console.warn(`StoryJournal: _interface or ${methodName} not available`)
+    return null
+  }
+  return iface[methodName](...args)
+}
+
+/**
  * Setup event listeners for journal interactions (side effect function)
  * @param {Object} state - Current journal state
  * @returns {Object} New state with bound handlers
@@ -52,52 +67,32 @@ const setupEventListeners = state => {
   const boundHandlers = {
     handleKeydown: event => {
       // Get current state through interface to avoid stale closure
-      if (!state._interface || typeof state._interface.getState !== 'function') {
-        console.warn('StoryJournal: _interface or getState not available')
-        return
-      }
-      const currentState = state._interface.getState()
+      const currentState = state._interfaceMethods.safeGetState()
       if (currentState) {
         handleKeydownEvent(currentState, event)
       }
     },
     handleTabClick: event => {
-      if (!state._interface || typeof state._interface.getState !== 'function') {
-        console.warn('StoryJournal: _interface or getState not available')
-        return
-      }
-      const currentState = state._interface.getState()
+      const currentState = state._interfaceMethods.safeGetState()
       if (currentState) {
         handleTabClickEvent(currentState, event)
       }
     },
     handleCloseClick: () => {
-      if (!state._interface || typeof state._interface.close !== 'function') {
-        console.warn('StoryJournal: _interface or close not available')
-        return
-      }
-      state._interface.close()
+      state._interfaceMethods.safeClose()
     }
   }
 
   // Listen for journal open requests
   state.eventDispatcher.on('STORY_JOURNAL_OPEN', () => {
     // Update state through the factory's interface
-    if (!state._interface || typeof state._interface.open !== 'function') {
-      console.warn('StoryJournal: _interface or open not available')
-      return
-    }
-    state._interface.open()
+    state._interfaceMethods.safeOpen()
   })
 
   // Listen for journal close requests
   state.eventDispatcher.on('STORY_JOURNAL_CLOSE', () => {
     // Update state through the factory's interface
-    if (!state._interface || typeof state._interface.close !== 'function') {
-      console.warn('StoryJournal: _interface or close not available')
-      return
-    }
-    state._interface.close()
+    state._interfaceMethods.safeClose()
   })
 
   // Listen for keyboard shortcuts
@@ -611,11 +606,7 @@ const setupModalEventHandlers = (state, modal) => {
   // Click outside to close
   modal.addEventListener('click', e => {
     if (e.target === modal) {
-      if (!state._interface || typeof state._interface.close !== 'function') {
-        console.warn('StoryJournal: _interface or close not available')
-        return
-      }
-      state._interface.close()
+      state._interfaceMethods.safeClose()
     }
   })
 }
@@ -639,11 +630,7 @@ const handleKeydownEvent = (state, event) => {
   if (!state.isVisible) return
 
   if (event.key === 'Escape') {
-    if (!state._interface || typeof state._interface.close !== 'function') {
-      console.warn('StoryJournal: _interface or close not available')
-      return
-    }
-    state._interface.close()
+    state._interfaceMethods.safeClose()
   } else if (event.key === 'Tab' && !event.shiftKey) {
     event.preventDefault()
     nextTab(state)
@@ -656,20 +643,12 @@ const handleKeydownEvent = (state, event) => {
 const handleTabClickEvent = (state, event) => {
   const tab = event.target.closest('.journal-tab')
   if (tab && tab.dataset.tab) {
-    if (!state._interface || typeof state._interface.switchTab !== 'function') {
-      console.warn('StoryJournal: _interface or switchTab not available')
-      return
-    }
-    state._interface.switchTab(tab.dataset.tab)
+    state._interfaceMethods.safeSwitchTab(tab.dataset.tab)
   }
 }
 
 const handleCloseClickEvent = state => {
-  if (!state._interface || typeof state._interface.close !== 'function') {
-    console.warn('StoryJournal: _interface or close not available')
-    return
-  }
-  state._interface.close()
+  state._interfaceMethods.safeClose()
 }
 
 /**
@@ -679,11 +658,7 @@ const handleCloseClickEvent = state => {
 const nextTab = state => {
   const currentIndex = state.config.tabs.indexOf(state.currentTab)
   const nextIndex = (currentIndex + 1) % state.config.tabs.length
-  if (!state._interface || typeof state._interface.switchTab !== 'function') {
-    console.warn('StoryJournal: _interface or switchTab not available')
-    return
-  }
-  state._interface.switchTab(state.config.tabs[nextIndex])
+  state._interfaceMethods.safeSwitchTab(state.config.tabs[nextIndex])
 }
 
 /**
@@ -693,11 +668,7 @@ const nextTab = state => {
 const previousTab = state => {
   const currentIndex = state.config.tabs.indexOf(state.currentTab)
   const prevIndex = currentIndex === 0 ? state.config.tabs.length - 1 : currentIndex - 1
-  if (!state._interface || typeof state._interface.switchTab !== 'function') {
-    console.warn('StoryJournal: _interface or switchTab not available')
-    return
-  }
-  state._interface.switchTab(state.config.tabs[prevIndex])
+  state._interfaceMethods.safeSwitchTab(state.config.tabs[prevIndex])
 }
 
 /**
@@ -778,8 +749,17 @@ const createStoryJournal = (eventDispatcher, stateManager, config = {}) => {
     getState: () => ({ ...state })
   }
 
-  // Store reference to interface for event handlers
-  state._interface = journalInterface
+  // Instead of storing interface reference on state (avoids circular reference),
+  // create a closure that captures the interface for event handlers
+  const createInterfaceMethods = () => ({
+    safeGetState: () => safeInterfaceCall(journalInterface, 'getState'),
+    safeOpen: () => safeInterfaceCall(journalInterface, 'open'),
+    safeClose: () => safeInterfaceCall(journalInterface, 'close'),
+    safeSwitchTab: tab => safeInterfaceCall(journalInterface, 'switchTab', tab)
+  })
+
+  // Store interface methods instead of interface itself
+  state._interfaceMethods = createInterfaceMethods()
 
   return journalInterface
 }

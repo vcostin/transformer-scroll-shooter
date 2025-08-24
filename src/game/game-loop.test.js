@@ -86,9 +86,10 @@ describe('Event-Driven Game Loop', () => {
       expect(eventSpy).toHaveBeenCalledWith(
         GAME_EVENTS.GAME_RENDER,
         expect.objectContaining({
-          ctx: game.ctx,
-          deltaTime: expect.any(Number)
+          ctx: game.ctx
         })
+        // Note: deltaTime removed from render events per review feedback
+        // Rendering should be based on current state, not time deltas
       )
     })
   })

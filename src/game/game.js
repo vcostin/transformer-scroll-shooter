@@ -643,10 +643,9 @@ export class Game {
   }
 
   render() {
-    // Emit render event
+    // Emit render event (no deltaTime needed for rendering)
     this.eventDispatcher.emit(GAME_EVENTS.GAME_RENDER, {
-      ctx: this.ctx,
-      deltaTime: this.deltaTime
+      ctx: this.ctx
     })
 
     // Clear canvas
