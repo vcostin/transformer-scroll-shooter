@@ -1,0 +1,57 @@
+{
+  "name": "POJO + Functional Architecture Analyzer",
+  "description": "Custom code analysis for Transformer Scroll Shooter focusing on architectural compliance",
+  "version": "1.0.0",
+
+  "rules": {
+    "architecture": {
+      "enabled": true,
+      "strictMode": true,
+      "allowLegacyClasses": [
+        "src/game/game.js",
+        "src/entities/player.js",
+        "src/entities/enemies/enemy.js"
+      ]
+    },
+
+    "performance": {
+      "enabled": true,
+      "thresholds": {
+        "magicNumbers": 3,
+        "repeatedCalculations": 5
+      }
+    },
+
+    "security": {
+      "enabled": true,
+      "allowDirectDOM": ["src/game/game.js"]
+    },
+
+    "cleanup": {
+      "enabled": true,
+      "allowConsoleInFiles": ["tools/**", "scripts/**"]
+    }
+  },
+
+  "ignore": [
+    "node_modules/**",
+    "dist/**",
+    "coverage/**",
+    "**/*.test.js",
+    "**/*.spec.js",
+    "tools/**/*.js"
+  ],
+
+  "reporting": {
+    "format": "detailed",
+    "showSuggestions": true,
+    "groupByCategory": true,
+    "exitOnHighSeverity": true
+  },
+
+  "integration": {
+    "preCommitHook": true,
+    "githubActions": false,
+    "watchMode": true
+  }
+}
