@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Game State Monitor</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 10px;
+        font-family: monospace;
+        background: #000;
+        color: #0f0;
+      }
+      .monitor {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        background: rgba(0, 0, 0, 0.8);
+        border: 1px solid #0f0;
+        padding: 10px;
+        font-size: 12px;
+        z-index: 10000;
+        width: 300px;
+      }
+      .state-item {
+        margin: 2px 0;
+        padding: 2px;
+      }
+      .changed {
+        background: #440;
+        color: #ff0;
+      }
+      .error {
+        color: #f00;
+        font-weight: bold;
+      }
+      canvas {
+        border: 1px solid #333;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <div class="monitor" id="monitor">
+      <div><strong>GAME STATE MONITOR</strong></div>
+      <div id="gameState">Loading...</div>
+    </div>
+
+    <script type="module">
+      import { Game } from './src/game/game.js'
+
+      let game
+      let lastState = {}
+
+      function formatValue(value) {
+        if (value === null) return 'null'
+        if (value === undefined) return 'undefined'
+        if (typeof value === 'object') return JSON.stringify(value).substring(0, 50) + '...'
+        return String(value)
+      }
+
+      function updateStateMonitor() {
+        if (!game) return
+
+        const currentState = {
+          // Game state
+          gameOver: game.gameOver,
+          paused: game.paused,
+          level: game.level,
+          score: game.score,
+
+          // Timing (CRITICAL)
+          frameNumber: game.frameNumber || 0,
+          lastTime: Math.round(game.lastTime || 0),
+          deltaTime: Math.round(game.deltaTime || 0),
+
+          // Player state
+          playerExists: !!game.player,
+          playerHealth: game.player ? game.player.health : 'N/A',
+          playerX: game.player ? Math.round(game.player.x) : 'N/A',
+          playerY: game.player ? Math.round(game.player.y) : 'N/A',
+          playerMode: game.player ? game.player.mode : 'N/A',
+
+          // Spawn timers (CRITICAL)
+          enemySpawnTimer: Math.round(game.enemySpawnTimer || 0),
+          powerupSpawnTimer: Math.round(game.powerupSpawnTimer || 0),
+
+          // Game objects
+          enemiesCount: game.enemies ? game.enemies.length : 0,
+          bulletsCount: game.bullets ? game.bullets.length : 0,
+          effectsCount: game.effects ? game.effects.length : 0,
+          powerupsCount: game.powerups ? game.powerups.length : 0,
+
+          // UI state
+          chapterTransitionActive: game.chapterTransition ? game.chapterTransition.active : 'N/A',
+          bossDialogueActive: game.bossDialogue ? game.bossDialogue.active : 'N/A',
+          storyJournalVisible: game.storyJournal ? game.storyJournal.isVisible : 'N/A',
+
+          // Boss state
+          bossActive: game.bossActive,
+          currentBossType: game.currentBossType || 'None'
+        }
+
+        let html = ''
+        for (const [key, value] of Object.entries(currentState)) {
+          const changed = lastState[key] !== value
+          const className = changed ? 'state-item changed' : 'state-item'
+          html += `<div class="${className}">${key}: ${formatValue(value)}</div>`
+        }
+
+        document.getElementById('gameState').innerHTML = html
+        lastState = { ...currentState }
+      }
+
+      try {
+        console.log('Creating game with state monitoring...')
+        game = new Game()
+
+        // Monitor game state every 100ms
+        setInterval(updateStateMonitor, 100)
+
+        console.log('Game created and monitoring started')
+      } catch (error) {
+        console.error('Error creating game:', error)
+        document.getElementById('gameState').innerHTML =
+          `<div class="error">Error: ${error.message}</div>`
+      }
+    </script>
+  </body>
+</html>

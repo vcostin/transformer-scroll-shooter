@@ -268,7 +268,8 @@ describe('Story System - POJO + Functional Architecture', () => {
         type: 'title_card',
         title: 'Relay 07: Broken Chorus',
         description: expect.any(String),
-        duration: 3000
+        duration: 3000,
+        cutsceneKey: 'chapter_relay07'
       })
     })
 

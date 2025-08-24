@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🤖 Running Task #70 GitHub Copilot review monitoring..."
+npm run analyze:task70
+
+# Exit with error if GitHub Copilot review regressions detected
+if [ $? -ne 0 ]; then
+  echo "❌ Task #70 monitoring failed - GitHub Copilot review issues detected"
+  echo "   Previously fixed issues may have reappeared"
+  exit 1
+fi
+
+echo "✅ Task #70 monitoring passed - no regressions detected"

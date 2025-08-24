@@ -22,6 +22,15 @@ import { EventDispatcher } from '@/systems/EventDispatcher.js'
 import { StateManager } from '@/systems/StateManager.js'
 import { EffectManager } from '@/systems/EffectManager.js'
 
+// Import story system
+import {
+  createStoryState,
+  updateStoryProgress,
+  markLogAsViewed,
+  getStoryContent,
+  getBossNarrative
+} from '@/systems/story.js'
+
 // Import rendering systems
 import { Background } from '@/rendering/background.js'
 import { Explosion, PowerupEffect, MuzzleFlash, TransformEffect } from '@/rendering/effects.js'

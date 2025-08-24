@@ -19,6 +19,19 @@ import { EventDispatcher } from '@/systems/EventDispatcher.js'
 import { stateManager } from '@/systems/StateManager.js'
 import { EffectManager } from '@/systems/EffectManager.js'
 
+// Import story system
+import {
+  createStoryState,
+  updateStoryProgress,
+  getStoryContent,
+  getBossNarrative
+} from '@/systems/story.js'
+
+// Import UI components
+import createChapterTransition from '@/ui/ChapterTransition.js'
+import createBossDialogue from '@/ui/BossDialogue.js'
+import createStoryJournal from '@/ui/StoryJournal.js'
+
 export class Game {
   constructor() {
     /** @type {HTMLCanvasElement} */
@@ -57,8 +70,22 @@ export class Game {
     this.effectManager = new EffectManager(this.eventDispatcher)
     this.options = new OptionsMenu(this, this.eventDispatcher, this.stateManager)
 
+    // Initialize UI systems with error handling
+    try {
+      this.chapterTransition = createChapterTransition(this.canvas, this.eventDispatcher)
+      this.bossDialogue = createBossDialogue(this.canvas, this.eventDispatcher)
+      this.storyJournal = createStoryJournal(this.eventDispatcher, this.stateManager)
+    } catch (err) {
+      console.error('UI system initialization failed:', err)
+      this.chapterTransition = null
+      this.bossDialogue = null
+      this.storyJournal = null
+    }
+
     // Additional properties that need to be available
     this.enemiesPerLevel = GAME_CONSTANTS.ENEMIES_PER_LEVEL
+    this.currentBossType = null // Track current boss type for narratives
+    this.lastShownTransition = null // Track last shown transition to prevent duplicates
 
     // Frame counter for events
     this.frameNumber = 0
@@ -88,6 +115,14 @@ export class Game {
     this.stateManager.setState('game.enemiesPerLevel', GAME_CONSTANTS.ENEMIES_PER_LEVEL)
     this.stateManager.setState('game.bossActive', false)
     this.stateManager.setState('game.bossSpawnedThisLevel', false)
+
+    // Initialize story state
+    this.stateManager.setState('story', createStoryState())
+    this.stateManager.setState('game.powerupsCollected', 0)
+    this.stateManager.setState('game.bossesDefeated', 0)
+
+    // Setup UI event listeners
+    this.storyJournal.setupEventListeners()
   }
 
   // Game state accessors
@@ -154,6 +189,20 @@ export class Game {
   }
   set bossSpawnedThisLevel(value) {
     this.stateManager.setState('game.bossSpawnedThisLevel', value)
+  }
+
+  get bossesDefeated() {
+    return this.stateManager.getState('game.bossesDefeated')
+  }
+  set bossesDefeated(value) {
+    this.stateManager.setState('game.bossesDefeated', value)
+  }
+
+  get powerupsCollected() {
+    return this.stateManager.getState('game.powerupsCollected')
+  }
+  set powerupsCollected(value) {
+    this.stateManager.setState('game.powerupsCollected', value)
   }
 
   setupEffects() {
@@ -267,6 +316,42 @@ export class Game {
     this.eventDispatcher.emit(GAME_EVENTS.GAME_START, {
       timestamp: Date.now()
     })
+
+    // Display initial story content
+    this.displayInitialStory()
+  }
+
+  displayInitialStory() {
+    const storyState = this.stateManager.getState('story')
+    const gameState = {
+      level: this.level,
+      bossesDefeated: this.bossesDefeated,
+      powerupsCollected: this.powerupsCollected
+    }
+
+    const content = getStoryContent(gameState, storyState, 'levelStart')
+    if (content && content.title) {
+      this.initializeStoryTransition(content)
+
+      // Also show fallback message
+      this.addMessage('Signal of the Last City', '#ffcc00', 5000)
+    }
+  }
+
+  /**
+   * Handles the delayed chapter transition with error handling.
+   * @param {Object} content - Story content for the transition.
+   */
+  initializeStoryTransition(content) {
+    setTimeout(() => {
+      try {
+        this.showChapterTransition(content)
+      } catch (error) {
+        console.error('Error showing chapter transition:', error)
+        // Ensure game doesn't stay paused if transition fails
+        this.paused = false
+      }
+    }, 1000) // Small delay for game to initialize
   }
 
   pauseGame() {
@@ -368,6 +453,14 @@ export class Game {
             this.restart()
           }
           break
+        case 'KeyJ':
+          // Toggle story journal
+          if (this.storyJournal.isVisible) {
+            this.storyJournal.close()
+          } else {
+            this.storyJournal.open()
+          }
+          break
         case 'Escape':
           if (!this.options.isOpen) {
             this.options.open()
@@ -428,28 +521,37 @@ export class Game {
       return
     }
 
-    const deltaTime = currentTime - this.lastTime
+    this.deltaTime = currentTime - this.lastTime
     this.lastTime = currentTime
     this.frameNumber++
 
     // Emit frame event
     this.eventDispatcher.emit(GAME_EVENTS.GAME_FRAME, {
-      deltaTime,
+      deltaTime: this.deltaTime,
       currentTime,
       frame: this.frameNumber
     })
 
     // Emit performance frame time event
     this.eventDispatcher.emit(GAME_EVENTS.PERFORMANCE_FRAME_TIME, {
-      deltaTime,
+      deltaTime: this.deltaTime,
       timestamp: currentTime
     })
 
     // Calculate FPS using the new method
-    this.calculateFPS(deltaTime)
+    this.calculateFPS(this.deltaTime)
+
+    // Update UI systems that should work even when paused
+    if (this.chapterTransition) {
+      this.chapterTransition.update(this.deltaTime)
+    }
+
+    if (this.bossDialogue) {
+      this.bossDialogue.update(this.deltaTime)
+    }
 
     if (!this.paused && !this.gameOver) {
-      this.update(deltaTime)
+      this.update(this.deltaTime)
     }
 
     this.render()
@@ -507,6 +609,11 @@ export class Game {
     this.updateEntities('powerups', this.powerups, deltaTime)
     this.updateEntities('effects', this.effects, deltaTime)
 
+    if (this.storyJournal) {
+      // StoryJournal doesn't need delta time updates but we keep consistency
+      // Future animation features might need deltaTime
+    }
+
     // Update messages
     this.updateMessages()
 
@@ -517,7 +624,7 @@ export class Game {
     this.cleanup()
 
     // Check for game over condition
-    if (this.player.health <= 0) {
+    if (this.player && this.player.health <= 0) {
       this.gameOver = true
     }
 
@@ -550,10 +657,9 @@ export class Game {
   }
 
   render() {
-    // Emit render event
+    // Emit render event (no deltaTime needed for rendering)
     this.eventDispatcher.emit(GAME_EVENTS.GAME_RENDER, {
-      ctx: this.ctx,
-      deltaTime: this.lastTime
+      ctx: this.ctx
     })
 
     // Clear canvas
@@ -574,6 +680,16 @@ export class Game {
 
     // Render messages
     this.renderMessages()
+
+    // Render chapter transition (should be on top)
+    if (this.chapterTransition) {
+      this.chapterTransition.render()
+    }
+
+    // Render boss dialogue (should be on top of everything)
+    if (this.bossDialogue) {
+      this.bossDialogue.render()
+    }
 
     // Render game over screen
     if (this.gameOver) {
@@ -676,6 +792,10 @@ export class Game {
     this.enemies.push(boss)
     this.bossActive = true
     this.bossSpawnedThisLevel = true
+    this.currentBossType = selectedBossType // Track current boss type
+
+    // Show boss introduction narrative
+    this.showBossNarrative(selectedBossType, 'intro')
 
     this.addMessage(
       BOSS_MESSAGES[selectedBossType],
@@ -707,6 +827,181 @@ export class Game {
     if (this.messages.length > GAME_CONSTANTS.MAX_MESSAGES) {
       this.messages.splice(0, this.messages.length - GAME_CONSTANTS.MAX_MESSAGES)
     }
+  }
+
+  /**
+   * Update story progress based on game events
+   */
+  updateStoryProgress(progressData) {
+    const storyState = this.stateManager.getState('story')
+    if (storyState && updateStoryProgress) {
+      const oldStoryState = { ...storyState }
+      const updatedStoryState = updateStoryProgress(storyState, progressData)
+      this.stateManager.setState('story', updatedStoryState)
+
+      // Only show story notifications for significant milestones (not powerups)
+      const isSignificantMilestone =
+        progressData.level !== undefined || progressData.bossesDefeated !== undefined
+
+      if (isSignificantMilestone) {
+        // Check if we actually unlocked new story content
+        const oldChapter = oldStoryState.currentChapter
+        const newChapter = updatedStoryState.currentChapter
+
+        if (oldChapter !== newChapter) {
+          // New chapter unlocked - show notification
+          const gameState = {
+            level: this.level,
+            bossesDefeated: this.bossesDefeated,
+            powerupsCollected: this.powerupsCollected
+          }
+
+          const content = getStoryContent(gameState, updatedStoryState, 'levelStart')
+          if (content && content.title) {
+            // Show cinematic chapter transition
+            this.showChapterTransition(content)
+
+            // Also emit UI notification as backup
+            this.eventDispatcher.emit('UI_STORY_NOTIFICATION', {
+              message: content.title,
+              description: content.description,
+              type: 'story',
+              duration: 5000
+            })
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Get total enemies killed (including across levels)
+   * Cached for performance - only recalculates when enemies or level change
+   */
+  getTotalEnemiesKilled() {
+    // Use cached value if available and still valid
+    const currentKey = `${this.enemiesKilled}-${this.level}`
+    if (this._totalEnemiesCache && this._totalEnemiesCacheKey === currentKey) {
+      return this._totalEnemiesCache
+    }
+
+    // Calculate and cache result
+    const total = this.enemiesKilled + (this.level - 1) * this.enemiesPerLevel
+    this._totalEnemiesCache = total
+    this._totalEnemiesCacheKey = currentKey
+
+    return total
+  }
+
+  /**
+   * Show cinematic chapter transition
+   * @param {Object} content - Story content with title and description
+   */
+  showChapterTransition(content) {
+    if (this.chapterTransition && !this.chapterTransition.active) {
+      // Prevent showing the same transition multiple times
+      const contentKey = `${content.title}-${content.description}`
+      if (this.lastShownTransition === contentKey) {
+        console.log('Skipping duplicate transition:', content.title)
+        return
+      }
+
+      // Pause game during transition
+      const wasPaused = this.paused
+      this.paused = true
+
+      try {
+        this.lastShownTransition = contentKey
+        this.chapterTransition.showTransition(content, () => {
+          try {
+            // Mark cutscene as viewed when transition completes
+            if (content.cutsceneKey) {
+              const storyState = this.stateManager.getState('story')
+              if (storyState) {
+                const updatedStoryState = {
+                  ...storyState,
+                  viewedCutscenes: new Set([...storyState.viewedCutscenes, content.cutsceneKey])
+                }
+                this.stateManager.setState('story', updatedStoryState)
+              }
+            }
+
+            // Resume game after transition if it wasn't paused before
+            if (!wasPaused) {
+              this.paused = false
+            }
+          } catch (error) {
+            console.error('Error in chapter transition callback:', error)
+            this.paused = false // Ensure game doesn't stay paused
+          }
+        })
+      } catch (error) {
+        console.error('Error starting chapter transition:', error)
+        this.paused = wasPaused // Restore original pause state
+        this.lastShownTransition = null // Reset on error
+      }
+    }
+  }
+
+  /**
+   * Show boss narrative dialogue
+   * @param {string} bossType - Type of boss (e.g., 'relay_warden', 'terraformer')
+   * @param {string} event - Narrative event ('intro', 'defeat', 'phaseTransition')
+   */
+  showBossNarrative(bossType, event) {
+    const narrativeText = getBossNarrative(bossType, event)
+
+    if (narrativeText && this.bossDialogue && !this.bossDialogue.active) {
+      // Pause game during dialogue for dramatic effect
+      const wasPaused = this.paused
+      this.paused = true
+
+      const speakerName = this.getBossDisplayName(bossType)
+
+      this.bossDialogue.showDialogue(
+        {
+          speaker: speakerName,
+          text: narrativeText,
+          style: this.getBossDialogueStyle(event)
+        },
+        () => {
+          // Resume game after dialogue if it wasn't paused before
+          if (!wasPaused) {
+            this.paused = false
+          }
+        }
+      )
+    }
+  }
+
+  /**
+   * Get display name for boss type
+   * @param {string} bossType - Boss type identifier
+   * @returns {string} - Display name for the boss
+   */
+  getBossDisplayName(bossType) {
+    const bossNames = {
+      relay_warden: 'Relay Warden',
+      terraformer_prime: 'Terraformer Prime',
+      default: 'Unknown Entity'
+    }
+    return bossNames[bossType] || bossNames.default
+  }
+
+  /**
+   * Map boss narrative events to dialogue styles
+   * @param {string} event - Boss narrative event
+   * @returns {string} - Dialogue style
+   */
+  getBossDialogueStyle(event) {
+    const styleMap = {
+      preIntro: 'introduction',
+      intro: 'introduction',
+      phaseTransition: 'taunt',
+      defeat: 'victory',
+      postDefeat: 'victory'
+    }
+    return styleMap[event] || 'introduction'
   }
 
   updateMessages() {
@@ -743,15 +1038,33 @@ export class Game {
                   '#00ff00',
                   GAME_CONSTANTS.MESSAGE_DURATION.LEVEL_UP
                 )
+
+                // Update story progress for level progression
+                this.updateStoryProgress({
+                  level: this.level,
+                  enemiesKilled: this.enemiesKilled
+                })
               }
 
               if (this.isBoss(enemy)) {
                 this.bossActive = false
+                this.bossesDefeated++
                 this.score += GAME_CONSTANTS.BOSS_BONUS_SCORE
                 this.player.health = Math.min(
                   this.player.maxHealth,
                   this.player.health + GAME_CONSTANTS.BOSS_HEALTH_RESTORE
                 )
+
+                // Show boss defeat narrative
+                const bossType = this.currentBossType || 'relay_warden' // Fallback
+                this.showBossNarrative(bossType, 'defeat')
+                this.currentBossType = null // Clear boss type
+
+                // Update story progress for boss defeat
+                this.updateStoryProgress({
+                  bossesDefeated: this.bossesDefeated,
+                  level: this.level
+                })
               }
 
               this.effects.push(new Explosion(this, enemy.x, enemy.y, 'medium'))
@@ -779,9 +1092,15 @@ export class Game {
     this.powerups.forEach(powerup => {
       if (this.checkCollision(this.player, powerup)) {
         this.player.collectPowerup(powerup)
+        this.powerupsCollected++
         this.effects.push(new PowerupEffect(this, powerup.x, powerup.y, powerup.color))
         this.audio.playSound('powerup')
         powerup.markedForDeletion = true
+
+        // Update story progress for powerup collection
+        this.updateStoryProgress({
+          powerupsCollected: this.powerupsCollected
+        })
       }
     })
 
@@ -833,16 +1152,21 @@ export class Game {
   }
 
   updateUI() {
-    // Update HTML UI elements
-    document.getElementById('score').textContent = this.score
+    // Update HTML UI elements safely
+    const scoreEl = document.getElementById('score')
+    if (scoreEl) scoreEl.textContent = this.score
 
     /** @type {HTMLElement|null} */
     const healthEl = document.getElementById('health')
-    if (healthEl) healthEl.textContent = String(this.player.health)
-    document.getElementById('mode').textContent = this.player.mode
-      ? this.player.mode.toUpperCase()
-      : 'UNKNOWN'
-    document.getElementById('level').textContent = this.level
+    if (healthEl) healthEl.textContent = String(this.player ? this.player.health : 100)
+
+    const modeEl = document.getElementById('mode')
+    if (modeEl)
+      modeEl.textContent =
+        this.player && this.player.mode ? this.player.mode.toUpperCase() : 'UNKNOWN'
+
+    const levelEl = document.getElementById('level')
+    if (levelEl) levelEl.textContent = this.level
   }
 
   getDifficultyMultiplier() {
