@@ -8,6 +8,7 @@
 
 import { readFileSync } from 'fs'
 import { glob } from 'glob'
+import { MIGRATED_FILES } from './migration-config.js'
 
 console.log('🔍 Starting Migration Focus Analysis...')
 console.log('Identifying Phase 4 migration candidates\n')
@@ -24,16 +25,6 @@ let classCount = 0
 let migratedCount = 0
 const phase4Candidates = []
 
-const migratedFiles = [
-  'src/entities/bullet.js',
-  'src/entities/player.js',
-  'src/entities/enemies/enemy.js',
-  'src/game/game.js',
-  'src/ui/StoryJournal.js',
-  'src/ui/ChapterTransition.js',
-  'src/ui/BossDialogue.js'
-]
-
 files.forEach(file => {
   try {
     const content = readFileSync(file, 'utf8')
@@ -42,7 +33,7 @@ files.forEach(file => {
     if (classMatches) {
       classCount += classMatches.length
 
-      const isMigrated = migratedFiles.some(migrated => file.includes(migrated))
+      const isMigrated = MIGRATED_FILES.some(migrated => file.includes(migrated))
 
       if (!isMigrated) {
         phase4Candidates.push({

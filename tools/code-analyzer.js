@@ -11,6 +11,7 @@
 import { readFileSync, existsSync } from 'fs'
 import { glob } from 'glob'
 import path from 'path'
+import { MIGRATED_FILES, TOOL_FILES, LEGACY_FILES } from './migration-config.js'
 
 class ArchitectureAnalyzer {
   constructor() {
@@ -23,20 +24,10 @@ class ArchitectureAnalyzer {
       legacyFiles: 0
     }
 
-    // Files already migrated to POJO+Functional
-    this.migratedFiles = [
-      'src/entities/bullet.js',
-      'src/entities/player.js',
-      'src/entities/enemies/enemy.js',
-      'src/game/game.js',
-      'src/ui/StoryJournal.js',
-      'src/ui/ChapterTransition.js',
-      'src/ui/BossDialogue.js',
-      'src/utils/colorUtils.js'
-    ]
-
-    // Tool files to ignore (console.log is intentional)
-    this.toolFiles = ['tools/**/*.js', 'test/**/*.js', 'tests/**/*.js']
+    // Use shared configuration
+    this.migratedFiles = MIGRATED_FILES
+    this.toolFiles = TOOL_FILES
+    this.legacyFiles = LEGACY_FILES
 
     this.patterns = {
       // Core POJO+Functional Architecture Violations
@@ -136,8 +127,13 @@ class ArchitectureAnalyzer {
 
   isToolFile(filePath) {
     return this.toolFiles.some(pattern => {
-      const globPattern = pattern.replace(/\*\*/g, '*')
-      return filePath.includes(globPattern.replace('*', ''))
+      // Convert glob pattern to simple directory check
+      if (pattern.includes('/**')) {
+        const baseDir = pattern.replace('/**', '')
+        return filePath.includes(baseDir)
+      }
+      // For simple patterns, just check if path contains the pattern
+      return filePath.includes(pattern.replace(/\*/g, ''))
     })
   }
 

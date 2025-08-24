@@ -245,7 +245,10 @@ export default class Bullet {
   }
 
   update(deltaTime) {
-    Object.assign(this, updateBullet(this, deltaTime))
+    const newState = updateBullet(this, deltaTime)
+    for (const key of Object.keys(newState)) {
+      this[key] = newState[key]
+    }
   }
 
   render(ctx) {
