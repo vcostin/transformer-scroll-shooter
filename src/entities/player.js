@@ -1,9 +1,10 @@
 /**
- * Player Class - Event-Driven Architecture
+ * Player POJO+Functional - Event-Driven Architecture
  *
  * Represents the player character with transformer capabilities.
  * Supports multiple vehicle modes with different properties.
  * Uses event-driven architecture for input handling, state management, and communication.
+ * Migrated to POJO+Functional pattern for better testability and composition.
  */
 
 import Bullet from '@/entities/bullet.js'
@@ -12,45 +13,52 @@ import { PLAYER_EVENTS, PLAYER_STATES, MOVE_DIRECTIONS } from '@/constants/playe
 import { GAME_EVENTS } from '@/constants/game-events.js'
 import * as MathUtils from '@/utils/math.js'
 
-export default class Player {
-  /**
-   * Extract payload from event data with fallback
-   * @param {Object} data - Event data object
-   * @returns {Object} Extracted payload
-   */
-  static extractEventPayload(data) {
-    return data.payload || data
-  }
+/**
+ * Extract payload from event data with fallback
+ * @param {Object} data - Event data object
+ * @returns {Object} Extracted payload
+ */
+function extractEventPayload(data) {
+  return data.payload || data
+}
 
-  constructor(game, x, y) {
-    this.game = game
-    this.x = x
-    this.y = y
-    this.width = 40
-    this.height = 30
+/**
+ * Create a new player state object
+ * @param {Object} game - Game instance reference
+ * @param {number} x - Initial x position
+ * @param {number} y - Initial y position
+ * @returns {Object} Player state object
+ */
+export function createPlayer(game, x, y) {
+  const player = {
+    game,
+    x,
+    y,
+    width: 40,
+    height: 30,
 
     // Stats
-    this.maxHealth = 100
-    this.health = this.maxHealth
-    this.speed = 200
+    maxHealth: 100,
+    health: 100,
+    speed: 200,
 
     // Transformer modes
-    this.modes = ['car', 'scuba', 'boat', 'plane']
-    this.currentModeIndex = 0
-    this.mode = this.modes[this.currentModeIndex]
-    this.transformCooldown = 0
+    modes: ['car', 'scuba', 'boat', 'plane'],
+    currentModeIndex: 0,
+    mode: 'car',
+    transformCooldown: 0,
 
     // Shooting
-    this.shootCooldown = 0
-    this.baseShootRate = 300 // milliseconds
-    this.currentShootRate = this.baseShootRate
+    shootCooldown: 0,
+    baseShootRate: 300, // milliseconds
+    currentShootRate: 300,
 
     // Power-ups
-    this.activePowerups = []
-    this.shield = 0
+    activePowerups: [],
+    shield: 0,
 
     // Mode-specific properties
-    this.modeProperties = {
+    modeProperties: {
       car: {
         speed: 250,
         shootRate: 300,
@@ -83,19 +91,50 @@ export default class Player {
         width: 50,
         height: 20
       }
-    }
+    },
 
+    // Event-driven architecture references
+    eventDispatcher: game.eventDispatcher,
+    stateManager: game.stateManager,
+    effectManager: game.effectManager
+  }
+
+  // Update mode properties and setup effects - handled in class wrapper for backward compatibility
+  return player
+}
+
+/**
+ * Update player mode properties based on current mode
+ * @param {Object} player - Player state object
+ * @returns {Object} Updated player state with mode properties applied
+ */
+function updatePlayerModeProperties(player) {
+  const currentModeProps = player.modeProperties[player.mode]
+
+  return {
+    ...player,
+    speed: currentModeProps.speed,
+    currentShootRate: currentModeProps.shootRate,
+    currentBulletType: currentModeProps.bulletType,
+    currentColor: currentModeProps.color,
+    width: currentModeProps.width,
+    height: currentModeProps.height
+  }
+}
+
+// Legacy class wrapper for backward compatibility during migration
+export default class Player {
+  static extractEventPayload(data) {
+    return extractEventPayload(data)
+  }
+
+  constructor(game, x, y) {
+    // Create the POJO state and assign properties to this
+    Object.assign(this, createPlayer(game, x, y))
+
+    // Complete initialization with class-based methods
     this.updateModeProperties()
-
-    // Event-driven architecture setup
-    this.eventDispatcher = game.eventDispatcher
-    this.stateManager = game.stateManager
-    this.effectManager = game.effectManager
-
-    // Setup effects-based event handling
     this.setupEffects()
-
-    // Initialize state
     this.initializeState()
   }
 
