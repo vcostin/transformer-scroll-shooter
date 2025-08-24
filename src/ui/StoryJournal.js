@@ -751,15 +751,15 @@ const createStoryJournal = (eventDispatcher, stateManager, config = {}) => {
 
   // Instead of storing interface reference on state (avoids circular reference),
   // create a closure that captures the interface for event handlers
-  const createInterfaceMethods = () => ({
-    safeGetState: () => safeInterfaceCall(journalInterface, 'getState'),
-    safeOpen: () => safeInterfaceCall(journalInterface, 'open'),
-    safeClose: () => safeInterfaceCall(journalInterface, 'close'),
-    safeSwitchTab: tab => safeInterfaceCall(journalInterface, 'switchTab', tab)
+  const createInterfaceMethods = iface => ({
+    safeGetState: () => safeInterfaceCall(iface, 'getState'),
+    safeOpen: () => safeInterfaceCall(iface, 'open'),
+    safeClose: () => safeInterfaceCall(iface, 'close'),
+    safeSwitchTab: tab => safeInterfaceCall(iface, 'switchTab', tab)
   })
 
   // Store interface methods instead of interface itself
-  state._interfaceMethods = createInterfaceMethods()
+  state._interfaceMethods = createInterfaceMethods(journalInterface)
 
   return journalInterface
 }

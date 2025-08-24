@@ -1032,7 +1032,7 @@ export class Game {
                 // Update story progress for level progression
                 this.updateStoryProgress({
                   level: this.level,
-                  enemiesKilled: this.getTotalEnemiesKilled()
+                  enemiesKilled: this.enemiesKilled
                 })
               }
 

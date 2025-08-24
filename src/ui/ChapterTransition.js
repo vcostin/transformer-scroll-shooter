@@ -164,8 +164,9 @@ const renderTransition = (state, ctx, canvas) => {
   const centerY = canvas.height / 2
 
   // Chapter title
-  ctx.fillStyle = state.config.titleColor.replace(')', `, ${state.fadeAlpha})`)
-  if (!state.config.titleColor.includes('rgba')) {
+  if (state.config.titleColor.includes('rgba')) {
+    ctx.fillStyle = state.config.titleColor.replace(')', `, ${state.fadeAlpha})`)
+  } else {
     ctx.fillStyle = hexToRgba(state.config.titleColor, state.fadeAlpha)
   }
   ctx.font = state.config.titleFont
