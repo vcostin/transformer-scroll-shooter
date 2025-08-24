@@ -140,7 +140,7 @@ export function createStateManager(options = {}) {
   }
 
   // Initialize history with current state
-  stateHistory.addStateToHistory(currentState)
+  stateHistory.initialize(currentState)
 
   // Debug mode setup
   if (config.enableDebug) {
@@ -216,8 +216,8 @@ export function setStateManagerState(stateManager, path, value, options = {}) {
 
     // Check if value has actually changed
     if (deepEqual(currentValue, value)) {
-      // No change needed - don't record this as it wasn't really an update
-      return false
+      stateManager.statePerformance.recordSet(startTime, false)
+      return false // No change needed
     }
 
     // Update the state
@@ -225,7 +225,7 @@ export function setStateManagerState(stateManager, path, value, options = {}) {
 
     // Add to history if enabled
     if (stateManager.options.enableHistory && !updateOptions.skipHistory) {
-      stateManager.stateHistory.addStateToHistory(stateManager.currentState, {
+      stateManager.stateHistory.addState(stateManager.currentState, {
         operation: 'setState',
         path,
         value,
@@ -245,18 +245,15 @@ export function setStateManagerState(stateManager, path, value, options = {}) {
     }
 
     // Notify subscriptions
-    stateManager.stateSubscriptions.triggerSubscriptions(path, value, currentValue)
+    stateManager.stateSubscriptions.notifySubscribers(path, value, currentValue)
 
     // Record performance metrics
-    stateManager.statePerformance.recordUpdate(startTime)
+    stateManager.statePerformance.recordSet(startTime, true)
 
     return true
   } catch (error) {
     stateManager.moduleErrors.general = (stateManager.moduleErrors.general || 0) + 1
-    // Note: recordError method doesn't exist on StatePerformance, using recordValidationError as fallback
-    if (stateManager.statePerformance.recordValidationError) {
-      stateManager.statePerformance.recordValidationError()
-    }
+    stateManager.statePerformance.recordError()
 
     if (stateManager.options.enableDebug) {
       console.error('StateManager: Error setting state:', error)
@@ -308,10 +305,10 @@ export function resetStateManagerState(stateManager, path = '') {
       Object.assign(stateManager.currentState, deepClone(DEFAULT_STATE))
 
       // Clear history and reset systems
-      stateManager.stateHistory.clearHistory()
-      stateManager.stateHistory.addStateToHistory(stateManager.currentState)
-      stateManager.stateSubscriptions.clearAll()
-      stateManager.statePerformance.resetStats()
+      stateManager.stateHistory.clear()
+      stateManager.stateHistory.initialize(stateManager.currentState)
+      stateManager.stateSubscriptions.clear()
+      stateManager.statePerformance.reset()
 
       if (stateManager.options.enableEvents) {
         stateManager.eventDispatcher.emit('state:reset', {
@@ -350,11 +347,9 @@ export function enableStateManagerDebugMode(stateManager) {
 export function getStateManagerStats(stateManager) {
   return {
     performance: stateManager.statePerformance.getStats(),
-    subscriptions: { totalSubscriptions: 0 }, // StateSubscriptions doesn't have getStats
-    history: { historySize: stateManager.stateHistory.history?.length || 0 }, // StateHistory doesn't have getStats
-    async: stateManager.stateAsync.getStats
-      ? stateManager.stateAsync.getStats()
-      : { totalAsyncOperations: 0 },
+    subscriptions: stateManager.stateSubscriptions.getStats(),
+    history: stateManager.stateHistory.getStats(),
+    async: stateManager.stateAsync.getStats(),
     moduleErrors: { ...stateManager.moduleErrors }
   }
 }
@@ -436,7 +431,6 @@ export class StateManager {
    * Enable debug mode
    */
   enableDebugMode() {
-    this.options.enableDebug = true
     enableStateManagerDebugMode(this)
   }
 
@@ -481,7 +475,7 @@ export class StateManager {
     if (this.stateHistory) this.stateHistory.clearHistory()
     if (this.stateSubscriptions) this.stateSubscriptions.clearAll()
     if (this.stateAsync) this.stateAsync.cancelAllOperations()
-    if (this.statePerformance) this.statePerformance.resetStats()
+    if (this.statePerformance) this.statePerformance.reset()
 
     Object.assign(this.currentState, deepClone(DEFAULT_STATE))
 
@@ -563,37 +557,6 @@ export class StateManager {
     } catch (error) {
       Object.assign(this.currentState, snapshot)
       throw error
-    }
-  }
-
-  /**
-   * Reset module error counters
-   */
-  resetModuleErrors() {
-    this.moduleErrors = {
-      history: 0,
-      subscriptions: 0,
-      performance: 0,
-      async: 0,
-      validation: 0
-    }
-  }
-
-  /**
-   * Perform health check across all modules
-   * @returns {Object} Health check results
-   */
-  performHealthCheck() {
-    return {
-      timestamp: Date.now(),
-      healthy: true,
-      modules: {
-        history: { healthy: true, errorCount: this.moduleErrors.history || 0 },
-        subscriptions: { healthy: true, errorCount: this.moduleErrors.subscriptions || 0 },
-        performance: { healthy: true, errorCount: this.moduleErrors.performance || 0 },
-        async: { healthy: true, errorCount: this.moduleErrors.async || 0 },
-        validation: { healthy: true, errorCount: this.moduleErrors.validation || 0 }
-      }
     }
   }
 }
