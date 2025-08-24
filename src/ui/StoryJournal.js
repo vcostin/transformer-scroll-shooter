@@ -52,32 +52,52 @@ const setupEventListeners = state => {
   const boundHandlers = {
     handleKeydown: event => {
       // Get current state through interface to avoid stale closure
-      const currentState = state._interface?.getState()
+      if (!state._interface || typeof state._interface.getState !== 'function') {
+        console.warn('StoryJournal: _interface or getState not available')
+        return
+      }
+      const currentState = state._interface.getState()
       if (currentState) {
         handleKeydownEvent(currentState, event)
       }
     },
     handleTabClick: event => {
-      const currentState = state._interface?.getState()
+      if (!state._interface || typeof state._interface.getState !== 'function') {
+        console.warn('StoryJournal: _interface or getState not available')
+        return
+      }
+      const currentState = state._interface.getState()
       if (currentState) {
         handleTabClickEvent(currentState, event)
       }
     },
     handleCloseClick: () => {
-      state._interface?.close()
+      if (!state._interface || typeof state._interface.close !== 'function') {
+        console.warn('StoryJournal: _interface or close not available')
+        return
+      }
+      state._interface.close()
     }
   }
 
   // Listen for journal open requests
   state.eventDispatcher.on('STORY_JOURNAL_OPEN', () => {
     // Update state through the factory's interface
-    state._interface?.open()
+    if (!state._interface || typeof state._interface.open !== 'function') {
+      console.warn('StoryJournal: _interface or open not available')
+      return
+    }
+    state._interface.open()
   })
 
   // Listen for journal close requests
   state.eventDispatcher.on('STORY_JOURNAL_CLOSE', () => {
     // Update state through the factory's interface
-    state._interface?.close()
+    if (!state._interface || typeof state._interface.close !== 'function') {
+      console.warn('StoryJournal: _interface or close not available')
+      return
+    }
+    state._interface.close()
   })
 
   // Listen for keyboard shortcuts
@@ -591,7 +611,11 @@ const setupModalEventHandlers = (state, modal) => {
   // Click outside to close
   modal.addEventListener('click', e => {
     if (e.target === modal) {
-      state._interface?.close()
+      if (!state._interface || typeof state._interface.close !== 'function') {
+        console.warn('StoryJournal: _interface or close not available')
+        return
+      }
+      state._interface.close()
     }
   })
 }
@@ -615,7 +639,11 @@ const handleKeydownEvent = (state, event) => {
   if (!state.isVisible) return
 
   if (event.key === 'Escape') {
-    state._interface?.close()
+    if (!state._interface || typeof state._interface.close !== 'function') {
+      console.warn('StoryJournal: _interface or close not available')
+      return
+    }
+    state._interface.close()
   } else if (event.key === 'Tab' && !event.shiftKey) {
     event.preventDefault()
     nextTab(state)
@@ -628,12 +656,20 @@ const handleKeydownEvent = (state, event) => {
 const handleTabClickEvent = (state, event) => {
   const tab = event.target.closest('.journal-tab')
   if (tab && tab.dataset.tab) {
-    state._interface?.switchTab(tab.dataset.tab)
+    if (!state._interface || typeof state._interface.switchTab !== 'function') {
+      console.warn('StoryJournal: _interface or switchTab not available')
+      return
+    }
+    state._interface.switchTab(tab.dataset.tab)
   }
 }
 
 const handleCloseClickEvent = state => {
-  state._interface?.close()
+  if (!state._interface || typeof state._interface.close !== 'function') {
+    console.warn('StoryJournal: _interface or close not available')
+    return
+  }
+  state._interface.close()
 }
 
 /**
@@ -643,7 +679,11 @@ const handleCloseClickEvent = state => {
 const nextTab = state => {
   const currentIndex = state.config.tabs.indexOf(state.currentTab)
   const nextIndex = (currentIndex + 1) % state.config.tabs.length
-  state._interface?.switchTab(state.config.tabs[nextIndex])
+  if (!state._interface || typeof state._interface.switchTab !== 'function') {
+    console.warn('StoryJournal: _interface or switchTab not available')
+    return
+  }
+  state._interface.switchTab(state.config.tabs[nextIndex])
 }
 
 /**
@@ -653,7 +693,11 @@ const nextTab = state => {
 const previousTab = state => {
   const currentIndex = state.config.tabs.indexOf(state.currentTab)
   const prevIndex = currentIndex === 0 ? state.config.tabs.length - 1 : currentIndex - 1
-  state._interface?.switchTab(state.config.tabs[prevIndex])
+  if (!state._interface || typeof state._interface.switchTab !== 'function') {
+    console.warn('StoryJournal: _interface or switchTab not available')
+    return
+  }
+  state._interface.switchTab(state.config.tabs[prevIndex])
 }
 
 /**
