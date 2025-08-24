@@ -17,3 +17,8 @@ export const MIGRATED_FILES = [
 export const TOOL_FILES = ['tools/**', 'test/**', 'tests/**', 'coverage/**', 'demo/**']
 
 export const LEGACY_FILES = ['src/legacy/', 'docs/archive/']
+
+export const PRIORITY_KEYWORDS = {
+  high: ['StateManager', 'EventDispatcher', 'EffectManager'],
+  medium: ['UIManager', 'DisplayManager', 'InputHandler']
+}

@@ -8,7 +8,7 @@
 
 import { readFileSync } from 'fs'
 import { glob } from 'glob'
-import { MIGRATED_FILES } from './migration-config.js'
+import { MIGRATED_FILES, PRIORITY_KEYWORDS } from './migration-config.js'
 
 console.log('🔍 Starting Migration Focus Analysis...')
 console.log('Identifying Phase 4 migration candidates\n')
@@ -52,18 +52,14 @@ files.forEach(file => {
 })
 
 function getPriority(file) {
-  if (
-    file.includes('StateManager') ||
-    file.includes('EventDispatcher') ||
-    file.includes('EffectManager')
-  )
+  if (PRIORITY_KEYWORDS.high.some(keyword => file.includes(keyword))) {
     return 'high'
-  if (
-    file.includes('UIManager') ||
-    file.includes('DisplayManager') ||
-    file.includes('InputHandler')
-  )
+  }
+
+  if (PRIORITY_KEYWORDS.medium.some(keyword => file.includes(keyword))) {
     return 'medium'
+  }
+
   return 'low'
 }
 
