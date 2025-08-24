@@ -6,11 +6,13 @@
  *
  * Design Principles:
  * - Zero 'this' keywords
- * - Pure functions only
- * - Immutable state patterns
+ * - Pure funct/**
+ * Force complete current transition (pure function)Immutable state patterns
  * - Easy testing and mocking
  * - Composition over inheritance
  */
+
+import { applyAlphaToColor } from '../utils/colorUtils.js'
 
 // Default configuration
 const DEFAULT_CONFIG = {
@@ -164,11 +166,7 @@ const renderTransition = (state, ctx, canvas) => {
   const centerY = canvas.height / 2
 
   // Chapter title
-  if (state.config.titleColor.includes('rgba')) {
-    ctx.fillStyle = state.config.titleColor.replace(')', `, ${state.fadeAlpha})`)
-  } else {
-    ctx.fillStyle = hexToRgba(state.config.titleColor, state.fadeAlpha)
-  }
+  ctx.fillStyle = applyAlphaToColor(state.config.titleColor, state.fadeAlpha)
   ctx.font = state.config.titleFont
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
@@ -182,7 +180,7 @@ const renderTransition = (state, ctx, canvas) => {
   ctx.fillText(state.transitionData.title, centerX, centerY + state.config.titleY)
 
   // Chapter description
-  ctx.fillStyle = hexToRgba(state.config.descriptionColor, state.fadeAlpha)
+  ctx.fillStyle = applyAlphaToColor(state.config.descriptionColor, state.fadeAlpha)
   ctx.font = state.config.descriptionFont
   ctx.shadowBlur = 2
 
@@ -210,7 +208,7 @@ const renderTransition = (state, ctx, canvas) => {
  */
 const renderDecorations = (ctx, centerX, centerY, alpha) => {
   // Top and bottom lines
-  ctx.strokeStyle = hexToRgba('#ffcc00', alpha * 0.6)
+  ctx.strokeStyle = applyAlphaToColor('#ffcc00', alpha * 0.6)
   ctx.lineWidth = 2
   ctx.setLineDash([10, 5])
 
@@ -258,19 +256,6 @@ const wrapText = (ctx, text, maxWidth) => {
   }
 
   return lines
-}
-
-/**
- * Convert hex color to rgba with alpha (pure function)
- * @param {string} hex - Hex color string
- * @param {number} alpha - Alpha value
- * @returns {string} RGBA color string
- */
-const hexToRgba = (hex, alpha) => {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
 /**
@@ -367,7 +352,6 @@ export {
   renderTransition,
   renderDecorations,
   wrapText,
-  hexToRgba,
   forceComplete,
   isActive,
   cleanup

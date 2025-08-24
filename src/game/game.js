@@ -876,11 +876,21 @@ export class Game {
 
   /**
    * Get total enemies killed (including across levels)
+   * Cached for performance - only recalculates when enemies or level change
    */
   getTotalEnemiesKilled() {
-    // For now, return current enemies killed
-    // In future, this could track cumulative across all levels
-    return this.enemiesKilled + (this.level - 1) * this.enemiesPerLevel
+    // Use cached value if available and still valid
+    const currentKey = `${this.enemiesKilled}-${this.level}`
+    if (this._totalEnemiesCache && this._totalEnemiesCacheKey === currentKey) {
+      return this._totalEnemiesCache
+    }
+
+    // Calculate and cache result
+    const total = this.enemiesKilled + (this.level - 1) * this.enemiesPerLevel
+    this._totalEnemiesCache = total
+    this._totalEnemiesCacheKey = currentKey
+
+    return total
   }
 
   /**

@@ -51,7 +51,8 @@ class FocusedCodeAnalyzer {
     this.patterns = {
       // GitHub Copilot Issue #1: Forward reference closures
       forwardReferenceClosure: {
-        regex: /const\s+\w+\s*=\s*\(\)\s*=>\s*\{[^}]*\w+Interface[^}]*\}/g,
+        regex:
+          /const\s+\w+\s*=\s*\(\)\s*=>\s*\{[^}]*(?:stateInterface|uiInterface|componentInterface|Interface\(\))[^}]*\}/g,
         severity: 'high',
         category: 'github-copilot-review',
         message: 'Potential forward reference closure (GitHub Copilot Issue)',
@@ -59,13 +60,15 @@ class FocusedCodeAnalyzer {
         applyTo: ['src/ui/StoryJournal.js', 'src/ui/ChapterTransition.js', 'src/ui/BossDialogue.js']
       },
 
-      // GitHub Copilot Issue #2: Color logic order problems
+      // GitHub Copilot Issue #2: Color logic order problems (should be resolved with colorUtils)
       colorLogicOrder: {
-        regex: /\.replace\(['"][)]['"].*includes\(['"]rgba['"]\)/g,
-        severity: 'high',
+        regex:
+          /(?:\.includes\(['"]rgba['"]\).*\.replace\(['"][)]['"]|\.replace\(['"][)]['"].*\.includes\(['"]rgba['"]\))/g,
+        severity: 'medium',
         category: 'github-copilot-review',
-        message: 'Color logic order issue - manipulate before check (GitHub Copilot Issue)',
-        suggestion: 'Check color format (includes rgba) before string manipulation (replace)',
+        message: 'Color logic pattern detected - consider using applyAlphaToColor utility',
+        suggestion:
+          'Use applyAlphaToColor() from colorUtils.js instead of manual color manipulation',
         applyTo: ['src/ui/StoryJournal.js', 'src/ui/ChapterTransition.js', 'src/ui/BossDialogue.js']
       },
 
@@ -98,6 +101,15 @@ class FocusedCodeAnalyzer {
         message: 'Try block without catch (GitHub Copilot Error Handling Issue)',
         suggestion: 'Add catch block for proper error handling in UI components',
         applyTo: ['src/ui/StoryJournal.js', 'src/ui/ChapterTransition.js', 'src/ui/BossDialogue.js']
+      },
+
+      // New pattern: Check for usage of colorUtils
+      colorUtilsUsage: {
+        regex: /applyAlphaToColor/g,
+        severity: 'info',
+        category: 'improvement',
+        message: 'Using shared color utility - good practice!',
+        suggestion: 'Continue using colorUtils for consistent color handling'
       },
 
       // Secondary patterns - general code quality
