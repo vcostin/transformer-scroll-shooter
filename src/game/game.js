@@ -70,10 +70,17 @@ export class Game {
     this.effectManager = new EffectManager(this.eventDispatcher)
     this.options = new OptionsMenu(this, this.eventDispatcher, this.stateManager)
 
-    // Initialize UI systems
-    this.chapterTransition = createChapterTransition(this.canvas, this.eventDispatcher)
-    this.bossDialogue = createBossDialogue(this.canvas, this.eventDispatcher)
-    this.storyJournal = createStoryJournal(this.eventDispatcher, this.stateManager)
+    // Initialize UI systems with error handling
+    try {
+      this.chapterTransition = createChapterTransition(this.canvas, this.eventDispatcher)
+      this.bossDialogue = createBossDialogue(this.canvas, this.eventDispatcher)
+      this.storyJournal = createStoryJournal(this.eventDispatcher, this.stateManager)
+    } catch (err) {
+      console.error('UI system initialization failed:', err)
+      this.chapterTransition = null
+      this.bossDialogue = null
+      this.storyJournal = null
+    }
 
     // Additional properties that need to be available
     this.enemiesPerLevel = GAME_CONSTANTS.ENEMIES_PER_LEVEL
@@ -324,20 +331,27 @@ export class Game {
 
     const content = getStoryContent(gameState, storyState, 'levelStart')
     if (content && content.title) {
-      // Show cinematic prologue transition with delay and error handling
-      setTimeout(() => {
-        try {
-          this.showChapterTransition(content)
-        } catch (error) {
-          console.error('Error showing chapter transition:', error)
-          // Ensure game doesn't stay paused if transition fails
-          this.paused = false
-        }
-      }, 1000) // Small delay for game to initialize
+      this.initializeStoryTransition(content)
 
       // Also show fallback message
       this.addMessage('Signal of the Last City', '#ffcc00', 5000)
     }
+  }
+
+  /**
+   * Handles the delayed chapter transition with error handling.
+   * @param {Object} content - Story content for the transition.
+   */
+  initializeStoryTransition(content) {
+    setTimeout(() => {
+      try {
+        this.showChapterTransition(content)
+      } catch (error) {
+        console.error('Error showing chapter transition:', error)
+        // Ensure game doesn't stay paused if transition fails
+        this.paused = false
+      }
+    }, 1000) // Small delay for game to initialize
   }
 
   pauseGame() {
