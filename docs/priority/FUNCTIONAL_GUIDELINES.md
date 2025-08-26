@@ -62,7 +62,7 @@ const saveSystem = { currentHealth: 100 }   // ❌ State copies
 
 **✅ Prefer:**
 ```javascript
-// Single source of truth
+// Single source of truth - state drives all visuals
 const gameState = {
   player: {
     health: 100,
@@ -77,8 +77,8 @@ const gameState = {
   ]
 }
 
-// All systems read from and update the same state
-stateManager.setState('player.health', 90)
+// Canvas displays this state - state changes, canvas updates
+stateManager.setState('player.health', 90)  // UI automatically reflects this
 ```
 
 ### 3. Entity Factories Over Direct Instantiation

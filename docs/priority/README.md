@@ -14,8 +14,9 @@
 ### 1. [ENTITY_STATE_ARCHITECTURE.md](./ENTITY_STATE_ARCHITECTURE.md) ⭐ **NEW CORE DOCUMENT**
 **The definitive guide to our architectural philosophy**
 - Single source of truth state management
-- Stateless entity components (React-like for games)
-- Event-driven coordination patterns
+- Stateless entity pure functions  
+- Canvas as visual representation of state
+- Event-driven state control (state drives UI, never reverse)
 - Implementation guidelines and best practices
 - Migration roadmap and success metrics
 
@@ -49,7 +50,8 @@
 
 - ✅ **Entities are stateless** - no internal state, only pure functions
 - ✅ **Single source of truth** - all state in StateManager
-- ✅ **Event-driven coordination** - entities communicate through state changes
+- ✅ **State drives visuals** - canvas represents state, never the reverse
+- ✅ **Event-driven control** - all changes through controlled state mutations
 - ✅ **Clean separation** - graphics, logic, and state clearly separated
 - ✅ **Performance maintained** - efficient state updates and rendering
 

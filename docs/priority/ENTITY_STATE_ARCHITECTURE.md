@@ -2,7 +2,7 @@
 
 ## 🎯 **Vision: Clean Centralized State with Stateless Entities**
 
-This document defines our core architecture philosophy: **Centralized state management with stateless entity components**. Think React + Redux for game development, but simpler and more powerful.
+This document defines our core architecture philosophy: **Centralized state management with stateless entity components**. The state drives the visual representation - when state changes, the canvas reflects those changes. Entities are pure functions that read from and write to centralized state.
 
 ## 🏗️ **Core Principles**
 
@@ -81,6 +81,12 @@ stateManager.eventDispatcher.on('state:game.score', ({ value }) => {
 
 ## 🎮 **Architecture Benefits**
 
+### **State-Driven Representation**
+- Canvas visually represents the current state
+- State changes automatically drive visual updates
+- UI never modifies state directly - only events do
+- Complete control through event-driven state mutations
+
 ### **Predictability**
 - All state changes flow through setState()
 - Easy to debug - state is in one place
@@ -88,7 +94,7 @@ stateManager.eventDispatcher.on('state:game.score', ({ value }) => {
 - Replay systems trivial to implement
 
 ### **Modularity**
-- Entities are independent, reusable components
+- Entities are independent, pure functions
 - Easy to add/remove entities
 - Clean separation of concerns
 - Testable in isolation
@@ -342,4 +348,12 @@ stateManager.setState = (path, value) => {
 
 ---
 
-**This architecture provides the foundation for a clean, scalable, and powerful game engine where entities are pure components operating on centralized state - exactly like React components operating on Redux state, but optimized for games.**
+**This architecture provides the foundation for a clean, scalable, and powerful game engine where:**
+
+- **State is the single source of truth** - everything visual represents current state
+- **Entities are pure functions** - they read state, execute logic, and write new state  
+- **Canvas displays state** - visual representation is always in sync with state
+- **Events control everything** - all changes flow through controlled state mutations
+- **UI never drives state** - user input creates events, events modify state, state updates visuals
+
+**The canvas becomes a perfect mirror of the centralized state, with full control through events.**
