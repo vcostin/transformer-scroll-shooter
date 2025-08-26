@@ -241,86 +241,6 @@ export const createStateActions = eventDispatcher => {
   }
 }
 
-// ===== GAME-SPECIFIC CURRIED ACTIONS =====
-
-/**
- * Game-specific state actions with currying
- * @param {Object} stateActions - Base state actions
- * @returns {Object} Game-specific curried actions
- */
-export const createGameStateActions = stateActions => ({
-  // Player actions
-  setPlayerHealth: health => stateActions.setState('game.player.health', health),
-  setPlayerPosition: (x, y) =>
-    stateActions.batchUpdate([
-      { path: 'game.player.x', value: x },
-      { path: 'game.player.y', value: y }
-    ]),
-  setPlayerPowerLevel: level => stateActions.setState('game.player.powerLevel', level),
-
-  // Game state actions
-  pauseGame:
-    (reason = 'system') =>
-    currentState => {
-      const newState = stateActions.setState('game.paused', true)(currentState)
-      return stateActions.setState('game.pauseSource', reason)(newState)
-    },
-
-  resumeGame:
-    (source = 'system') =>
-    currentState => {
-      // Only resume if not paused by higher priority source
-      const pauseSource = stateActions.getState('game.pauseSource')(currentState)
-
-      if (pauseSource === 'menu' && source !== 'menu') {
-        console.log('Cannot resume: menu has priority')
-        return currentState
-      }
-
-      const newState = stateActions.setState('game.paused', false)(currentState)
-      return stateActions.setState('game.pauseSource', null)(newState)
-    },
-
-  // UI state actions
-  openOptionsMenu: () => currentState => {
-    let newState = stateActions.setState('ui.options.open', true)(currentState)
-    // Options menu takes absolute priority
-    newState = stateActions.setState('game.paused', true)(newState)
-    return stateActions.setState('game.pauseSource', 'menu')(newState)
-  },
-
-  closeOptionsMenu: () => currentState => {
-    let newState = stateActions.setState('ui.options.open', false)(currentState)
-
-    // Resume game if menu was the pause source
-    const pauseSource = stateActions.getState('game.pauseSource')(currentState)
-    if (pauseSource === 'menu') {
-      newState = stateActions.setState('game.paused', false)(newState)
-      newState = stateActions.setState('game.pauseSource', null)(newState)
-    }
-
-    return newState
-  },
-
-  // Score actions
-  addScore: points => currentState => {
-    const currentScore = stateActions.getState('game.score')(currentState) || 0
-    return stateActions.setState('game.score', currentScore + points)(currentState)
-  },
-
-  // Enemy actions
-  addEnemy: enemyData => currentState => {
-    const enemies = stateActions.getState('game.entities.enemies')(currentState) || []
-    return stateActions.setState('game.entities.enemies', [...enemies, enemyData])(currentState)
-  },
-
-  removeEnemy: enemyId => currentState => {
-    const enemies = stateActions.getState('game.entities.enemies')(currentState) || []
-    const filteredEnemies = enemies.filter(enemy => enemy.id !== enemyId)
-    return stateActions.setState('game.entities.enemies', filteredEnemies)(currentState)
-  }
-})
-
 // ===== FACTORY FUNCTION =====
 
 /**
@@ -331,50 +251,15 @@ export const createGameStateActions = stateActions => ({
 export const createStateManager = (options = {}) => {
   const eventDispatcher = createEventDispatcher()
   const stateActions = createStateActions(eventDispatcher)
-  const gameActions = createGameStateActions(stateActions)
 
-  // Initialize with default state
-  const initialState = {
-    game: {
-      paused: false,
-      pauseSource: null,
-      score: 0,
-      level: 1,
-      player: {
-        health: 100,
-        x: 0,
-        y: 0,
-        powerLevel: 1
-      },
-      entities: {
-        enemies: [],
-        bullets: [],
-        powerups: []
-      }
-    },
-    ui: {
-      options: {
-        open: false,
-        selectedOption: 0
-      }
-    },
-    audio: {
-      enabled: true,
-      masterVolume: 1.0,
-      sfxVolume: 0.7,
-      musicVolume: 0.5
-    },
-    ...options.initialState
-  }
+  // Initialize with default state or empty state
+  const initialState = options.initialState || {}
 
   stateActions.resetState(initialState)
 
   return {
     // Base state functions
     ...stateActions,
-
-    // Game-specific functions
-    ...gameActions,
 
     // Event dispatcher access
     eventDispatcher,
@@ -398,37 +283,4 @@ export const createMockStateManager = (initialState = {}) => {
 // ===== SINGLETON INSTANCE =====
 
 // Create default singleton instance for backward compatibility
-export const stateManager = createStateManager({
-  enableDebug: false,
-  initialState: {
-    game: {
-      paused: false,
-      pauseSource: null,
-      score: 0,
-      level: 1,
-      player: {
-        health: 100,
-        x: 400,
-        y: 500,
-        powerLevel: 1
-      },
-      entities: {
-        enemies: [],
-        bullets: [],
-        powerups: []
-      }
-    },
-    ui: {
-      options: {
-        open: false,
-        selectedOption: 0
-      }
-    },
-    audio: {
-      enabled: true,
-      masterVolume: 1.0,
-      sfxVolume: 0.7,
-      musicVolume: 0.5
-    }
-  }
-})
+export const stateManager = createStateManager()
