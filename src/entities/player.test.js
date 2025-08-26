@@ -14,8 +14,8 @@ import {
   renderPlayer
 } from '@/entities/player.js'
 import { PLAYER_EVENTS, PLAYER_STATES, MOVE_DIRECTIONS } from '@/constants/player-events.js'
-import { EventDispatcher } from '@/systems/EventDispatcher.js'
-import { StateManager } from '@/systems/StateManager.js'
+import { EventDispatcher, createEventDispatcher } from '@/systems/EventDispatcher.js'
+import { StateManager, createStateManager } from '@/systems/StateManager.js'
 import { EffectManager } from '@/systems/EffectManager.js'
 import { createMockGameObject, createMockEventSystems } from '@test/game-test-utils.js'
 
@@ -60,8 +60,8 @@ describe('Player', () => {
       addEffect: vi.fn(),
       delta: 16, // 60 FPS
       // Event-driven architecture dependencies (now required)
-      eventDispatcher: new EventDispatcher(),
-      stateManager: new StateManager()
+      eventDispatcher: createEventDispatcher(),
+      stateManager: createStateManager()
     }
 
     // Create EffectManager using the same instances

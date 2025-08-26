@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { EventDispatcher } from '@/systems/EventDispatcher.js'
+import { createEventDispatcher } from '@/systems/EventDispatcher.js'
 import { EffectManager } from '@/systems/EffectManager.js'
 import { EffectContext } from '@/systems/EffectContext.js'
 
@@ -11,7 +11,7 @@ describe('Side Effects Integration', () => {
     // Use fake timers for predictable timing in integration tests
     vi.useFakeTimers()
 
-    eventDispatcher = new EventDispatcher()
+    eventDispatcher = createEventDispatcher()
     effectManager = new EffectManager(eventDispatcher)
   })
 

@@ -23,8 +23,8 @@ import {
   transformPlayer
 } from '@/entities/player.js'
 import { createEnemy, takeDamage as takeDamageEnemy } from '@/entities/enemies/enemy.js'
-import { EventDispatcher } from '@/systems/EventDispatcher.js'
-import { stateManager } from '@/systems/StateManager.js'
+import { createEventDispatcher } from '@/systems/EventDispatcher.js'
+import { createStateManager } from '@/systems/StateManager.js'
 import { EffectManager } from '@/systems/EffectManager.js'
 
 // Import story system
@@ -99,8 +99,8 @@ export function createGame() {
  */
 function initializeGameSystems(game) {
   const systems = {
-    eventDispatcher: new EventDispatcher(),
-    stateManager: stateManager,
+    eventDispatcher: createEventDispatcher(),
+    stateManager: createStateManager(),
     audio: createAudioManager(),
     effectManager: null, // Will be initialized after eventDispatcher
     options: null // Will be initialized after other systems

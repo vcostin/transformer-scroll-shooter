@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { EventDispatcher } from '@/systems/EventDispatcher.js'
+import { createEventDispatcher } from '@/systems/EventDispatcher.js'
 
 describe('EventDispatcher', () => {
   let dispatcher
 
   beforeEach(() => {
-    dispatcher = new EventDispatcher()
+    dispatcher = createEventDispatcher()
   })
 
   describe('Constructor', () => {

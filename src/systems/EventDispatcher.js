@@ -55,6 +55,7 @@ export const createEventDispatcher = (options = {}) => {
   }
 
   return {
+    // Curried API
     on: eventPattern => callback => {
       if (typeof callback !== 'function') {
         throw new Error('Event callback must be a function')
@@ -92,6 +93,43 @@ export const createEventDispatcher = (options = {}) => {
         logEvent('listener:removed', { pattern: eventPattern, subscriptionId })
       }
     },
+
+    // Non-curried API for compatibility
+    addEventListener: (eventPattern, callback) => {
+      return createEventDispatcher(config).on(eventPattern)(callback)
+    },
+
+    // Traditional off method for compatibility
+    off: (eventPattern, callback) => {
+      if (!eventPattern) {
+        listeners.clear()
+        return
+      }
+
+      const patternMap = listeners.get(eventPattern)
+      if (!patternMap) return
+
+      if (!callback) {
+        listeners.delete(eventPattern)
+        return
+      }
+
+      // Find and remove specific callback
+      for (const [id, cb] of patternMap.entries()) {
+        if (cb === callback) {
+          patternMap.delete(id)
+          if (patternMap.size === 0) {
+            listeners.delete(eventPattern)
+          }
+          break
+        }
+      }
+    },
+
+    // Properties for test compatibility
+    listeners,
+    eventHistory,
+    debugMode: config.enableLogging,
 
     once: eventPattern => callback => {
       const unsubscribe = createEventDispatcher(config).on(eventPattern)(data => {
@@ -175,3 +213,9 @@ export const createEventDispatcher = (options = {}) => {
 
 // Create a default instance for backward compatibility (temporary)
 export const eventDispatcher = createEventDispatcher()
+
+// Export class-compatible function for backward compatibility
+export const EventDispatcher = createEventDispatcher
+
+// Default export
+export default createEventDispatcher

@@ -3,7 +3,7 @@
  * Tests the new functional approach - NO CLASSES!
  */
 
-import { createStateManager, createMockStateManager } from '@/systems/StateManager-functional.js'
+import { createStateManager, createMockStateManager } from '@/systems/StateManager.js'
 
 describe('Functional StateManager', () => {
   let stateManager

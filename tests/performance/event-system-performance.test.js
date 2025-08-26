@@ -4,8 +4,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { EventDispatcher } from '@/systems/EventDispatcher.js'
-import { StateManager } from '@/systems/StateManager.js'
+import { createEventDispatcher } from '@/systems/EventDispatcher.js'
+import { createStateManager } from '@/systems/StateManager.js'
 import { PerformanceProfiler } from './performance-profiler.js'
 import { UI_EVENTS } from '@/constants/ui-events.js'
 
@@ -15,8 +15,8 @@ describe('Event System Performance', () => {
   let profiler
 
   beforeEach(() => {
-    eventDispatcher = new EventDispatcher()
-    stateManager = new StateManager()
+    eventDispatcher = createEventDispatcher()
+    stateManager = createStateManager()
     profiler = new PerformanceProfiler()
   })
 
