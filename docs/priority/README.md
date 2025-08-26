@@ -1,49 +1,61 @@
-# 🎯 Priority Documentation - Next Development Iteration
+# 🎯 Priority Documentation - Entity-State Architecture Era
 
-> **Quick Access Point for Phase 5 Functional Migration**
+> **Clean Centralized State with Stateless Entities - The New Foundation**
 
 ## 📋 Current Status (August 26, 2025)
 
-✅ **Phase 4 COMPLETE**: 100% test success (974/974) + Enterprise-grade functional architecture  
-🚀 **Production Ready**: Core systems demonstrate A+ functional patterns  
-📊 **Code Quality**: Complexity 0.37, zero memory leaks, advanced currying
+✅ **StateManager Simplified**: Clean entity-state architecture implemented  
+🎮 **Game Working**: Core game functionality operational with new architecture  
+🏗️ **Architecture Revolution**: Centralized state + stateless entities pattern established  
+📊 **Foundation Ready**: Ready for entity refactoring and advanced patterns
 
 ## 🗂️ Priority Documents
 
-### 1. [PHASE_5_MIGRATION_PLAN.md](./PHASE_5_MIGRATION_PLAN.md)
-**Primary roadmap for remaining functional migration work**
-- **Phase 5a**: High priority core system completion (1-2 weeks)
-- **Phase 5b**: Medium priority UI & infrastructure (2-3 weeks)  
-- **Phase 5c**: Low priority polish & optimization (1 week)
-- Complete implementation strategy and timeline estimates
+### 1. [ENTITY_STATE_ARCHITECTURE.md](./ENTITY_STATE_ARCHITECTURE.md) ⭐ **NEW CORE DOCUMENT**
+**The definitive guide to our architectural philosophy**
+- Single source of truth state management
+- Stateless entity components (React-like for games)
+- Event-driven coordination patterns
+- Implementation guidelines and best practices
+- Migration roadmap and success metrics
 
-### 2. [NEXT_PRIORITIES.md](./NEXT_PRIORITIES.md)
-**Quick reference for immediate next actions**
-- Files requiring attention with exact line numbers
-- Implementation order and dependencies
-- Risk assessment and effort estimates
+### 2. [PHASE_5_MIGRATION_PLAN.md](./PHASE_5_MIGRATION_PLAN.md)
+**Updated roadmap for entity architecture migration**
+- **Phase 5a**: Entity refactoring (Player, Enemies, Bullets)
+- **Phase 5b**: Advanced entity patterns and composition  
+- **Phase 5c**: Performance optimization and tooling
+- Updated timeline for new architecture
 
-### 3. [FUNCTIONAL_GUIDELINES.md](./FUNCTIONAL_GUIDELINES.md)
-**Implementation standards for Phase 5 work**
-- Factory function patterns
-- Functional programming best practices
-- Testing requirements
-- Code quality gates
+### 3. [NEXT_PRIORITIES.md](./NEXT_PRIORITIES.md)
+**Entity-focused immediate actions**
+- Entity conversion priorities
+- StateManager integration points
+- Architecture compliance checklist
 
-## 🎯 Quick Start for Next Developer
+### 4. [FUNCTIONAL_GUIDELINES.md](./FUNCTIONAL_GUIDELINES.md)
+**Updated for entity-state patterns**
+- Stateless entity component patterns
+- State access conventions
+- Event coordination best practices
 
-1. **Read**: `PHASE_5_MIGRATION_PLAN.md` for complete overview
-2. **Start with**: `StateAsync.js` migration (highest priority)
-3. **Follow**: Guidelines in `FUNCTIONAL_GUIDELINES.md`
-4. **Track**: Progress against `NEXT_PRIORITIES.md` checklist
+## 🎯 Quick Start for Entity Architecture
 
-## 📊 Success Metrics to Maintain
+1. **Read**: `ENTITY_STATE_ARCHITECTURE.md` for complete philosophy
+2. **Start with**: Player entity conversion to stateless component
+3. **Follow**: Entity patterns and state access guidelines
+4. **Track**: Architecture compliance and performance
 
-- ✅ **100% test success** throughout migration
-- ✅ **Zero new `this` keywords** in migrated files
-- ✅ **Zero new ES6 classes** in core systems
-- ✅ **Factory function patterns** for all new code
-- ✅ **Memory leak prevention** maintained
+## 📊 Architecture Success Metrics
+
+- ✅ **Entities are stateless** - no internal state, only pure functions
+- ✅ **Single source of truth** - all state in StateManager
+- ✅ **Event-driven coordination** - entities communicate through state changes
+- ✅ **Clean separation** - graphics, logic, and state clearly separated
+- ✅ **Performance maintained** - efficient state updates and rendering
+
+## 🎮 Known Issues
+
+- Options Menu behavior - to be addressed during entity refactoring phase
 
 ## 🔗 Related Documentation
 

@@ -1,101 +1,248 @@
-# 🎯 Next Priorities - Immediate Action Items
+# 🎯 Next Priorities - Entity Architecture Implementation
 
-> **Quick reference for starting Phase 5 functional migration**
+> **Entity-State Architecture Migration Roadmap**
 
-## 🔴 HIGH PRIORITY - Start Here (Phase 5a)
+## 🔴 HIGH PRIORITY - Start Here (Entity Foundation)
 
-### 1. StateAsync.js Migration 
-**File**: `src/systems/StateAsync.js`  
-**Issue**: 75+ `this` keyword violations, ES6 class structure  
+### 1. Player Entity Refactoring 
+**File**: `src/entities/player.js`  
+**Current**: Mixed functional patterns with some state management issues  
+**Goal**: Pure stateless entity operating on global state  
 **Effort**: 2-3 days  
-**Risk**: Low (standalone system with good test coverage)
+**Risk**: Medium (core game entity)
 
-**Key Problems**:
-- Line 14: `constructor(options = {}, callbacks = {})`
-- Line 16: Multiple `this.options`, `this.callbacks` usage throughout
-- Class-based structure needs complete factory function conversion
-
-**Target Pattern**:
+**Key Transformation**:
 ```javascript
-// Replace class with factory function
-const createStateAsync = (options = {}, callbacks = {}) => {
-  // Use closure variables instead of this.property
-  const asyncOptions = { ...defaultOptions, ...options };
-  const asyncCallbacks = { ...defaultCallbacks, ...callbacks };
+// FROM: Internal state management
+const player = {
+  health: 100,  // ❌ Internal state
+  x: 400,       // ❌ Internal state
+  update() {
+    this.x += this.speed  // ❌ Mutating internal state
+  }
+}
+
+// TO: Stateless entity
+const player = {
+  // ✅ Read from global state
+  getHealth: () => stateManager.getState('player.health'),
+  getPosition: () => ({ 
+    x: stateManager.getState('player.x'), 
+    y: stateManager.getState('player.y') 
+  }),
   
-  return {
-    // Return functional API
+  // ✅ Update global state
+  move: (dx, dy) => {
+    stateManager.setState('player.x', stateManager.getState('player.x') + dx)
+    stateManager.setState('player.y', stateManager.getState('player.y') + dy)
+  },
+  
+  // ✅ Pure rendering
+  render: (ctx) => {
+    const { x, y } = player.getPosition()
+    ctx.drawImage(player.sprite, x, y)
   }
 }
 ```
 
-**Tests to Maintain**: 19 tests in `StateAsync.test.js`
+**State Initialization Required**:
+- Initialize player state in game StateManager
+- Ensure all player properties are in global state
+- Update game.js to use stateless player methods
 
-### 2. EffectContext.js Migration
-**File**: `src/systems/EffectContext.js`  
-**Issue**: ES6 class with 25+ `this` violations  
+### 2. Game State Centralization
+**File**: `src/game/game.js`  
+**Current**: Uses simplified StateManager correctly  
+**Goal**: Remove any remaining local state, full centralization  
 **Effort**: 1-2 days  
-**Risk**: Medium (integrates with EffectManager)
+**Risk**: Low (already mostly compliant)
 
-**Key Problems**:
-- Line 5: `class EffectContext {`
-- Line 6: `constructor(effectManager, eventDispatcher) {`
-- Line 7: Multiple `this.effectManager`, `this.eventDispatcher` usage
+**Key Changes**:
+- Ensure ALL game state flows through StateManager
+- Remove any local class properties that duplicate state
+- Verify pause, score, level, etc. are all centralized
+- Update entity creation to initialize state properly
 
-**Target Pattern**:
+### 3. Enemy Entity Conversion
+**File**: `src/entities/enemies/enemy.js`  
+**Current**: Functional but may have state management inconsistencies  
+**Goal**: Stateless enemy entities with AI state in global state  
+**Effort**: 3-4 days  
+**Risk**: Medium (complex AI behaviors)
+
+**Entity Collection Pattern**:
 ```javascript
-// Replace with factory function
-const createEffectContext = (effectManager, eventDispatcher) => {
-  // Use closure variables for state
-  return {
-    // Functional API methods
+// Global state structure for enemies
+const gameState = {
+  enemies: [
+    { id: 1, health: 50, x: 800, y: 200, type: 'grunt', ai: 'patrol' },
+    { id: 2, health: 75, x: 900, y: 150, type: 'elite', ai: 'aggressive' }
+  ]
+}
+
+// Stateless enemy entity
+const enemy = {
+  getById: (id) => stateManager.getState('enemies').find(e => e.id === id),
+  
+  update: (id, deltaTime) => {
+    const enemyState = enemy.getById(id)
+    if (!enemyState) return
+    
+    // AI logic based on current state
+    // Update global state based on AI decisions
+  },
+  
+  render: (id, ctx) => {
+    const enemyState = enemy.getById(id)
+    if (!enemyState) return
+    
+    // Pure rendering based on state
   }
 }
 ```
 
-**Tests to Maintain**: 10 tests in `EffectContext.test.js`
+### 4. Bullet Entity Refactoring
+**File**: `src/entities/bullet.js`  
+**Current**: Simple entity, likely easier conversion  
+**Goal**: Stateless bullet management with global bullet array  
+**Effort**: 1-2 days  
+**Risk**: Low (simple entity with basic physics)
 
-### 3. Enemy.js Large Refactoring
-**File**: `src/entities/enemies/enemy.js`  
-**Issue**: Large ES6 class (1400+ lines)  
-**Effort**: 3-4 days  
-**Risk**: High (complex game entity with many dependencies)
+**Key Transformation**:
+```javascript
+// Global state for bullets
+const gameState = {
+  bullets: [
+    { id: 1, x: 400, y: 300, vx: 10, vy: 0, owner: 'player' },
+    { id: 2, x: 450, y: 250, vx: -5, vy: 2, owner: 'enemy' }
+  ]
+}
 
-**Key Problems**:
-- Line 1405: `class Enemy {`
-- Line 1406: `constructor(game, x, y, type) {`
-- Extensive use of `this` throughout large codebase
+// Stateless bullet system
+const bullets = {
+  create: (x, y, vx, vy, owner) => {
+    const newBullet = { id: generateId(), x, y, vx, vy, owner }
+    const currentBullets = stateManager.getState('bullets')
+    stateManager.setState('bullets', [...currentBullets, newBullet])
+  },
+  
+  updateAll: (deltaTime) => {
+    const currentBullets = stateManager.getState('bullets')
+    const updatedBullets = currentBullets.map(bullet => ({
+      ...bullet,
+      x: bullet.x + bullet.vx * deltaTime,
+      y: bullet.y + bullet.vy * deltaTime
+    }))
+    stateManager.setState('bullets', updatedBullets)
+  }
+}
+```
 
-**Strategy**: Break into smaller functional modules first:
-1. Enemy state management
-2. Enemy behavior patterns  
-3. Enemy rendering
-4. Enemy collision detection
+## 🟡 MEDIUM PRIORITY - Entity Architecture Completion
 
-**Tests to Maintain**: 19 tests in `enemy.test.js`
+### 5. Advanced Entity Patterns
+**Goal**: Implement advanced patterns from ENTITY_STATE_ARCHITECTURE.md  
+**Effort**: 2-3 days  
+**Risk**: Low (enhancement of working foundation)
 
-## 🟡 MEDIUM PRIORITY (Phase 5b)
+**Key Features**:
+- Entity composition patterns
+- Computed properties from state
+- Entity lifecycle management
+- Graphics integration with state
+- Async asset loading for entities
 
-### 4. UI Layer Migration
+### 6. State Schema Validation
+**File**: `src/constants/state-schema.js`  
+**Goal**: Implement schema validation for entity state  
+**Effort**: 1-2 days  
+**Risk**: Low (purely additive)
+
+**Key Validation**:
+- Player state structure validation
+- Enemy state array validation
+- Bullet state array validation
+- Game state consistency checks
+
+### 7. UI Component Refactoring
 **Files**: `src/ui/*.js`  
-**Issues**: Multiple `new` keyword usage, direct DOM access  
-**Effort**: 1 week total  
-**Approach**: Convert to canvas-based functional patterns
+**Goal**: Convert UI components to stateless pattern  
+**Effort**: 1 week  
+**Risk**: Medium (complex UI interactions)
 
 **Priority Order**:
-1. `options.js` - Most `new` keyword violations
+1. `options.js` - Options menu (known issue to fix)
 2. `UIManager.js` - Core UI coordination
 3. `MenuSystem.js` - Menu functionality
 4. `InputHandler.js` - Input management
 5. `DisplayManager.js` - Display coordination
 
-### 5. Rendering Layer Enhancement  
-**Files**: `src/rendering/*.js`, `src/utils/parallax*.js`  
-**Issues**: `new` keyword usage in rendering pipeline  
-**Effort**: 2-3 days
+## 🟢 LOW PRIORITY - System Integration
 
-### 6. Utility Functions
-**Files**: Various `src/utils/*.js`, `src/constants/*.js`  
+### 8. Rendering Layer Enhancement  
+**Files**: `src/rendering/*.js`  
+**Goal**: Integrate with entity-state architecture  
+**Effort**: 2-3 days  
+**Risk**: Low (already functional)
+
+### 9. Audio System Integration
+**File**: `src/systems/audio.js`  
+**Goal**: Audio events driven by state changes  
+**Effort**: 1-2 days  
+**Risk**: Low (isolated system)
+
+### 10. Performance Optimization
+**Goal**: Optimize entity-state architecture performance  
+**Effort**: 1-2 days  
+**Risk**: Low (performance enhancement)
+
+**Key Optimizations**:
+- State change batching
+- Entity update optimization
+- Event system performance
+- Memory usage optimization
+
+---
+
+## 📋 Entity Architecture Checklist
+
+### Foundation Complete ✅
+- [x] StateManager simplified to clean API
+- [x] Entity-state architecture documented
+- [x] Game operational with new architecture
+- [x] Architecture philosophy established
+
+### Entity Conversion Progress 🔄
+- [ ] Player entity refactored to stateless
+- [ ] Game state fully centralized
+- [ ] Enemy entities converted
+- [ ] Bullet system refactored
+- [ ] Advanced entity patterns implemented
+
+### System Integration 📅
+- [ ] State schema validation
+- [ ] UI components converted
+- [ ] Rendering integration complete
+- [ ] Audio system integrated
+- [ ] Performance optimized
+
+### Success Metrics 🎯
+- **Architecture Compliance**: All entities stateless, operating on global state
+- **Performance Target**: No regression from previous architecture
+- **Code Quality**: Clean separation of concerns, testable components
+- **Documentation**: Complete alignment with entity-state philosophy
+
+---
+
+## 🚀 Getting Started
+
+1. **Read ENTITY_STATE_ARCHITECTURE.md** - Understand the vision
+2. **Start with Player Entity** - Lowest risk, high impact
+3. **Test Thoroughly** - Maintain game functionality
+4. **Document Progress** - Update this file as work completes
+5. **Ask Questions** - Clarify architecture decisions as needed
+
+The entity-state architecture is our foundation for scalable, maintainable game development. Focus on clean separation of concerns and centralized state management.  
 **Issues**: Scattered `new` keyword and `this` usage  
 **Effort**: 1-2 days
 

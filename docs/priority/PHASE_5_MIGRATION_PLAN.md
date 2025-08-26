@@ -1,52 +1,60 @@
-# Phase 5 Migration Plan - Completing Functional Architecture
+# Entity-State Architecture Migration Plan
 
-## 🎯 Current Status: Phase 4 Complete
+## 🎯 Current Status: Architecture Foundation Complete
 
-✅ **Phase 4 ACHIEVED**: 100% test success (974/974) + A+ functional architecture in core systems  
-✅ **Production Ready**: Enterprise-grade EventDispatcher, StateManager, and EffectManager  
-✅ **Zero Critical Issues**: All runtime errors fixed, perfect state management integration
+✅ **ARCHITECTURE ESTABLISHED**: Entity-state pattern with centralized StateManager  
+✅ **GAME OPERATIONAL**: Core game running with simplified StateManager architecture  
+✅ **DOCUMENTATION COMPLETE**: Comprehensive entity-state architecture guides created  
+✅ **ZERO CRITICAL ISSUES**: Game stable, StateManager working, clean API established
 
-## 📊 Code Analysis Summary (Post-Phase 4)
+## 📊 Entity Architecture Status
 
-### Core Systems Status ✅
-- **src/systems/EventDispatcher.js**: ✅ Perfect functional implementation
-- **src/systems/StateManager.js**: ✅ Complete curried API with reactive subscriptions  
-- **src/systems/EffectManager.js**: ✅ Functional side-effect management
-- **src/systems/story.js**: ✅ Pure POJO+Functional architecture
-- **src/systems/audio.js**: ✅ Factory function patterns
+### Foundation Complete ✅
+- **src/systems/StateManager.js**: ✅ Simplified getState/setState API for entity-state pattern
+- **src/game/game.js**: ✅ Working with centralized state management
+- **docs/priority/ENTITY_STATE_ARCHITECTURE.md**: ✅ Complete architectural documentation
+- **docs/priority/**: ✅ All priority documentation aligned with entity-state vision
 
-### Systems Needing Migration 🔄
-Based on `npm run analyze` results, here are the remaining migration opportunities:
+### Entities Ready for Conversion 🔄
+Based on entity-state architecture, here are the migration targets:
 
-## 🚀 Phase 5a - High Priority (Core System Completion)
+## 🚀 Phase 1 - Core Entity Migration (Foundation)
 
-### 1. StateAsync.js - Critical Class Migration
-**Priority**: 🔴 HIGH  
-**Issue**: Multiple `this` keyword violations (75+ instances)  
-**Current**: ES6 class with extensive `this` usage  
-**Target**: Pure functional with factory pattern
+### 1. Player Entity - Stateless Conversion
+**Priority**: 🔴 HIGH (Core game entity)  
+**Issue**: Mixed state management patterns  
+**Current**: Functional but may have internal state  
+**Target**: Pure stateless entity operating on global state
 
 ```javascript
-// Current (Class)
-class StateAsync {
-  constructor(options = {}, callbacks = {}) {
-    this.options = options;
-    // ... many this usages
+// Current (May have internal state)
+const player = {
+  x: 400,           // ❌ Internal state
+  y: 300,           // ❌ Internal state
+  health: 100,      // ❌ Internal state
+  move(dx, dy) {
+    this.x += dx    // ❌ Internal mutation
   }
 }
 
-// Target (Functional)
-const createStateAsync = (options = {}, callbacks = {}) => {
-  // Factory function returning functional API
-  return {
-    // Pure functions only
+// Target (Stateless entity)
+const player = {
+  getPosition: () => ({
+    x: stateManager.getState('player.x'),
+    y: stateManager.getState('player.y')
+  }),
+  
+  move: (dx, dy) => {
+    const current = player.getPosition()
+    stateManager.setState('player.x', current.x + dx)
+    stateManager.setState('player.y', current.y + dy)
   }
 }
 ```
 
 **Estimate**: 2-3 days  
-**Dependencies**: None (standalone system)  
-**Tests**: 19 existing tests to maintain
+**Dependencies**: State initialization in game.js  
+**Tests**: Existing player tests to maintain
 
 ### 2. EffectContext.js - Class to Factory Migration  
 **Priority**: 🔴 HIGH  

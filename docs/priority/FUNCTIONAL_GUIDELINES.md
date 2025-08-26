@@ -1,73 +1,321 @@
-# 🛠️ Functional Guidelines - Phase 5 Implementation Standards
+# 🛠️ Entity-State Guidelines - Architecture Implementation Standards
 
-> **Coding standards and patterns for Phase 5 functional migration**
+> **Coding standards and patterns for entity-state architecture implementation**
 
 ## 🎯 Core Principles
 
-### 1. Factory Functions Over Classes
+### 1. Stateless Entities Over Stateful Classes
 **❌ Avoid:**
 ```javascript
-class StateAsync {
-  constructor(options) {
-    this.options = options;
+class Player {
+  constructor(x, y) {
+    this.x = x;          // ❌ Internal state
+    this.y = y;          // ❌ Internal state
+    this.health = 100;   // ❌ Internal state
   }
   
-  method() {
-    return this.options.value;
+  move(dx, dy) {
+    this.x += dx;        // ❌ Mutating internal state
+    this.y += dy;        // ❌ Mutating internal state
   }
 }
 ```
 
 **✅ Prefer:**
 ```javascript
-const createStateAsync = (options = {}) => {
-  // Use closure variables instead of this.property
-  const asyncOptions = { ...defaultOptions, ...options };
-  
-  // Return object with methods (functional API)
+const createPlayer = (stateManager) => {
+  // Stateless entity - no internal state
   return {
-    method: () => asyncOptions.value,
-    // Pure functions that don't mutate state
+    // Read from global state
+    getPosition: () => ({
+      x: stateManager.getState('player.x'),
+      y: stateManager.getState('player.y')
+    }),
+    
+    getHealth: () => stateManager.getState('player.health'),
+    
+    // Update global state
+    move: (dx, dy) => {
+      const currentX = stateManager.getState('player.x')
+      const currentY = stateManager.getState('player.y')
+      stateManager.setState('player.x', currentX + dx)
+      stateManager.setState('player.y', currentY + dy)
+    },
+    
+    // Pure rendering function
+    render: (ctx) => {
+      const { x, y } = player.getPosition()
+      ctx.drawImage(playerSprite, x, y)
+    }
   }
 }
 ```
 
-### 2. Closure Variables Over `this` Keywords
+### 2. Centralized State Over Distributed State
 **❌ Avoid:**
 ```javascript
-this.property = value;
-this.method = () => this.property;
+// Multiple sources of truth
+const player = { health: 100, x: 400 }      // ❌ Local state
+const gameUI = { playerHealth: 100 }        // ❌ Duplicate state
+const saveSystem = { currentHealth: 100 }   // ❌ State copies
 ```
 
 **✅ Prefer:**
 ```javascript
-const property = value;
-const method = () => property;
+// Single source of truth
+const gameState = {
+  player: {
+    health: 100,
+    x: 400,
+    y: 300
+  },
+  enemies: [
+    { id: 1, health: 50, x: 800, y: 200 }
+  ],
+  bullets: [
+    { id: 1, x: 450, y: 300, vx: 10, vy: 0 }
+  ]
+}
+
+// All systems read from and update the same state
+stateManager.setState('player.health', 90)
 ```
 
-### 3. Pure Functions for Business Logic
+### 3. Entity Factories Over Direct Instantiation
 **❌ Avoid:**
 ```javascript
-updateState() {
-  this.state.value += 1; // Mutation
-  return this.state;
+// Creating entities with internal state
+const enemy1 = new Enemy(800, 200, 'grunt')  // ❌ Class instantiation
+const enemy2 = new Enemy(900, 150, 'elite')  // ❌ Internal enemy state
+```
+
+**✅ Prefer:**
+```javascript
+// Initialize entity state in global state
+const enemies = {
+  spawn: (x, y, type) => {
+    const newEnemy = {
+      id: generateId(),
+      health: getHealthForType(type),
+      x, y, type,
+      ai: getAIForType(type)
+    }
+    
+    const currentEnemies = stateManager.getState('enemies')
+    stateManager.setState('enemies', [...currentEnemies, newEnemy])
+    
+    return newEnemy.id
+  },
+  
+  // Stateless entity behavior
+  update: (id, deltaTime) => {
+    const enemyState = stateManager.getState('enemies').find(e => e.id === id)
+    if (!enemyState) return
+    
+    // AI logic updates global state
+    const newPosition = calculateAIMovement(enemyState, deltaTime)
+    enemies.setPosition(id, newPosition.x, newPosition.y)
+  }
 }
 ```
 
-**✅ Prefer:**
+### 4. Immutable State Updates Over Mutations
+**❌ Avoid:**
 ```javascript
-const updateState = (currentState) => ({
-  ...currentState,
-  value: currentState.value + 1 // Immutable update
-});
+// Direct state mutation
+const enemyState = stateManager.getState('enemies')[0]
+enemyState.health -= 10  // ❌ Direct mutation
+enemyState.x += 5        // ❌ Direct mutation
 ```
 
-## 📋 Migration Patterns
-
-### Pattern 1: Simple Class to Factory Function
-
-**Before:**
+**✅ Prefer:**
 ```javascript
+// Immutable state updates
+const updateEnemyHealth = (id, damage) => {
+  const enemies = stateManager.getState('enemies')
+  const updatedEnemies = enemies.map(enemy => 
+    enemy.id === id 
+      ? { ...enemy, health: enemy.health - damage }  // ✅ Immutable update
+      : enemy
+  )
+  stateManager.setState('enemies', updatedEnemies)
+}
+```
+
+## 📋 Entity Architecture Patterns
+
+### Pattern 1: Entity State Initialization
+
+**Before (Class-based with internal state):**
+```javascript
+class Player {
+  constructor(x, y) {
+    this.x = x
+    this.y = y
+    this.health = 100
+    this.speed = 5
+  }
+}
+
+const player = new Player(400, 300)
+```
+
+**After (State initialization):**
+```javascript
+// Initialize player state in StateManager
+const initializePlayer = (x = 400, y = 300) => {
+  stateManager.setState('player', {
+    x, y,
+    health: 100,
+    maxHealth: 100,
+    speed: 5,
+    isAlive: true
+  })
+}
+
+// Stateless player entity
+const player = {
+  getState: () => stateManager.getState('player'),
+  getPosition: () => ({ 
+    x: stateManager.getState('player.x'), 
+    y: stateManager.getState('player.y') 
+  }),
+  
+  move: (dx, dy) => {
+    const current = player.getPosition()
+    stateManager.setState('player.x', current.x + dx)
+    stateManager.setState('player.y', current.y + dy)
+  },
+  
+  takeDamage: (amount) => {
+    const currentHealth = stateManager.getState('player.health')
+    const newHealth = Math.max(0, currentHealth - amount)
+    stateManager.setState('player.health', newHealth)
+    
+    if (newHealth === 0) {
+      stateManager.setState('player.isAlive', false)
+    }
+  }
+}
+```
+
+### Pattern 2: Entity Collection Management
+
+**Before (Array of class instances):**
+```javascript
+class Enemy {
+  constructor(x, y, type) {
+    this.x = x
+    this.y = y
+    this.type = type
+    this.health = 50
+  }
+}
+
+const enemies = [
+  new Enemy(800, 200, 'grunt'),
+  new Enemy(900, 150, 'elite')
+]
+```
+
+**After (State-managed collection):**
+```javascript
+// Initialize enemies in state
+const initializeEnemies = () => {
+  stateManager.setState('enemies', [])
+}
+
+// Stateless enemy management
+const enemies = {
+  spawn: (x, y, type) => {
+    const newEnemy = {
+      id: generateId(),
+      x, y, type,
+      health: getHealthForType(type),
+      ai: getAIForType(type),
+      isAlive: true
+    }
+    
+    const current = stateManager.getState('enemies')
+    stateManager.setState('enemies', [...current, newEnemy])
+    return newEnemy.id
+  },
+  
+  getById: (id) => {
+    return stateManager.getState('enemies').find(e => e.id === id)
+  },
+  
+  getAll: () => stateManager.getState('enemies'),
+  
+  updatePosition: (id, x, y) => {
+    const current = stateManager.getState('enemies')
+    const updated = current.map(enemy => 
+      enemy.id === id ? { ...enemy, x, y } : enemy
+    )
+    stateManager.setState('enemies', updated)
+  },
+  
+  remove: (id) => {
+    const current = stateManager.getState('enemies')
+    const filtered = current.filter(enemy => enemy.id !== id)
+    stateManager.setState('enemies', filtered)
+  }
+}
+```
+
+### Pattern 3: Entity Behavior Systems
+
+**Before (Method-based behavior):**
+```javascript
+class Enemy {
+  update(deltaTime) {
+    this.x += this.speed * deltaTime  // Internal state mutation
+    this.checkCollisions()            // Mixed concerns
+  }
+  
+  checkCollisions() {
+    // Collision logic mixed with entity
+  }
+}
+```
+
+**After (Stateless behavior systems):**
+```javascript
+// Separate behavior systems
+const enemyMovement = {
+  update: (deltaTime) => {
+    const enemies = stateManager.getState('enemies')
+    const updatedEnemies = enemies.map(enemy => {
+      const newX = enemy.x + (enemy.speed || 2) * deltaTime
+      return { ...enemy, x: newX }
+    })
+    stateManager.setState('enemies', updatedEnemies)
+  }
+}
+
+const enemyAI = {
+  update: (deltaTime) => {
+    const enemies = stateManager.getState('enemies')
+    const playerPos = stateManager.getState('player')
+    
+    enemies.forEach(enemy => {
+      const behavior = getAIBehavior(enemy.ai)
+      const newState = behavior.calculate(enemy, playerPos, deltaTime)
+      enemies.updatePosition(enemy.id, newState.x, newState.y)
+    })
+  }
+}
+
+const collisionSystem = {
+  checkEnemyCollisions: () => {
+    const enemies = stateManager.getState('enemies')
+    const bullets = stateManager.getState('bullets')
+    
+    // Pure collision detection logic
+    // Updates state through StateManager
+  }
+}
+```
 class SimpleClass {
   constructor(config) {
     this.config = config;
