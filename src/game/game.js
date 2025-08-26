@@ -1119,9 +1119,17 @@ export class Game {
             if (content.cutsceneKey) {
               const storyState = this.stateManager.getState('story')
               if (storyState) {
+                // Ensure viewedCutscenes is always a Set (handle serialization issues)
+                const currentViewed =
+                  storyState.viewedCutscenes instanceof Set
+                    ? storyState.viewedCutscenes
+                    : new Set(
+                        Array.isArray(storyState.viewedCutscenes) ? storyState.viewedCutscenes : []
+                      )
+
                 const updatedStoryState = {
                   ...storyState,
-                  viewedCutscenes: new Set([...storyState.viewedCutscenes, content.cutsceneKey])
+                  viewedCutscenes: new Set([...currentViewed, content.cutsceneKey])
                 }
                 this.stateManager.setState('story', updatedStoryState)
               }

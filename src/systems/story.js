@@ -227,7 +227,13 @@ const updateStoryProgress = (storyState, gameState) => {
  * @returns {Object} - New story state (immutable)
  */
 const markLogAsViewed = (storyState, logId) => {
-  const newViewedLogs = new Set(storyState.viewedCutscenes)
+  // Ensure viewedCutscenes is always a Set (handle serialization issues)
+  const currentViewed =
+    storyState.viewedCutscenes instanceof Set
+      ? storyState.viewedCutscenes
+      : new Set(Array.isArray(storyState.viewedCutscenes) ? storyState.viewedCutscenes : [])
+
+  const newViewedLogs = new Set(currentViewed)
   newViewedLogs.add(logId)
 
   return {
@@ -252,7 +258,13 @@ const getStoryContent = (gameState, storyState, context) => {
       // Check if the chapter transition has already been viewed
       const cutsceneKey = `chapter_${chapter.id}`
 
-      if (storyState.viewedCutscenes?.has(cutsceneKey)) {
+      // Ensure viewedCutscenes is always a Set (handle serialization issues)
+      const currentViewed =
+        storyState.viewedCutscenes instanceof Set
+          ? storyState.viewedCutscenes
+          : new Set(Array.isArray(storyState.viewedCutscenes) ? storyState.viewedCutscenes : [])
+
+      if (currentViewed.has(cutsceneKey)) {
         return null // Don't show the same chapter transition again
       }
 
