@@ -164,6 +164,11 @@ function initializeGameSystems(game) {
     pauseGame() {
       finalGameObject.paused = true
       finalGameObject.userPaused = true
+
+      // IMPORTANT: Also update StateManager for consistency with class-based getters
+      finalGameObject.stateManager.setState('game.paused', true)
+      finalGameObject.stateManager.setState('game.userPaused', true)
+
       finalGameObject.eventDispatcher.emit(GAME_EVENTS.GAME_PAUSE, {
         timestamp: Date.now()
       })
@@ -178,6 +183,11 @@ function initializeGameSystems(game) {
 
       finalGameObject.paused = false
       finalGameObject.userPaused = false
+
+      // IMPORTANT: Also update StateManager for consistency with class-based getters
+      finalGameObject.stateManager.setState('game.paused', false)
+      finalGameObject.stateManager.setState('game.userPaused', false)
+
       finalGameObject.eventDispatcher.emit(GAME_EVENTS.GAME_RESUME, {
         timestamp: Date.now()
       })
@@ -546,9 +556,8 @@ export class Game {
       this.stateManager.setState('game.finalScore', data.score)
     })
 
-    this.effectManager.effect(GAME_EVENTS.UI_SCORE_UPDATE, data => {
-      this.stateManager.setState('game.score', data.score)
-    })
+    // Removed circular UI_SCORE_UPDATE effect that was causing state corruption
+    // Score is already managed directly through the score setter
 
     // Set up state change listeners to emit UI events
     const unsubscribeScore = this.stateManager.subscribe('game.score', (newScore, oldScore) => {
@@ -680,6 +689,7 @@ export class Game {
     // Use setter which should call StateManager
     this.paused = true
     this.userPaused = true
+
     this.eventDispatcher.emit(GAME_EVENTS.GAME_PAUSE, {
       timestamp: Date.now()
     })
@@ -700,6 +710,7 @@ export class Game {
     // Use setter which should call StateManager
     this.paused = false
     this.userPaused = false
+
     this.eventDispatcher.emit(GAME_EVENTS.GAME_RESUME, {
       timestamp: Date.now()
     })
