@@ -293,8 +293,8 @@ describe('Event-Driven Game Loop', () => {
     })
 
     it('should emit events when state changes', () => {
-      // Use proper curried syntax
-      game.stateManager.setState('game.score')(100)()
+      // Use proper syntax for the actual implementation
+      game.stateManager.setState('game.score', 100)
 
       expect(eventSpy).toHaveBeenCalledWith(
         GAME_EVENTS.UI_SCORE_UPDATE,

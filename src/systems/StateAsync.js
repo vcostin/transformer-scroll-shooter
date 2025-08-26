@@ -10,8 +10,6 @@
  * - Event emission for async operations
  */
 
-import { generateIdentityId } from '../utils/IdGenerator.js'
-
 export class StateAsync {
   constructor(options = {}, callbacks = {}) {
     // Configuration
@@ -367,7 +365,7 @@ export class StateAsync {
    * @private
    */
   generateOperationId() {
-    return generateIdentityId(`async_${++this.operationCounter}`)
+    return `async_${++this.operationCounter}_${Date.now()}`
   }
 
   /**

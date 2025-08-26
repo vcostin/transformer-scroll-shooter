@@ -6,7 +6,6 @@
  */
 
 import { createEventDispatcher } from '@/systems/EventDispatcher.js'
-import { generateIdentityId } from '../utils/IdGenerator.js'
 
 // ===== PURE STATE FUNCTIONS =====
 
@@ -53,129 +52,52 @@ export const createStateManager = (options = {}) => {
   const subscribers = new Map()
   let subscriptionCounter = 0
 
-  // Internal setState function
-  const setState = (path, value) => {
-    const oldValue = getStateAtPath(currentState, path)
-    const newState = setStateAtPath(currentState, path, value)
+  return {
+    // Simple state getter
+    getState(path = '') {
+      return getStateAtPath(currentState, path)
+    },
 
-    currentState = newState
+    // Simple state setter with events
+    setState(path, value) {
+      const oldValue = getStateAtPath(currentState, path)
+      const newState = setStateAtPath(currentState, path, value)
 
-    // Emit events for entity coordination
-    eventDispatcher.emit('state:changed', {
-      path,
-      newValue: value,
-      oldValue,
-      state: currentState
-    })
+      currentState = newState
 
-    if (path) {
-      eventDispatcher.emit(`state:${path}`, {
-        value,
+      // Call subscriber callbacks
+      subscribers.forEach(({ pattern, callback }) => {
+        if (pattern === path || path.startsWith(pattern + '.') || pattern === '*') {
+          try {
+            callback(value, oldValue)
+          } catch (error) {
+            console.error('Error in state subscription callback:', error)
+          }
+        }
+      })
+
+      // Emit events for entity coordination
+      eventDispatcher.emit('state:changed', {
+        path,
+        newValue: value,
         oldValue,
         state: currentState
       })
-    }
 
-    return value
-  }
-
-  // Internal getState function
-  const getState = (path = '') => {
-    return getStateAtPath(currentState, path)
-  }
-
-  // Simple ID generator for entities
-  const generateId = () => {
-    return generateIdentityId()
-  }
-
-  // Initialize entity state (for entity-state architecture)
-  const initializeEntity = (entityPath, initialState) => {
-    if (getState(entityPath)) {
-      console.warn(`Entity state at ${entityPath} already exists`)
-      return false
-    }
-
-    setState(entityPath, initialState)
-    return true
-  }
-
-  return {
-    // Simple state getter
-    getState,
-
-    // Simple state setter with events
-    setState,
-
-    // Initialize entity state (for entity-state architecture)
-    initializeEntity,
-
-    // Batch state initialization for multiple entities
-    initializeEntities(entitiesConfig) {
-      Object.entries(entitiesConfig).forEach(([path, initialState]) => {
-        initializeEntity(path, initialState)
-      })
-    },
-
-    // ===== ENTITY COLLECTION MANAGEMENT =====
-
-    // Initialize an entity collection (enemies, bullets, etc.)
-    initializeCollection(collectionPath, initialArray = []) {
-      if (getState(collectionPath)) {
-        console.warn(`Collection at ${collectionPath} already exists`)
-        return false
+      if (path) {
+        eventDispatcher.emit(`state:${path}`, {
+          value,
+          oldValue,
+          state: currentState
+        })
       }
 
-      setState(collectionPath, initialArray)
-      return true
+      return value
     },
-
-    // Add entity to collection with auto-generated ID
-    addToCollection(collectionPath, entityData) {
-      const collection = getState(collectionPath) || []
-      const id = entityData.id || generateId()
-      const newEntity = { ...entityData, id }
-
-      setState(collectionPath, [...collection, newEntity])
-      return id
-    },
-
-    // Remove entity from collection by ID
-    removeFromCollection(collectionPath, entityId) {
-      const collection = getState(collectionPath) || []
-      const filtered = collection.filter(entity => entity.id !== entityId)
-      setState(collectionPath, filtered)
-      return filtered.length < collection.length // Returns true if removed
-    },
-
-    // Update entity in collection by ID
-    updateInCollection(collectionPath, entityId, updates) {
-      const collection = getState(collectionPath) || []
-      const updated = collection.map(entity =>
-        entity.id === entityId ? { ...entity, ...updates } : entity
-      )
-      setState(collectionPath, updated)
-      return updated.find(e => e.id === entityId) // Returns updated entity
-    },
-
-    // Get entity from collection by ID
-    getFromCollection(collectionPath, entityId) {
-      const collection = getState(collectionPath) || []
-      return collection.find(entity => entity.id === entityId)
-    },
-
-    // Simple ID generator for entities
-    generateId,
 
     // Get full state snapshot
-    getFullState(deepClone = false) {
-      if (deepClone) {
-        // Deep clone for complete safety (expensive)
-        return JSON.parse(JSON.stringify(currentState))
-      }
-
-      // Shallow clone for performance (entities should use setState anyway)
-      return { ...currentState }
+    getFullState() {
+      return JSON.parse(JSON.stringify(currentState))
     },
 
     // Subscribe to state changes

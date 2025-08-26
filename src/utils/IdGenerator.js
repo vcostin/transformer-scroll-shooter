@@ -4,29 +4,23 @@
  */
 
 /**
- * Generate a unique ID with identity prefix and crypto fallback
- * @param {string} identity - Optional identity/prefix for the ID (e.g., 'sub', 'async', 'entity')
- * @returns {string} Unique identifier
- */
-export function generateIdentityId(identity = '') {
-  // Use crypto.randomUUID() if available (modern browsers/Node.js)
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    return `${identity ? `${identity}_` : ''}${crypto.randomUUID()}`
-  }
-
-  // Fallback for older browsers or environments without crypto.randomUUID
-  const timestamp = Date.now()
-  const random = Math.random().toString(36).substring(2)
-  return `${identity ? `${identity}_` : ''}${timestamp}_${random}`
-}
-
-/**
- * Generate a unique ID with crypto fallback (legacy function for compatibility)
+ * Generate a unique ID with crypto fallback
  * @param {string} prefix - Optional prefix for the ID
  * @returns {string} Unique identifier
  */
 export function generateId(prefix = '') {
-  return generateIdentityId(prefix)
+  // Use crypto.randomUUID() if available (modern browsers/Node.js)
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    const uuid = crypto.randomUUID()
+    return prefix ? `${prefix}_${uuid}` : uuid
+  }
+
+  // Fallback for older browsers or environments without crypto.randomUUID
+  // Uses timestamp + base36 random for uniqueness
+  const timestamp = Date.now()
+  const random = Math.random().toString(36).slice(2, 11)
+  const id = `${timestamp}_${random}`
+  return prefix ? `${prefix}_${id}` : id
 }
 
 /**

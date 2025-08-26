@@ -128,13 +128,153 @@ function initializeGameSystems(game) {
     console.error('UI system initialization failed:', err)
   }
 
-  return {
+  // Initialize state values
+  const initialState = {
+    game: {
+      paused: false,
+      userPaused: false,
+      gameOver: false,
+      score: 0,
+      level: 1,
+      enemiesKilled: 0,
+      bossActive: false,
+      bossSpawnedThisLevel: false,
+      bossesDefeated: 0,
+      powerupsCollected: 0,
+      showFPS: false,
+      difficulty: 'normal'
+    },
+    story: createStoryState()
+  }
+
+  // Set initial state
+  systems.stateManager.setState('', initialState)
+
+  const finalGameObject = {
     ...game,
     ...systems,
     chapterTransition,
     bossDialogue,
     storyJournal
   }
+
+  // Add game methods with proper context binding
+  const gameMethods = {
+    // Pause functionality
+    pauseGame() {
+      finalGameObject.paused = true
+      finalGameObject.userPaused = true
+      finalGameObject.eventDispatcher.emit(GAME_EVENTS.GAME_PAUSE, {
+        timestamp: Date.now()
+      })
+    },
+
+    resumeGame() {
+      // CRITICAL: Check if options menu is open - it takes priority!
+      if (finalGameObject.options && finalGameObject.options.isOpen) {
+        console.log('Cannot resume game: Options menu is open (priority override)')
+        return // Options menu has priority - refuse to resume
+      }
+
+      finalGameObject.paused = false
+      finalGameObject.userPaused = false
+      finalGameObject.eventDispatcher.emit(GAME_EVENTS.GAME_RESUME, {
+        timestamp: Date.now()
+      })
+    },
+
+    // Key handling
+    handleKeyDown(e) {
+      // Handle options menu input first (with null check)
+      if (
+        finalGameObject.options &&
+        finalGameObject.options.handleInput &&
+        finalGameObject.options.handleInput(e.code)
+      ) {
+        e.preventDefault()
+        return
+      }
+
+      finalGameObject.keys[e.code] = true
+
+      // Handle special keys
+      switch (e.code) {
+        case 'Space':
+          e.preventDefault()
+          if (!finalGameObject.paused && finalGameObject.player) {
+            finalGameObject.player = shootPlayer(finalGameObject.player)
+            // Resume audio context on first interaction
+            finalGameObject.audio.resume()
+          }
+          break
+        case 'KeyQ':
+          if (!finalGameObject.paused && finalGameObject.player) {
+            finalGameObject.player = transformPlayer(finalGameObject.player)
+          }
+          break
+        case 'KeyR':
+          if (finalGameObject.gameOver) {
+            finalGameObject.restart()
+          }
+          break
+        case 'KeyP':
+          // Simple pause/unpause toggle
+          if (finalGameObject.paused) {
+            finalGameObject.resumeGame()
+          } else {
+            finalGameObject.pauseGame()
+          }
+          break
+        case 'KeyJ':
+          // Toggle story journal
+          if (finalGameObject.storyJournal.isVisible) {
+            finalGameObject.storyJournal.close()
+          } else {
+            finalGameObject.storyJournal.open()
+          }
+          break
+        case 'Escape':
+          // Toggle options menu (pause/unpause game)
+          if (finalGameObject.options && finalGameObject.options.isOpen) {
+            finalGameObject.options.close()
+          } else if (finalGameObject.options) {
+            finalGameObject.options.open()
+          }
+          break
+      }
+    },
+
+    // State getters/setters with proper getter/setter syntax
+    get paused() {
+      return finalGameObject.stateManager.getState('game.paused')
+    },
+
+    set paused(value) {
+      finalGameObject.stateManager.setState('game.paused', value)
+    },
+
+    get userPaused() {
+      const stateValue = finalGameObject.stateManager.getState('game.userPaused')
+      return stateValue !== undefined ? stateValue : false
+    },
+
+    set userPaused(value) {
+      finalGameObject.stateManager.setState('game.userPaused', value)
+    },
+
+    get gameOver() {
+      return finalGameObject.stateManager.getState('game.gameOver')
+    },
+
+    set gameOver(value) {
+      finalGameObject.stateManager.setState('game.gameOver', value)
+    }
+  }
+
+  // Add methods to final object
+  Object.assign(finalGameObject, gameMethods)
+
+  return finalGameObject
 }
 
 // Legacy class wrapper for backward compatibility during migration
@@ -411,7 +551,7 @@ export class Game {
     })
 
     // Set up state change listeners to emit UI events
-    const unsubscribeScore = this.stateManager.subscribe('game.score')((newScore, oldScore) => {
+    const unsubscribeScore = this.stateManager.subscribe('game.score', (newScore, oldScore) => {
       if (oldScore !== undefined) {
         this.eventDispatcher.emit(GAME_EVENTS.UI_SCORE_UPDATE, {
           score: newScore,
@@ -537,6 +677,7 @@ export class Game {
   }
 
   pauseGame() {
+    // Use setter which should call StateManager
     this.paused = true
     this.userPaused = true
     this.eventDispatcher.emit(GAME_EVENTS.GAME_PAUSE, {
@@ -556,6 +697,7 @@ export class Game {
       return // Options menu has priority - refuse to resume
     }
 
+    // Use setter which should call StateManager
     this.paused = false
     this.userPaused = false
     this.eventDispatcher.emit(GAME_EVENTS.GAME_RESUME, {

@@ -276,7 +276,11 @@ export class OptionsMenu {
         `
 
     this.overlay.appendChild(content)
-    document.body.appendChild(this.overlay)
+
+    // Safely append to document.body (handle test environment)
+    if (document?.body?.appendChild) {
+      document.body.appendChild(this.overlay)
+    }
 
     // Setup close button with event emission
     document.getElementById('closeOptions').addEventListener('click', () => {
