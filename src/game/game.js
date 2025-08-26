@@ -322,6 +322,14 @@ export class Game {
     this.stateManager.setState('game.paused')(value)()
   }
 
+  get userPaused() {
+    const stateValue = this.stateManager.getState('game.userPaused')()
+    return stateValue !== undefined ? stateValue : false
+  }
+  set userPaused(value) {
+    this.stateManager.setState('game.userPaused')(value)()
+  }
+
   get level() {
     return this.stateManager.getState('game.level')()
   }
@@ -529,6 +537,7 @@ export class Game {
 
   pauseGame() {
     this.paused = true
+    this.userPaused = true
     this.eventDispatcher.emit(GAME_EVENTS.GAME_PAUSE, {
       timestamp: Date.now()
     })
@@ -547,6 +556,7 @@ export class Game {
     }
 
     this.paused = false
+    this.userPaused = false
     this.eventDispatcher.emit(GAME_EVENTS.GAME_RESUME, {
       timestamp: Date.now()
     })
@@ -917,6 +927,23 @@ export class Game {
       this.ctx.fillStyle = '#ffff00'
       this.ctx.font = '14px Arial'
       this.ctx.fillText(`FPS: ${this.fps}`, 10, 20)
+    }
+
+    // Pause overlay for P key pause (not options menu)
+    if (this.userPaused && (!this.options || !this.options.isOpen)) {
+      this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'
+      this.ctx.fillRect(0, 0, this.width, this.height)
+
+      this.ctx.fillStyle = '#ffffff'
+      this.ctx.font = '48px Arial'
+      this.ctx.textAlign = 'center'
+      this.ctx.fillText('PAUSED', this.width / 2, this.height / 2 - 40)
+
+      this.ctx.font = '24px Arial'
+      this.ctx.fillText('Press P to Resume', this.width / 2, this.height / 2 + 20)
+      this.ctx.fillText('Press ESC for Options', this.width / 2, this.height / 2 + 50)
+
+      this.ctx.textAlign = 'left'
     }
   }
 
