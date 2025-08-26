@@ -1,610 +1,434 @@
 /**
- * StateManager POJO+Functional Implementation
- * This is a Phase 4 migration of StateManager to POJO+Functional pattern
+ * StateManager - Pure Functional Implementation
+ * NO CLASSES, NO `this`, NO COMPATIBILITY LAYERS
+ *
+ * This is a clean functional rewrite with:
+ * - Curried action creators for dependency injection
+ * - Pure functions for state transformations
+ * - Event-driven side effects
+ * - Immutable state updates
  */
 
-import { eventDispatcher } from '@/systems/EventDispatcher.js'
-import { DEFAULT_STATE, getDefaultValue } from '@/constants/state-schema.js'
-import {
-  getValueByPath,
-  setValueByPath,
-  deepClone,
-  deepEqual,
-  isValidPath
-} from '@/systems/StateUtils.js'
-import { validateValue as validateValueUtil } from '@/systems/StateValidation.js'
-import { StateHistory } from '@/systems/StateHistory.js'
-import { StateSubscriptions } from '@/systems/StateSubscriptions.js'
-import { StatePerformance } from '@/systems/StatePerformance.js'
-import { StateAsync } from '@/systems/StateAsync.js'
+import { createEventDispatcher } from '@/systems/EventDispatcher.js'
 
-// ===============================================
-// POJO+Functional StateManager Implementation
-// ===============================================
+// ===== PURE STATE FUNCTIONS =====
 
 /**
- * Factory function to create a StateManager POJO
- * @param {Object} options - Configuration options
- * @returns {Object} StateManager POJO with immutable state
+ * Set a value at a path in state (pure function)
+ * @param {Object} state - Current state object
+ * @param {string} path - Dot-notation path (e.g., 'game.player.health')
+ * @param {*} value - Value to set
+ * @returns {Object} New state object
  */
-export function createStateManager(options = {}) {
-  // Configuration with defaults
-  const config = {
-    maxHistorySize: 100,
-    enableHistory: true,
-    enableValidation: true,
-    enableEvents: true,
-    enableDebug: false,
-    immutable: true,
-    ...options
+const setStateAtPath = (state, path, value) => {
+  if (!path) return { ...state, ...value }
+
+  const keys = path.split('.')
+  const newState = JSON.parse(JSON.stringify(state)) // Deep clone for immutability
+
+  let current = newState
+  for (let i = 0; i < keys.length - 1; i++) {
+    const key = keys[i]
+    if (!(key in current) || typeof current[key] !== 'object') {
+      current[key] = {}
+    }
+    current = current[key]
   }
 
-  // Current state (deep clone of default state)
-  const currentState = deepClone(DEFAULT_STATE)
+  current[keys[keys.length - 1]] = value
+  return newState
+}
 
-  // Initialize sub-systems
-  const stateHistory = new StateHistory(
-    {
-      maxHistorySize: config.maxHistorySize,
-      enableHistory: config.enableHistory,
-      enableDebug: config.enableDebug,
-      enableEvents: config.enableEvents
-    },
-    {
-      onInvalidateCache: () => {}, // Will be set up after performance system
-      onEmitEvent: (eventName, payload) => {
-        if (config.enableEvents) {
-          eventDispatcher.emit(eventName, payload)
-        }
-      },
-      onUpdateStats: operation => {
-        if (operation === 'historyOperations') {
-          // Will be connected to performance system
+/**
+ * Get a value at a path in state (pure function)
+ * @param {Object} state - Current state object
+ * @param {string} path - Dot-notation path
+ * @returns {*} Value at path or undefined
+ */
+const getStateAtPath = (state, path) => {
+  if (!path) return state
+
+  const keys = path.split('.')
+  let current = state
+
+  for (const key of keys) {
+    if (current == null || typeof current !== 'object') {
+      return undefined
+    }
+    current = current[key]
+  }
+
+  return current
+}
+
+/**
+ * Validate state changes (pure function)
+ * @param {Object} oldState - Previous state
+ * @param {Object} newState - New state
+ * @param {string} path - Path that changed
+ * @returns {boolean} True if valid
+ */
+const validateStateChange = (oldState, newState, path) => {
+  // Basic validation rules
+  if (path.includes('health')) {
+    const health = getStateAtPath(newState, path)
+    return typeof health === 'number' && health >= 0
+  }
+
+  if (path.includes('score')) {
+    const score = getStateAtPath(newState, path)
+    return typeof score === 'number' && score >= 0
+  }
+
+  return true // Default: allow change
+}
+
+// ===== CURRIED ACTION CREATORS =====
+
+/**
+ * Creates state management functions with dependency injection
+ * @param {Object} eventDispatcher - Event dispatcher for side effects
+ * @returns {Object} Curried state management functions
+ */
+export const createStateActions = eventDispatcher => {
+  // Private state (closure)
+  let currentState = {}
+  let stateHistory = []
+  const subscribers = new Map()
+  let subscriptionCounter = 0
+
+  // Pure helper to emit state change events
+  const emitStateChange = (path, newValue, oldValue, fullState) => {
+    eventDispatcher.emit('state:changed', {
+      path,
+      newValue,
+      oldValue,
+      state: fullState
+    })
+
+    // Emit specific path events
+    if (path) {
+      eventDispatcher.emit(`state:${path}`, {
+        value: newValue,
+        oldValue,
+        state: fullState
+      })
+    }
+  }
+
+  // Pure helper to notify subscribers
+  const notifySubscribers = (path, newValue, oldValue, fullState) => {
+    for (const [subscriptionId, { pattern, callback }] of subscribers.entries()) {
+      if (!pattern || path.startsWith(pattern)) {
+        try {
+          callback(newValue, oldValue, fullState, path)
+        } catch (error) {
+          console.error(`Subscriber ${subscriptionId} error:`, error)
         }
       }
     }
-  )
+  }
 
-  const stateSubscriptions = new StateSubscriptions(
-    {
-      enableDebug: config.enableDebug
-    },
-    {
-      onGetState: path => getStateManagerState(stateManager, path)
-    }
-  )
+  return {
+    // Curried state setter
+    setState:
+      path =>
+      value =>
+      (inputState = currentState) => {
+        const oldValue = getStateAtPath(inputState, path)
+        const newState = setStateAtPath(inputState, path, value)
 
-  const statePerformance = new StatePerformance({
-    enablePerformanceTracking: config.enablePerformanceTracking !== false,
-    enableMemoryTracking: config.enableMemoryTracking !== false,
-    enableDebug: config.enableDebug,
-    memoryUpdateThreshold: config.memoryUpdateThreshold || 1000,
-    onGetState: () => currentState,
-    onGetHistoryMemoryUsage: () => stateHistory.getHistoryMemoryUsage()
-  })
-
-  const stateAsync = new StateAsync(
-    {
-      enableEvents: config.enableEvents,
-      enableDebug: config.enableDebug,
-      defaultTimeout: config.asyncTimeout || 30000,
-      retryAttempts: config.asyncRetryAttempts || 0,
-      retryDelay: config.asyncRetryDelay || 1000
-    },
-    {
-      onSetState: (path, value, options) => {
-        // Direct state update for async operations
-        return setStateManagerState(stateManager, path, value, options)
-      },
-      onEmitEvent: (eventName, payload) => {
-        if (config.enableEvents) {
-          eventDispatcher.emit(eventName, payload)
+        // Validate change
+        if (!validateStateChange(inputState, newState, path)) {
+          console.warn(`Invalid state change at ${path}:`, value)
+          return inputState
         }
+
+        // Update current state if we're using the internal state
+        if (inputState === currentState) {
+          stateHistory.push({
+            state: JSON.parse(JSON.stringify(inputState)),
+            timestamp: Date.now(),
+            action: `setState(${path})`
+          })
+
+          // Limit history size
+          if (stateHistory.length > 100) {
+            stateHistory.shift()
+          }
+
+          currentState = newState
+
+          // Side effects
+          emitStateChange(path, value, oldValue, newState)
+          notifySubscribers(path, value, oldValue, newState)
+        }
+
+        return newState
+      },
+
+    // Curried state getter
+    getState:
+      (path = '') =>
+      (inputState = currentState) => {
+        return getStateAtPath(inputState, path)
+      },
+
+    // Curried state subscription
+    subscribe: pathPattern => callback => {
+      const subscriptionId = ++subscriptionCounter
+      subscribers.set(subscriptionId, { pattern: pathPattern, callback })
+
+      // Return unsubscribe function
+      return () => {
+        subscribers.delete(subscriptionId)
       }
+    },
+
+    // State history access
+    getHistory: () => [...stateHistory],
+
+    // Reset state (for testing)
+    resetState: (initialState = {}) => {
+      currentState = { ...initialState }
+      stateHistory = []
+      subscribers.clear()
+      subscriptionCounter = 0
+      return currentState
+    },
+
+    // Get current state snapshot
+    getCurrentState: () => JSON.parse(JSON.stringify(currentState)),
+
+    // Batch state updates (optimization)
+    batchUpdate:
+      updates =>
+      (inputState = currentState) => {
+        let newState = inputState
+
+        for (const { path, value } of updates) {
+          newState = setStateAtPath(newState, path, value)
+        }
+
+        // Validate all changes
+        for (const { path } of updates) {
+          if (!validateStateChange(inputState, newState, path)) {
+            console.warn(`Batch update failed validation at ${path}`)
+            return inputState
+          }
+        }
+
+        // Update internal state if using it
+        if (inputState === currentState) {
+          stateHistory.push({
+            state: JSON.parse(JSON.stringify(inputState)),
+            timestamp: Date.now(),
+            action: `batchUpdate(${updates.length} changes)`
+          })
+
+          currentState = newState
+
+          // Emit events for all changes
+          for (const { path, value } of updates) {
+            const oldValue = getStateAtPath(inputState, path)
+            emitStateChange(path, value, oldValue, newState)
+            notifySubscribers(path, value, oldValue, newState)
+          }
+        }
+
+        return newState
+      }
+  }
+}
+
+// ===== GAME-SPECIFIC CURRIED ACTIONS =====
+
+/**
+ * Game-specific state actions with currying
+ * @param {Object} stateActions - Base state actions
+ * @returns {Object} Game-specific curried actions
+ */
+export const createGameStateActions = stateActions => ({
+  // Player actions
+  setPlayerHealth: health => stateActions.setState('game.player.health')(health),
+  setPlayerPosition: (x, y) =>
+    stateActions.batchUpdate([
+      { path: 'game.player.x', value: x },
+      { path: 'game.player.y', value: y }
+    ]),
+  setPlayerPowerLevel: level => stateActions.setState('game.player.powerLevel')(level),
+
+  // Game state actions
+  pauseGame:
+    (reason = 'system') =>
+    currentState => {
+      const newState = stateActions.setState('game.paused')(true)(currentState)
+      return stateActions.setState('game.pauseSource')(reason)(newState)
+    },
+
+  resumeGame:
+    (source = 'system') =>
+    currentState => {
+      // Only resume if not paused by higher priority source
+      const pauseSource = stateActions.getState('game.pauseSource')(currentState)
+
+      if (pauseSource === 'menu' && source !== 'menu') {
+        console.log('Cannot resume: menu has priority')
+        return currentState
+      }
+
+      const newState = stateActions.setState('game.paused')(false)(currentState)
+      return stateActions.setState('game.pauseSource')(null)(newState)
+    },
+
+  // UI state actions
+  openOptionsMenu: () => currentState => {
+    let newState = stateActions.setState('ui.options.open')(true)(currentState)
+    // Options menu takes absolute priority
+    newState = stateActions.setState('game.paused')(true)(newState)
+    return stateActions.setState('game.pauseSource')('menu')(newState)
+  },
+
+  closeOptionsMenu: () => currentState => {
+    let newState = stateActions.setState('ui.options.open')(false)(currentState)
+
+    // Resume game if menu was the pause source
+    const pauseSource = stateActions.getState('game.pauseSource')(currentState)
+    if (pauseSource === 'menu') {
+      newState = stateActions.setState('game.paused')(false)(newState)
+      newState = stateActions.setState('game.pauseSource')(null)(newState)
     }
-  )
 
-  // Create StateManager POJO
-  const stateManager = {
-    // Configuration
-    options: config,
+    return newState
+  },
 
-    // Current state
-    currentState,
+  // Score actions
+  addScore: points => currentState => {
+    const currentScore = stateActions.getState('game.score')(currentState) || 0
+    return stateActions.setState('game.score')(currentScore + points)(currentState)
+  },
 
-    // Sub-systems
-    stateHistory,
-    stateSubscriptions,
-    statePerformance,
-    stateAsync,
+  // Enemy actions
+  addEnemy: enemyData => currentState => {
+    const enemies = stateActions.getState('game.entities.enemies')(currentState) || []
+    return stateActions.setState('game.entities.enemies')([...enemies, enemyData])(currentState)
+  },
 
-    // Event dispatcher reference
+  removeEnemy: enemyId => currentState => {
+    const enemies = stateActions.getState('game.entities.enemies')(currentState) || []
+    const filteredEnemies = enemies.filter(enemy => enemy.id !== enemyId)
+    return stateActions.setState('game.entities.enemies')(filteredEnemies)(currentState)
+  }
+})
+
+// ===== FACTORY FUNCTION =====
+
+/**
+ * Create a complete functional state manager
+ * @param {Object} options - Configuration options
+ * @returns {Object} State manager with curried actions
+ */
+export const createStateManager = (options = {}) => {
+  const eventDispatcher = createEventDispatcher()
+  const stateActions = createStateActions(eventDispatcher)
+  const gameActions = createGameStateActions(stateActions)
+
+  // Initialize with default state
+  const initialState = {
+    game: {
+      paused: false,
+      pauseSource: null,
+      score: 0,
+      level: 1,
+      player: {
+        health: 100,
+        x: 0,
+        y: 0,
+        powerLevel: 1
+      },
+      entities: {
+        enemies: [],
+        bullets: [],
+        powerups: []
+      }
+    },
+    ui: {
+      options: {
+        open: false,
+        selectedOption: 0
+      }
+    },
+    audio: {
+      enabled: true,
+      masterVolume: 1.0,
+      sfxVolume: 0.7,
+      musicVolume: 0.5
+    },
+    ...options.initialState
+  }
+
+  stateActions.resetState(initialState)
+
+  return {
+    // Base state functions
+    ...stateActions,
+
+    // Game-specific functions
+    ...gameActions,
+
+    // Event dispatcher access
     eventDispatcher,
 
-    // Error tracking
-    moduleErrors: {
-      history: 0,
-      subscriptions: 0,
-      performance: 0,
-      async: 0,
-      validation: 0
-    }
+    // For testing - get raw state
+    _getRawState: () => stateActions.getCurrentState()
   }
-
-  // Set up cross-references after all objects are created
-  stateHistory.callbacks.onInvalidateCache = () => statePerformance.invalidateMemoryCache()
-  stateHistory.callbacks.onUpdateStats = operation => {
-    if (operation === 'historyOperations') {
-      statePerformance.recordHistoryOperation()
-    }
-  }
-
-  // Initialize history with current state
-  stateHistory.addStateToHistory(currentState)
-
-  // Debug mode setup
-  if (config.enableDebug) {
-    enableStateManagerDebugMode(stateManager)
-  }
-
-  return stateManager
 }
+
+// ===== TESTING UTILITIES =====
 
 /**
- * Get state value by path from StateManager POJO
- * @param {Object} stateManager - StateManager POJO
- * @param {string} path - Dot-notation path to state property
- * @param {Object} options - Options for getting state
- * @returns {*} State value or undefined if not found
+ * Create a mock state manager for testing
+ * @param {Object} initialState - Initial state for testing
+ * @returns {Object} Mock state manager
  */
-export function getStateManagerState(stateManager, path = '', options = {}) {
-  stateManager.statePerformance.recordGet(options.skipStats)
-
-  try {
-    if (!path) {
-      return stateManager.options.immutable
-        ? deepClone(stateManager.currentState)
-        : stateManager.currentState
-    }
-
-    const value = getValueByPath(stateManager.currentState, path)
-    return stateManager.options.immutable ? deepClone(value) : value
-  } catch (error) {
-    stateManager.moduleErrors.general = (stateManager.moduleErrors.general || 0) + 1
-    if (stateManager.options.enableDebug) {
-      console.error('StateManager: Error getting state:', error)
-    }
-    return undefined
-  }
+export const createMockStateManager = (initialState = {}) => {
+  return createStateManager({ initialState })
 }
 
-/**
- * Set state value by path in StateManager POJO
- * @param {Object} stateManager - StateManager POJO
- * @param {string} path - Dot-notation path to state property
- * @param {*} value - New value to set
- * @param {Object} options - Update options
- * @returns {boolean} True if state was updated, false otherwise
- */
-export function setStateManagerState(stateManager, path, value, options = {}) {
-  const startTime = performance.now()
-  const updateOptions = {
-    skipValidation: false,
-    skipEvents: false,
-    skipHistory: false,
-    merge: false,
-    ...options
-  }
+// ===== SINGLETON INSTANCE =====
 
-  try {
-    // Validate path
-    if (!isValidPath(path)) {
-      throw new Error('State path must be a non-empty string')
-    }
-
-    // Validate value if validation is enabled
-    if (stateManager.options.enableValidation && !updateOptions.skipValidation) {
-      const validationError = validateValueUtil(path, value, stateManager.currentState)
-      if (validationError) {
-        stateManager.statePerformance.recordValidationError()
-        throw new Error(`Validation error for '${path}': ${validationError}`)
-      }
-    }
-
-    // Get current value for comparison
-    const currentValue = getValueByPath(stateManager.currentState, path)
-
-    // Check if value has actually changed
-    if (deepEqual(currentValue, value)) {
-      // No change needed - don't record this as it wasn't really an update
-      return false
-    }
-
-    // Update the state
-    setValueByPath(stateManager.currentState, path, value, updateOptions.merge)
-
-    // Add to history if enabled
-    if (stateManager.options.enableHistory && !updateOptions.skipHistory) {
-      stateManager.stateHistory.addStateToHistory(stateManager.currentState, {
-        operation: 'setState',
-        path,
-        value,
-        previousValue: currentValue,
-        timestamp: Date.now()
-      })
-    }
-
-    // Emit state change event
-    if (stateManager.options.enableEvents && !updateOptions.skipEvents) {
-      stateManager.eventDispatcher.emit('state:changed', {
-        path,
-        value,
-        previousValue: currentValue,
-        timestamp: Date.now()
-      })
-    }
-
-    // Notify subscriptions
-    stateManager.stateSubscriptions.triggerSubscriptions(path, value, currentValue)
-
-    // Record performance metrics
-    stateManager.statePerformance.recordUpdate(startTime)
-
-    return true
-  } catch (error) {
-    stateManager.moduleErrors.general = (stateManager.moduleErrors.general || 0) + 1
-    // Note: recordError method doesn't exist on StatePerformance, using recordValidationError as fallback
-    if (stateManager.statePerformance.recordValidationError) {
-      stateManager.statePerformance.recordValidationError()
-    }
-
-    if (stateManager.options.enableDebug) {
-      console.error('StateManager: Error setting state:', error)
-    }
-
-    throw error
-  }
-}
-
-/**
- * Subscribe to state changes on StateManager POJO
- * @param {Object} stateManager - StateManager POJO
- * @param {string} path - State path to watch
- * @param {Function} callback - Callback function
- * @param {Object} options - Subscription options
- * @returns {string} Subscription ID
- */
-export function subscribeToStateManager(stateManager, path, callback, options = {}) {
-  return stateManager.stateSubscriptions.subscribe(path, callback, options)
-}
-
-/**
- * Unsubscribe from state changes on StateManager POJO
- * @param {Object} stateManager - StateManager POJO
- * @param {string} subscriptionId - Subscription ID to remove
- * @returns {boolean} True if unsubscribed successfully
- */
-export function unsubscribeFromStateManager(stateManager, subscriptionId) {
-  return stateManager.stateSubscriptions.unsubscribe(subscriptionId)
-}
-
-/**
- * Reset state to default values in StateManager POJO
- * @param {Object} stateManager - StateManager POJO
- * @param {string} path - Path to reset (empty string for full reset)
- * @returns {boolean} True if reset was successful
- */
-export function resetStateManagerState(stateManager, path = '') {
-  try {
-    const defaultValue = path ? getValueByPath(DEFAULT_STATE, path) : DEFAULT_STATE
-
-    if (path) {
-      return setStateManagerState(stateManager, path, defaultValue, { skipHistory: false })
-    } else {
-      // Full reset
-      Object.keys(stateManager.currentState).forEach(key => {
-        delete stateManager.currentState[key]
-      })
-      Object.assign(stateManager.currentState, deepClone(DEFAULT_STATE))
-
-      // Clear history and reset systems
-      stateManager.stateHistory.clearHistory()
-      stateManager.stateHistory.addStateToHistory(stateManager.currentState)
-      stateManager.stateSubscriptions.clearAll()
-      stateManager.statePerformance.resetStats()
-
-      if (stateManager.options.enableEvents) {
-        stateManager.eventDispatcher.emit('state:reset', {
-          timestamp: Date.now()
-        })
-      }
-
-      return true
-    }
-  } catch (error) {
-    stateManager.moduleErrors.general = (stateManager.moduleErrors.general || 0) + 1
-    if (stateManager.options.enableDebug) {
-      console.error('StateManager: Error resetting state:', error)
-    }
-    return false
-  }
-}
-
-/**
- * Enable debug mode for StateManager POJO
- * @param {Object} stateManager - StateManager POJO
- */
-export function enableStateManagerDebugMode(stateManager) {
-  if (typeof window !== 'undefined') {
-    // @ts-ignore - Adding debug property to window
-    window.gameStateManager = stateManager
-    console.log('🐛 StateManager: Debug mode enabled')
-  }
-}
-
-/**
- * Get statistics from StateManager POJO
- * @param {Object} stateManager - StateManager POJO
- * @returns {Object} Performance and usage statistics
- */
-export function getStateManagerStats(stateManager) {
-  return {
-    performance: stateManager.statePerformance.getStats(),
-    subscriptions: { totalSubscriptions: 0 }, // StateSubscriptions doesn't have getStats
-    history: { historySize: stateManager.stateHistory.history?.length || 0 }, // StateHistory doesn't have getStats
-    async: stateManager.stateAsync.getStats
-      ? stateManager.stateAsync.getStats()
-      : { totalAsyncOperations: 0 },
-    moduleErrors: { ...stateManager.moduleErrors }
-  }
-}
-
-// ===============================================
-// Legacy Class Wrapper (Backward Compatibility)
-// ===============================================
-export class StateManager {
-  /**
-   * Create a new StateManager instance
-   * @param {Object} options - Configuration options
-   */
-  constructor(options = {}) {
-    // Create the POJO state and assign properties to this
-    const stateManagerPOJO = createStateManager(options)
-    Object.assign(this, stateManagerPOJO)
-  }
-
-  /**
-   * Get state value by path
-   * @param {string} path - Dot-notation path to state property
-   * @param {Object} options - Options for getting state
-   * @returns {*} State value or undefined if not found
-   */
-  getState(path = '', options = {}) {
-    return getStateManagerState(this, path, options)
-  }
-
-  /**
-   * Set state value by path with immutable updates
-   * @param {string} path - Dot-notation path to state property
-   * @param {*} value - New value to set
-   * @param {Object} options - Update options
-   * @returns {boolean} True if state was updated, false otherwise
-   */
-  setState(path, value, options = {}) {
-    return setStateManagerState(this, path, value, options)
-  }
-
-  /**
-   * Subscribe to state changes
-   * @param {string} path - State path to watch
-   * @param {Function} callback - Callback function
-   * @param {Object} options - Subscription options
-   * @returns {Function} Unsubscribe function
-   */
-  subscribe(path, callback, options = {}) {
-    const subscriptionId = subscribeToStateManager(this, path, callback, options)
-    return () => unsubscribeFromStateManager(this, subscriptionId)
-  }
-
-  /**
-   * Unsubscribe from state changes
-   * @param {string} subscriptionId - Subscription ID to remove
-   * @returns {boolean} True if unsubscribed successfully
-   */
-  unsubscribe(subscriptionId) {
-    return unsubscribeFromStateManager(this, subscriptionId)
-  }
-
-  /**
-   * Reset state to default values
-   * @param {string} path - Path to reset (empty string for full reset)
-   * @returns {boolean} True if reset was successful
-   */
-  resetState(path = '') {
-    return resetStateManagerState(this, path)
-  }
-
-  /**
-   * Get performance and usage statistics
-   * @returns {Object} Statistics object
-   */
-  getStats() {
-    return getStateManagerStats(this)
-  }
-
-  /**
-   * Enable debug mode
-   */
-  enableDebugMode() {
-    this.options.enableDebug = true
-    enableStateManagerDebugMode(this)
-  }
-
-  /**
-   * Disable debug mode
-   */
-  disableDebugMode() {
-    this.options.enableDebug = false
-    if (typeof window !== 'undefined') {
-      delete window.gameStateManager
-    }
-  }
-
-  /**
-   * Get memory usage information
-   * @returns {Object} Memory usage statistics
-   */
-  getMemoryUsage() {
-    return this.statePerformance ? this.statePerformance.getMemoryUsage() : {}
-  }
-
-  /**
-   * Undo last state change
-   * @returns {boolean} True if undo was successful
-   */
-  undo() {
-    return this.stateHistory ? this.stateHistory.undo() : false
-  }
-
-  /**
-   * Redo last undone state change
-   * @returns {boolean} True if redo was successful
-   */
-  redo() {
-    return this.stateHistory ? this.stateHistory.redo() : false
-  }
-
-  /**
-   * Clear all state data and reset
-   */
-  clearAll() {
-    if (this.stateHistory) this.stateHistory.clearHistory()
-    if (this.stateSubscriptions) this.stateSubscriptions.clearAll()
-    if (this.stateAsync) this.stateAsync.cancelAllOperations()
-    if (this.statePerformance) this.statePerformance.resetStats()
-
-    Object.assign(this.currentState, deepClone(DEFAULT_STATE))
-
-    if (this.stateHistory) {
-      this.stateHistory.addStateToHistory(this.currentState)
-    }
-  }
-
-  /**
-   * Get active async operations
-   * @returns {Array} Array of active operation information
-   */
-  getActiveAsyncOperations() {
-    return this.stateAsync ? this.stateAsync.getActiveOperations() : []
-  }
-
-  /**
-   * Cancel an active async operation
-   * @param {string} operationId - ID of operation to cancel
-   * @returns {boolean} True if operation was cancelled
-   */
-  cancelAsyncOperation(operationId) {
-    return this.stateAsync ? this.stateAsync.cancelOperation(operationId) : false
-  }
-
-  /**
-   * Cancel all active async operations
-   * @returns {number} Number of operations cancelled
-   */
-  cancelAllAsyncOperations() {
-    return this.stateAsync ? this.stateAsync.cancelAllOperations() : 0
-  }
-
-  /**
-   * Get module error statistics
-   * @returns {Object} Error statistics by module
-   */
-  getModuleErrors() {
-    return { ...this.moduleErrors }
-  }
-
-  /**
-   * Set state value asynchronously with Promise support
-   * @param {string} path - Dot-notation path to state property
-   * @param {*|Promise} valueOrPromise - Value or Promise that resolves to value
-   * @param {Object} options - Update options
-   * @returns {Promise} Promise that resolves when state is updated
-   */
-  async setStateAsync(path, valueOrPromise, options = {}) {
-    if (this.stateAsync) {
-      return this.stateAsync.setStateAsync(path, valueOrPromise, options)
-    }
-    throw new Error('StateAsync module not available')
-  }
-
-  /**
-   * Batch multiple state updates for better performance
-   * @param {Array} updates - Array of {path, value, options} objects
-   * @param {Object} batchOptions - Batch-specific options
-   * @returns {Array} Array of update results (boolean values)
-   */
-  batchUpdate(updates, batchOptions = {}) {
-    const results = []
-    for (const update of updates) {
-      results.push(this.setState(update.path, update.value, update.options))
-    }
-    return results
-  }
-
-  /**
-   * Execute a transaction with automatic rollback on error
-   * @param {Function} transactionFn - Function to execute in transaction
-   * @returns {*} Result of transaction function
-   */
-  transaction(transactionFn) {
-    const snapshot = deepClone(this.currentState)
-    try {
-      return transactionFn(this)
-    } catch (error) {
-      Object.assign(this.currentState, snapshot)
-      throw error
-    }
-  }
-
-  /**
-   * Reset module error counters
-   */
-  resetModuleErrors() {
-    this.moduleErrors = {
-      history: 0,
-      subscriptions: 0,
-      performance: 0,
-      async: 0,
-      validation: 0
-    }
-  }
-
-  /**
-   * Perform health check across all modules
-   * @returns {Object} Health check results
-   */
-  performHealthCheck() {
-    return {
-      timestamp: Date.now(),
-      healthy: true,
-      modules: {
-        history: { healthy: true, errorCount: this.moduleErrors.history || 0 },
-        subscriptions: { healthy: true, errorCount: this.moduleErrors.subscriptions || 0 },
-        performance: { healthy: true, errorCount: this.moduleErrors.performance || 0 },
-        async: { healthy: true, errorCount: this.moduleErrors.async || 0 },
-        validation: { healthy: true, errorCount: this.moduleErrors.validation || 0 }
-      }
-    }
-  }
-}
-
-// ===============================================
-// Default Instance Export
-// ===============================================
-export const stateManager = new StateManager({
+// Create default singleton instance for backward compatibility
+export const stateManager = createStateManager({
   enableDebug: false,
-  enableHistory: true,
-  enableValidation: true,
-  enableEvents: true,
-  maxHistorySize: 50
+  initialState: {
+    game: {
+      paused: false,
+      pauseSource: null,
+      score: 0,
+      level: 1,
+      player: {
+        health: 100,
+        x: 400,
+        y: 500,
+        powerLevel: 1
+      },
+      entities: {
+        enemies: [],
+        bullets: [],
+        powerups: []
+      }
+    },
+    ui: {
+      options: {
+        open: false,
+        selectedOption: 0
+      }
+    },
+    audio: {
+      enabled: true,
+      masterVolume: 1.0,
+      sfxVolume: 0.7,
+      musicVolume: 0.5
+    }
+  }
 })

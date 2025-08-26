@@ -303,6 +303,12 @@ export class OptionsMenu {
     this.stateManager.setState(UI_STATE_KEYS.MENU_TYPE, MENU_TYPES.OPTIONS)
 
     this.game.paused = true
+
+    // Emit game pause event for EffectManager and other systems
+    this.eventDispatcher.emit('game:pause', {
+      source: 'options_menu'
+    })
+
     this.updateDisplay()
   }
 
@@ -320,7 +326,20 @@ export class OptionsMenu {
     this.stateManager.setState(UI_STATE_KEYS.MENU_OPEN, false)
     this.stateManager.setState(UI_STATE_KEYS.MENU_TYPE, null)
 
-    this.game.paused = false
+    // Use safe resume method that respects priority system
+    if (typeof this.game.resumeGame === 'function') {
+      this.game.resumeGame()
+    } else {
+      // Fallback for tests or environments without resumeGame method
+      this.game.paused = false
+    }
+
+    // Emit game resume event for EffectManager and other systems
+    // Note: resumeGame() already emits this, but keeping for explicit system coordination
+    this.eventDispatcher.emit('game:resume', {
+      source: 'options_menu'
+    })
+
     this.saveSettings()
   }
 

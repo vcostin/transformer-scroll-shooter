@@ -28,10 +28,10 @@ describe('Main Entry Point', () => {
       expect(mainModule.GAME_INFO).toBeDefined()
       expect(mainModule.CollisionUtils).toBeDefined()
       expect(mainModule.MathUtils).toBeDefined()
-      expect(mainModule.Player).toBeDefined()
-      expect(mainModule.Bullet).toBeDefined()
-      expect(mainModule.Enemy).toBeDefined()
-      expect(mainModule.AudioManager).toBeDefined()
+      expect(mainModule.createPlayer).toBeDefined()
+      expect(mainModule.createBullet).toBeDefined()
+      expect(mainModule.createEnemy).toBeDefined()
+      expect(mainModule.createAudioManager).toBeDefined()
 
       // Verify that Game initialization was attempted and failed gracefully
       expect(console.error).toHaveBeenCalledWith(
@@ -60,9 +60,9 @@ describe('Main Entry Point', () => {
       expect(mainModule.GAME_INFO).toHaveProperty('version')
 
       // Check that classes are constructable
-      expect(typeof mainModule.Player).toBe('function')
+      expect(typeof mainModule.createPlayer).toBe('function')
       expect(typeof mainModule.Game).toBe('function')
-      expect(typeof mainModule.AudioManager).toBe('function')
+      expect(typeof mainModule.createAudioManager).toBe('function')
     })
   })
 
@@ -92,7 +92,7 @@ describe('Main Entry Point', () => {
     it('should have all system classes available', async () => {
       const mainModule = await import('./main.js')
 
-      expect(mainModule.AudioManager).toBeDefined()
+      expect(mainModule.createAudioManager).toBeDefined()
       expect(mainModule.Powerup).toBeDefined()
       expect(mainModule.PowerupSpawner).toBeDefined()
       expect(mainModule.Background).toBeDefined()
@@ -132,8 +132,8 @@ describe('Main Entry Point', () => {
         putImageData: vi.fn()
       }
 
-      // Test that classes can be instantiated
-      expect(() => new mainModule.AudioManager()).not.toThrow()
+      // Test that functional creators work correctly
+      expect(() => mainModule.createAudioManager()).not.toThrow()
       expect(() => new mainModule.Powerup(mockGame, 100, 200, 'health')).not.toThrow()
       // PowerupSpawner is an object, not a class
       expect(mainModule.PowerupSpawner).toBeDefined()
@@ -158,19 +158,16 @@ describe('Main Entry Point', () => {
         audio: { playSound: () => {} },
         addBullet: () => {},
         addEffect: () => {},
-        // Event-driven architecture dependencies (now required)
-        eventDispatcher: new mainModule.EventDispatcher(),
-        stateManager: new mainModule.StateManager(),
-        effectManager: new mainModule.EffectManager({
-          eventDispatcher: new mainModule.EventDispatcher(),
-          stateManager: new mainModule.StateManager()
-        })
+        // Event-driven architecture dependencies (functional approach)
+        eventDispatcher: mainModule.createEventDispatcher(),
+        stateManager: mainModule.createStateManager(),
+        effectManager: mainModule.createEffectManager(mainModule.createEventDispatcher())
       }
 
-      // Test entity creation
-      expect(() => new mainModule.Player(mockGame)).not.toThrow()
-      expect(() => new mainModule.Enemy(mockGame, 100, 200, 'fighter')).not.toThrow()
-      expect(() => new mainModule.Bullet(mockGame, 100, 200, 5, 0, true)).not.toThrow()
+      // Test functional entity creation
+      expect(() => mainModule.createPlayer(mockGame, 100, 300)).not.toThrow()
+      expect(() => mainModule.createEnemy(mockGame, 100, 200, 'fighter')).not.toThrow()
+      expect(() => mainModule.createBullet(mockGame, 100, 200, 5, 0, 'normal', true)).not.toThrow()
     })
   })
 
@@ -249,8 +246,8 @@ describe('Main Entry Point', () => {
     it('should handle class instantiation with invalid parameters', async () => {
       const mainModule = await import('./main.js')
 
-      // Test that classes handle invalid parameters gracefully
-      expect(() => new mainModule.AudioManager()).not.toThrow()
+      // Test that functional creators and classes handle invalid parameters gracefully
+      expect(() => mainModule.createAudioManager()).not.toThrow()
       expect(() => new mainModule.Powerup(null, 0, 0, 'invalid')).not.toThrow()
       expect(() => new mainModule.Explosion(null, 0, 0, 'invalid')).not.toThrow()
     })

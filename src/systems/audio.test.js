@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import AudioManager from '@/systems/audio.js'
+import { createAudioManager } from '@/systems/audio.js'
 
 // Mock Web Audio API
 class MockAudioContext {
@@ -53,7 +53,7 @@ describe('AudioManager', () => {
     window.webkitAudioContext = vi.fn(() => mockAudioContext)
 
     // Create fresh AudioManager instance
-    audioManager = new AudioManager()
+    audioManager = createAudioManager()
   })
 
   afterEach(() => {
@@ -100,7 +100,7 @@ describe('AudioManager', () => {
 
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-      const manager = new AudioManager()
+      const manager = createAudioManager()
       expect(manager.audioContext).toBeNull()
       expect(consoleSpy).toHaveBeenCalledWith('Web Audio API not supported')
 

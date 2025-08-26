@@ -41,6 +41,7 @@ export function createEffectManager(eventDispatcher, options = {}) {
 
     // State
     isRunning: false,
+    wasRunning: false,
     debugMode: config.debugMode,
 
     // Original emit function storage
@@ -454,7 +455,9 @@ function cleanupEffects(effectManager) {
  */
 function pauseEffects(effectManager) {
   debugLog(effectManager, 'Pausing effects')
-  // Could implement pause logic here
+  effectManager.wasRunning = effectManager.isRunning
+  effectManager.isRunning = false
+  debugLog(effectManager, 'Effects paused, was running:', effectManager.wasRunning)
 }
 
 /**
@@ -463,7 +466,13 @@ function pauseEffects(effectManager) {
  */
 function resumeEffects(effectManager) {
   debugLog(effectManager, 'Resuming effects')
-  // Could implement resume logic here
+  // Only resume if it was running before pause
+  if (effectManager.wasRunning !== false) {
+    effectManager.isRunning = true
+    debugLog(effectManager, 'Effects resumed')
+  } else {
+    debugLog(effectManager, 'Effects not resumed - was not running before pause')
+  }
 }
 
 /**

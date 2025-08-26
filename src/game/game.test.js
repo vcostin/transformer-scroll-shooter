@@ -258,15 +258,14 @@ describe('Game', () => {
 
   describe('checkCollisions', () => {
     beforeEach(() => {
-      // Mock player
+      // Create functional player for collision tests
       game.player = {
         x: 100,
         y: 300,
         width: 40,
         height: 30,
         health: 100,
-        takeDamage: vi.fn(),
-        collectPowerup: vi.fn()
+        maxHealth: 100
       }
 
       // Mock audio
@@ -295,7 +294,6 @@ describe('Game', () => {
         height: 20,
         health: 20,
         points: 10,
-        takeDamage: vi.fn(),
         markedForDeletion: false
       }
 
@@ -305,7 +303,8 @@ describe('Game', () => {
       game.checkCollisions()
 
       expect(bullet.markedForDeletion).toBe(true)
-      expect(enemy.takeDamage).toHaveBeenCalledWith(10)
+      // In functional architecture, enemy health is updated directly
+      expect(game.enemies[0].health).toBe(10) // 20 - 10 damage
     })
 
     it('should detect enemy bullet vs player collision', () => {
@@ -321,11 +320,13 @@ describe('Game', () => {
       }
 
       game.bullets.push(bullet)
+      const originalPlayerHealth = game.player.health
 
       game.checkCollisions()
 
       expect(bullet.markedForDeletion).toBe(true)
-      expect(game.player.takeDamage).toHaveBeenCalledWith(5)
+      // In functional architecture, player state is updated directly
+      expect(game.player.health).toBe(originalPlayerHealth - 5)
     })
 
     it('should detect enemy vs player collision', () => {
@@ -335,16 +336,18 @@ describe('Game', () => {
         width: 30,
         height: 20,
         damage: 15,
-        takeDamage: vi.fn(),
+        health: 50,
         markedForDeletion: false
       }
 
       game.enemies.push(enemy)
+      const originalPlayerHealth = game.player.health
 
       game.checkCollisions()
 
-      expect(enemy.takeDamage).toHaveBeenCalledWith(50)
-      expect(game.player.takeDamage).toHaveBeenCalledWith(50)
+      // In functional architecture, both entities are updated directly
+      expect(game.enemies[0].health).toBe(0) // Enemy takes 50 damage (from collision)
+      expect(game.player.health).toBe(originalPlayerHealth - 50)
     })
 
     it('should detect powerup vs player collision', () => {
@@ -357,11 +360,13 @@ describe('Game', () => {
       }
 
       game.powerups.push(powerup)
+      const originalPowerupsCollected = game.powerupsCollected
 
       game.checkCollisions()
 
       expect(powerup.markedForDeletion).toBe(true)
-      expect(game.player.collectPowerup).toHaveBeenCalledWith(powerup)
+      // In functional architecture, game state is updated directly
+      expect(game.powerupsCollected).toBe(originalPowerupsCollected + 1)
     })
 
     it('should award points when enemy is destroyed', () => {

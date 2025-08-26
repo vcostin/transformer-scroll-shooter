@@ -38,7 +38,19 @@ export function createBullet(game, x, y, velocityX, velocityY, type, friendly) {
   }
 
   // Set properties based on type
-  return setupBulletType(bullet)
+  const configuredBullet = setupBulletType(bullet)
+
+  // Add backward-compatible wrapper methods for game loop
+  configuredBullet.update = function (deltaTime) {
+    Object.assign(this, updateBullet(this, deltaTime))
+    return this
+  }
+
+  configuredBullet.render = function (ctx) {
+    return renderBullet(this, ctx)
+  }
+
+  return configuredBullet
 }
 
 /**
@@ -235,23 +247,5 @@ export function renderBullet(bullet, ctx) {
       // Standard bullet
       ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height)
       break
-  }
-}
-
-// Legacy class wrapper for backward compatibility during migration
-export default class Bullet {
-  constructor(game, x, y, velocityX, velocityY, type, friendly) {
-    Object.assign(this, createBullet(game, x, y, velocityX, velocityY, type, friendly))
-  }
-
-  update(deltaTime) {
-    const newState = updateBullet(this, deltaTime)
-    for (const key of Object.keys(newState)) {
-      this[key] = newState[key]
-    }
-  }
-
-  render(ctx) {
-    renderBullet(this, ctx)
   }
 }

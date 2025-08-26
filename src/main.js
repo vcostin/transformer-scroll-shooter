@@ -11,16 +11,16 @@ import * as CollisionUtils from '@/utils/collision.js'
 import * as MathUtils from '@/utils/math.js'
 
 // Import game object modules
-import Player from '@/entities/player.js'
-import Bullet from '@/entities/bullet.js'
-import Enemy from '@/entities/enemies/enemy.js'
+import { createPlayer } from '@/entities/player.js'
+import { createBullet } from '@/entities/bullet.js'
+import { createEnemy } from '@/entities/enemies/enemy.js'
 
 // Import game systems
-import { AudioManager } from '@/systems/audio.js'
+import { createAudioManager } from '@/systems/audio.js'
 import { Powerup, PowerupSpawner } from '@/systems/powerups.js'
-import { EventDispatcher } from '@/systems/EventDispatcher.js'
-import { StateManager } from '@/systems/StateManager.js'
-import { EffectManager } from '@/systems/EffectManager.js'
+import { createEventDispatcher } from '@/systems/EventDispatcher.js'
+import { createStateManager, stateManager } from '@/systems/StateManager.js'
+import { createEffectManager } from '@/systems/EffectManager.js'
 
 // Import story system
 import {
@@ -47,15 +47,16 @@ export {
   GAME_INFO,
   CollisionUtils,
   MathUtils,
-  Player,
-  Bullet,
-  Enemy,
-  AudioManager,
+  createPlayer,
+  createBullet,
+  createEnemy,
+  createAudioManager,
   Powerup,
   PowerupSpawner,
-  EventDispatcher,
-  StateManager,
-  EffectManager,
+  createEventDispatcher,
+  createStateManager,
+  stateManager,
+  createEffectManager,
   Background,
   Explosion,
   PowerupEffect,
