@@ -3,6 +3,8 @@
  * NO CLASSES, NO `this`, NO COMPATIBILITY LAYERS
  */
 
+import { generateIdentityId } from '../utils/IdGenerator.js'
+
 // ===== PURE EVENT FUNCTIONS =====
 
 const matchesPattern = (eventName, pattern) => {
@@ -18,7 +20,7 @@ const matchesPattern = (eventName, pattern) => {
 }
 
 const createSubscriptionId = () => {
-  return `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  return generateIdentityId('sub')
 }
 
 // ===== CURRIED EVENT FUNCTIONS =====

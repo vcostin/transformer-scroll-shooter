@@ -6,6 +6,7 @@
  */
 
 import { createEventDispatcher } from '@/systems/EventDispatcher.js'
+import { generateIdentityId } from '../utils/IdGenerator.js'
 
 // ===== PURE STATE FUNCTIONS =====
 
@@ -85,13 +86,7 @@ export const createStateManager = (options = {}) => {
 
   // Simple ID generator for entities
   const generateId = () => {
-    // Use native UUID if available (modern browsers and Node.js)
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-      return crypto.randomUUID()
-    }
-
-    // Fallback for older environments
-    return Date.now().toString(36) + Math.random().toString(36).substr(2)
+    return generateIdentityId()
   }
 
   // Initialize entity state (for entity-state architecture)
