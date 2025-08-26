@@ -21,6 +21,7 @@ export const DEFAULT_STATE = {
     lives: 3,
     time: 0,
     paused: false,
+    userPaused: false, // Distinguish user pause from system pause
     debug: false,
     settings: {
       difficulty: 'normal', // 'easy', 'normal', 'hard', 'nightmare'

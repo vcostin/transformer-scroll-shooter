@@ -11,6 +11,6 @@
     "moduleResolution": "bundler",
     "types": ["vitest/globals", "node"]
   },
-  "include": ["src", "test", "tests", "vitest.config.js", "vite.config.js"],
+  "include": ["src", "test", "tests", "vitest.config.js", "vite.config.js", "src/types"],
   "exclude": ["node_modules", "dist", "coverage"]
 }

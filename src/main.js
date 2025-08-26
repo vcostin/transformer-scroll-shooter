@@ -119,14 +119,6 @@ function handleSpecialKeys(event) {
   // Reference the game instance from the global window
   const game = window['game']
   switch (event.code) {
-    case 'KeyP':
-      // Toggle pause
-      if (game) {
-        game.paused = !game.paused
-        console.log(game.paused ? 'Game Paused' : 'Game Resumed')
-      }
-      break
-
     case 'KeyM':
       // Toggle mute
       if (game && game.audio) {

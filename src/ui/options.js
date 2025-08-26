@@ -289,8 +289,22 @@ export class OptionsMenu {
   }
 
   open() {
+    // Prevent recursion - if already open, don't open again
+    if (this.isOpen) {
+      return
+    }
+
     this.isOpen = true
     this.overlay.style.display = 'block'
+
+    // Debug logging if available
+    if (window.gameDebugLogger) {
+      window.gameDebugLogger.log('OPTIONS_MENU_OPEN', {
+        wasGamePaused: this.game.paused,
+        wasUserPaused: this.game.userPaused,
+        isOpen: this.isOpen
+      })
+    }
 
     // Emit menu opened event
     this.eventDispatcher.emit(UI_EVENTS.MENU_OPENED, {
@@ -302,7 +316,15 @@ export class OptionsMenu {
     this.stateManager.setState(UI_STATE_KEYS.MENU_OPEN, true)
     this.stateManager.setState(UI_STATE_KEYS.MENU_TYPE, MENU_TYPES.OPTIONS)
 
-    this.game.paused = true
+    // Use proper pause method instead of directly setting paused property
+    if (typeof this.game.pauseGame === 'function') {
+      this.game.pauseGame()
+    } else {
+      // Fallback for tests or environments without pauseGame method
+      this.game.paused = true
+    }
+
+    console.log('OptionsMenu.open() - After pause:', this.game.paused, this.game.userPaused)
 
     // Emit game pause event for EffectManager and other systems
     this.eventDispatcher.emit('game:pause', {
@@ -313,8 +335,22 @@ export class OptionsMenu {
   }
 
   close() {
+    // Prevent recursion - if already closed, don't close again
+    if (!this.isOpen) {
+      return
+    }
+
     this.isOpen = false
     this.overlay.style.display = 'none'
+
+    // Debug logging if available
+    if (window.gameDebugLogger) {
+      window.gameDebugLogger.log('OPTIONS_MENU_CLOSE', {
+        wasGamePaused: this.game.paused,
+        wasUserPaused: this.game.userPaused,
+        isOpen: this.isOpen
+      })
+    }
 
     // Emit menu closed event
     this.eventDispatcher.emit(UI_EVENTS.MENU_CLOSED, {
@@ -333,6 +369,8 @@ export class OptionsMenu {
       // Fallback for tests or environments without resumeGame method
       this.game.paused = false
     }
+
+    console.log('OptionsMenu.close() - After resume:', this.game.paused, this.game.userPaused)
 
     // Emit game resume event for EffectManager and other systems
     // Note: resumeGame() already emits this, but keeping for explicit system coordination
