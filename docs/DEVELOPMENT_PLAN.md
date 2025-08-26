@@ -95,7 +95,7 @@ A playable scroll shooter game featuring a transformer vehicle (car-scuba-boat-p
 
 ## 🚀 Phase 5: Remaining Functional Migration (OPTIONAL)
 *Timeline: 4-12 weeks (based on priority)*
-*See: `docs/PHASE_5_MIGRATION_PLAN.md` for detailed breakdown*
+*See: [`docs/priority/`](./priority/) for detailed implementation guides*
 
 ### Phase 5a: High Priority Core System Completion
 - **StateAsync.js** - Class to factory function migration (75+ `this` violations)
@@ -111,7 +111,8 @@ A playable scroll shooter game featuring a transformer vehicle (car-scuba-boat-p
 - **Promise Error Handling** - Enhanced .catch() patterns
 - **Main Entry Point** - Factory patterns and cleanup
 
-**Status:** 📋 PLANNED - Optional enhancement, current architecture is production-ready
+**Status:** 📋 PLANNED - Optional enhancement, current architecture is production-ready  
+**Quick Start:** [`docs/priority/README.md`](./priority/README.md) for immediate next actions
 
 ---
 
