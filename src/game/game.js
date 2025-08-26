@@ -532,11 +532,16 @@ export class Game {
     this.eventDispatcher.emit(GAME_EVENTS.GAME_PAUSE, {
       timestamp: Date.now()
     })
+
+    // Also check if options menu should be informed
+    if (this.options && this.options.isOpen) {
+      // Options menu is already handling the pause state
+    }
   }
 
   resumeGame() {
     // CRITICAL: Check if options menu is open - it takes priority!
-    if (this.options.isOpen) {
+    if (this.options && this.options.isOpen) {
       console.log('Cannot resume game: Options menu is open (priority override)')
       return // Options menu has priority - refuse to resume
     }
@@ -604,8 +609,8 @@ export class Game {
   setupInput() {
     // Define event handlers as bound methods for proper cleanup
     this.handleKeyDown = e => {
-      // Handle options menu input first
-      if (this.options.handleInput(e.code)) {
+      // Handle options menu input first (with null check)
+      if (this.options && this.options.handleInput && this.options.handleInput(e.code)) {
         e.preventDefault()
         return
       }
@@ -632,6 +637,14 @@ export class Game {
             this.restart()
           }
           break
+        case 'KeyP':
+          // Simple pause/unpause toggle
+          if (this.paused) {
+            this.resumeGame()
+          } else {
+            this.pauseGame()
+          }
+          break
         case 'KeyJ':
           // Toggle story journal
           if (this.storyJournal.isVisible) {
@@ -642,9 +655,9 @@ export class Game {
           break
         case 'Escape':
           // Toggle options menu (pause/unpause game)
-          if (this.options.isOpen) {
+          if (this.options && this.options.isOpen) {
             this.options.close()
-          } else {
+          } else if (this.options) {
             this.options.open()
           }
           break
