@@ -26,7 +26,6 @@ import { createEnemy, takeDamage as takeDamageEnemy } from '@/entities/enemies/e
 import { createEventDispatcher } from '@/systems/EventDispatcher.js'
 import { createStateManager } from '@/systems/StateManager.js'
 import { EffectManager } from '@/systems/EffectManager.js'
-import { DebugLogger } from '@/utils/debug-logger.js'
 
 // Import story system
 import {
@@ -267,10 +266,6 @@ export class Game {
   domEventCleanup
 
   constructor() {
-    // Initialize local pause state properties (temporary fix for StateManager)
-    this._paused = false
-    this._userPaused = false
-
     // Create the POJO state and assign properties to this
     Object.assign(this, createGame())
 
@@ -278,18 +273,6 @@ export class Game {
     this.setupInput()
     this.initializeGameState()
     this.setupEffects()
-
-    // Initialize debug logger if in development
-    if (typeof window !== 'undefined') {
-      this.debugLogger = new DebugLogger()
-      window.gameDebugLogger = this.debugLogger
-      this.debugLogger.start()
-      this.debugLogger.log('GAME_INITIALIZED', {
-        paused: this.paused,
-        userPaused: this.userPaused
-      })
-    }
-
     this.init()
   }
 
@@ -298,7 +281,6 @@ export class Game {
     this.stateManager.setState('game.score')(0)()
     this.stateManager.setState('game.gameOver')(false)()
     this.stateManager.setState('game.paused')(false)()
-    this.stateManager.setState('game.userPaused')(false)()
     this.stateManager.setState('game.showFPS')(false)()
     this.stateManager.setState('game.difficulty')('Normal')()
     this.stateManager.setState('game.level')(1)()
@@ -334,87 +316,66 @@ export class Game {
   }
 
   get paused() {
-    // Temporary fix: Use local property until StateManager is corrected
-    return this._paused !== undefined ? this._paused : false
+    return this.stateManager.getState('game.paused')()
   }
   set paused(value) {
-    this._paused = value
-    // Also try to set in StateManager (but don't rely on it)
-    try {
-      this.stateManager.setState('game.paused', value)
-    } catch (e) {
-      console.warn('StateManager.setState failed for paused:', e)
-    }
-  }
-
-  get userPaused() {
-    // Temporary fix: Use local property until StateManager is corrected
-    return this._userPaused !== undefined ? this._userPaused : false
-  }
-  set userPaused(value) {
-    this._userPaused = value
-    // Also try to set in StateManager (but don't rely on it)
-    try {
-      this.stateManager.setState('game.userPaused', value)
-    } catch (e) {
-      console.warn('StateManager.setState failed for userPaused:', e)
-    }
+    this.stateManager.setState('game.paused')(value)()
   }
 
   get level() {
-    return this.stateManager.getState('game.level')
+    return this.stateManager.getState('game.level')()
   }
   set level(value) {
-    this.stateManager.setState('game.level', value)
+    this.stateManager.setState('game.level')(value)()
   }
 
   get enemiesKilled() {
-    return this.stateManager.getState('game.enemiesKilled')
+    return this.stateManager.getState('game.enemiesKilled')()
   }
   set enemiesKilled(value) {
-    this.stateManager.setState('game.enemiesKilled', value)
+    this.stateManager.setState('game.enemiesKilled')(value)()
   }
 
   get showFPS() {
-    return this.stateManager.getState('game.showFPS')
+    return this.stateManager.getState('game.showFPS')()
   }
   set showFPS(value) {
-    this.stateManager.setState('game.showFPS', value)
+    this.stateManager.setState('game.showFPS')(value)()
   }
 
   get difficulty() {
-    return this.stateManager.getState('game.difficulty')
+    return this.stateManager.getState('game.difficulty')()
   }
   set difficulty(value) {
-    this.stateManager.setState('game.difficulty', value)
+    this.stateManager.setState('game.difficulty')(value)()
   }
 
   get bossActive() {
-    return this.stateManager.getState('game.bossActive')
+    return this.stateManager.getState('game.bossActive')()
   }
   set bossActive(value) {
-    this.stateManager.setState('game.bossActive', value)
+    this.stateManager.setState('game.bossActive')(value)()
   }
 
   get bossSpawnedThisLevel() {
-    return this.stateManager.getState('game.bossSpawnedThisLevel')
+    return this.stateManager.getState('game.bossSpawnedThisLevel')()
   }
   set bossSpawnedThisLevel(value) {
-    this.stateManager.setState('game.bossSpawnedThisLevel', value)
+    this.stateManager.setState('game.bossSpawnedThisLevel')(value)()
   }
 
   get bossesDefeated() {
-    return this.stateManager.getState('game.bossesDefeated')
+    return this.stateManager.getState('game.bossesDefeated')()
   }
   set bossesDefeated(value) {
-    this.stateManager.setState('game.bossesDefeated', value)
+    this.stateManager.setState('game.bossesDefeated')(value)()
   }
 
   get powerupsCollected() {
-    return this.stateManager.getState('game.powerupsCollected')
+    return this.stateManager.getState('game.powerupsCollected')()
   }
   set powerupsCollected(value) {
-    this.stateManager.setState('game.powerupsCollected', value)
+    this.stateManager.setState('game.powerupsCollected')(value)()
   }
 
   setupEffects() {
@@ -568,18 +529,6 @@ export class Game {
 
   pauseGame() {
     this.paused = true
-    this.userPaused = true
-
-    // Debug logging
-    if (this.debugLogger) {
-      this.debugLogger.log('PAUSE_GAME_CALLED', {
-        paused: this.paused,
-        userPaused: this.userPaused,
-        gameOver: this.gameOver,
-        optionsOpen: this.options?.isOpen
-      })
-    }
-
     this.eventDispatcher.emit(GAME_EVENTS.GAME_PAUSE, {
       timestamp: Date.now()
     })
@@ -591,19 +540,13 @@ export class Game {
   }
 
   resumeGame() {
-    this.paused = false
-    this.userPaused = false
-
-    // Debug logging
-    if (this.debugLogger) {
-      this.debugLogger.log('RESUME_GAME_CALLED', {
-        paused: this.paused,
-        userPaused: this.userPaused,
-        gameOver: this.gameOver,
-        optionsOpen: this.options?.isOpen
-      })
+    // CRITICAL: Check if options menu is open - it takes priority!
+    if (this.options && this.options.isOpen) {
+      console.log('Cannot resume game: Options menu is open (priority override)')
+      return // Options menu has priority - refuse to resume
     }
 
+    this.paused = false
     this.eventDispatcher.emit(GAME_EVENTS.GAME_RESUME, {
       timestamp: Date.now()
     })
@@ -711,13 +654,6 @@ export class Game {
           }
           break
         case 'Escape':
-          // Prevent recursion with a simple debounce guard
-          if (this._escKeyPressed) return
-          this._escKeyPressed = true
-          setTimeout(() => {
-            this._escKeyPressed = false
-          }, 100) // 100ms debounce
-
           // Toggle options menu (pause/unpause game)
           if (this.options && this.options.isOpen) {
             this.options.close()
@@ -973,11 +909,6 @@ export class Game {
     if (this.gameOver) {
       this.renderGameOver()
     }
-
-    // Render pause indicator (only for user-initiated pause, not system pause)
-    if (this.userPaused && !this.gameOver) {
-      this.renderPauseIndicator()
-    }
   }
 
   renderUI() {
@@ -987,11 +918,6 @@ export class Game {
       this.ctx.font = '14px Arial'
       this.ctx.fillText(`FPS: ${this.fps}`, 10, 20)
     }
-
-    // Pause status indicator (for debugging)
-    this.ctx.fillStyle = '#00ff00'
-    this.ctx.font = '16px Arial'
-    this.ctx.fillText(`PAUSE DEBUG: paused=${this.paused} userPaused=${this.userPaused}`, 10, 50)
   }
 
   renderMessages() {
@@ -1018,26 +944,6 @@ export class Game {
     this.ctx.font = '24px Arial'
     this.ctx.fillText(`Final Score: ${this.score}`, this.width / 2, this.height / 2)
     this.ctx.fillText('Press R to Restart', this.width / 2, this.height / 2 + 50)
-
-    this.ctx.textAlign = 'left'
-  }
-
-  renderPauseIndicator() {
-    // Semi-transparent overlay
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'
-    this.ctx.fillRect(0, 0, this.width, this.height)
-
-    // PAUSED text
-    this.ctx.fillStyle = '#ffffff'
-    this.ctx.font = '48px Arial'
-    this.ctx.textAlign = 'center'
-    this.ctx.fillText('PAUSED', this.width / 2, this.height / 2 - 30)
-
-    // Instructions
-    this.ctx.fillStyle = '#cccccc'
-    this.ctx.font = '24px Arial'
-    this.ctx.fillText('Press P to Resume', this.width / 2, this.height / 2 + 20)
-    this.ctx.fillText('Press ESC for Options', this.width / 2, this.height / 2 + 50)
 
     this.ctx.textAlign = 'left'
   }
