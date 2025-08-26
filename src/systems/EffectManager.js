@@ -58,6 +58,31 @@ export function createEffectManager(eventDispatcher, options = {}) {
   effectManager._boundPause = () => pauseEffects(effectManager)
   effectManager._boundResume = () => resumeEffects(effectManager)
 
+  // Add functional API methods (only for standalone POJO usage)
+  effectManager.effect = (eventPattern, effectHandler, options = {}) => {
+    return registerEffect(effectManager, eventPattern, effectHandler, options)
+  }
+
+  effectManager.getEffects = () => {
+    return getEffectsMap(effectManager)
+  }
+
+  effectManager.trackForkedEffect = effectPromise => {
+    return trackForkedEffect(effectManager, effectPromise)
+  }
+
+  // These methods are only added for standalone POJO usage
+  // The class wrapper will override them with proper implementations
+  if (!options._skipClassMethods) {
+    effectManager.start = () => {
+      startEffectManager(effectManager)
+    }
+
+    effectManager.stop = () => {
+      stopEffectManager(effectManager)
+    }
+  }
+
   return effectManager
 }
 
@@ -497,7 +522,10 @@ export class EffectManager {
    */
   constructor(eventDispatcher, options = {}) {
     // Create the POJO state and assign properties to this
-    const effectManagerPOJO = createEffectManager(eventDispatcher, options)
+    const effectManagerPOJO = createEffectManager(eventDispatcher, {
+      ...options,
+      _skipClassMethods: true
+    })
     Object.assign(this, effectManagerPOJO)
   }
 

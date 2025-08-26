@@ -205,8 +205,17 @@ export class PerformanceProfiler {
     if (eventDispatcher.listeners) {
       const listenerCounts = []
 
-      for (const [eventName, listeners] of eventDispatcher.listeners) {
-        const count = Array.isArray(listeners) ? listeners.length : 1
+      for (const [eventName, listenerMap] of eventDispatcher.listeners) {
+        // Handle both Map structure (functional) and Array structure (legacy)
+        let count
+        if (listenerMap instanceof Map) {
+          count = listenerMap.size
+        } else if (Array.isArray(listenerMap)) {
+          count = listenerMap.length
+        } else {
+          count = 1
+        }
+
         listenerCounts.push(count)
         analysis.totalListeners += count
         analysis.eventsWithListeners++

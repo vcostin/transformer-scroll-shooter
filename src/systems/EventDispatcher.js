@@ -23,13 +23,15 @@ const createSubscriptionId = () => {
 
 // ===== CURRIED EVENT FUNCTIONS =====
 
-export const createEventDispatcher = (options = {}) => {
-  const config = {
+export function createEventDispatcher(config = {}) {
+  const defaultConfig = {
+    maxListeners: 50,
     enableLogging: false,
-    maxListeners: 100,
     enablePatterns: true,
-    ...options
+    maxHistorySize: 1000
   }
+
+  config = { ...defaultConfig, ...config }
 
   const listeners = new Map()
   const eventHistory = []
@@ -38,60 +40,82 @@ export const createEventDispatcher = (options = {}) => {
 
   const logEvent = (eventName, data) => {
     if (config.enableLogging) {
-      console.log(`🔥 Event: ${eventName}`, data)
+      if (eventName === 'listener:added') {
+        console.log(`Subscribed to "${data.pattern}" with ID ${data.subscriptionId}`)
+      } else {
+        console.log(`🔥 Event: ${eventName}`, data)
+      }
     }
   }
 
   const addToHistory = (eventName, data) => {
     eventHistory.push({
-      event: eventName,
+      eventName,
       data,
       timestamp: Date.now()
     })
 
-    if (eventHistory.length > 1000) {
+    if (eventHistory.length > config.maxHistorySize) {
       eventHistory.shift()
     }
   }
 
-  return {
-    // Curried API
-    on: eventPattern => callback => {
-      if (typeof callback !== 'function') {
-        throw new Error('Event callback must be a function')
-      }
+  // Helper function to add listeners
+  const addListener = (eventPattern, callback, options = {}) => {
+    if (typeof eventPattern !== 'string' || !eventPattern.trim()) {
+      throw new Error('Event name must be a non-empty string')
+    }
 
-      const subscriptionId = createSubscriptionId()
+    if (typeof callback !== 'function') {
+      throw new Error('Handler must be a function')
+    }
 
-      if (!listeners.has(eventPattern)) {
-        listeners.set(eventPattern, new Map())
-      }
+    const subscriptionId = createSubscriptionId()
+    const priority = options.priority || 0
 
-      listeners.get(eventPattern).set(subscriptionId, callback)
+    if (!listeners.has(eventPattern)) {
+      listeners.set(eventPattern, new Map())
+    }
 
-      let totalListeners = 0
-      for (const patternMap of listeners.values()) {
-        totalListeners += patternMap.size
-      }
+    // Store callback with metadata including priority
+    listeners.get(eventPattern).set(subscriptionId, {
+      callback,
+      priority,
+      subscriptionId
+    })
 
-      if (totalListeners > config.maxListeners) {
-        console.warn(
-          `Event dispatcher has ${totalListeners} listeners (max: ${config.maxListeners})`
-        )
-      }
+    let totalListeners = 0
+    for (const patternMap of listeners.values()) {
+      totalListeners += patternMap.size
+    }
 
-      logEvent('listener:added', { pattern: eventPattern, subscriptionId })
+    if (totalListeners > config.maxListeners) {
+      console.warn(`Event dispatcher has ${totalListeners} listeners (max: ${config.maxListeners})`)
+    }
 
-      return () => {
-        const patternMap = listeners.get(eventPattern)
-        if (patternMap) {
-          patternMap.delete(subscriptionId)
-          if (patternMap.size === 0) {
-            listeners.delete(eventPattern)
-          }
+    logEvent('listener:added', { pattern: eventPattern, subscriptionId })
+
+    return () => {
+      const patternMap = listeners.get(eventPattern)
+      if (patternMap) {
+        patternMap.delete(subscriptionId)
+        if (patternMap.size === 0) {
+          listeners.delete(eventPattern)
         }
-        logEvent('listener:removed', { pattern: eventPattern, subscriptionId })
       }
+      logEvent('listener:removed', { pattern: eventPattern, subscriptionId })
+    }
+  }
+
+  return {
+    // Dual API: Both curried and traditional with priority support
+    on: (eventPattern, callback, options) => {
+      // If two or three parameters provided, use traditional API
+      if (callback !== undefined) {
+        return addListener(eventPattern, callback, options)
+      }
+      // If one parameter, use curried API
+      return (callback, options) => addListener(eventPattern, callback, options)
     },
 
     // Non-curried API for compatibility
@@ -115,8 +139,8 @@ export const createEventDispatcher = (options = {}) => {
       }
 
       // Find and remove specific callback
-      for (const [id, cb] of patternMap.entries()) {
-        if (cb === callback) {
+      for (const [id, listenerData] of patternMap.entries()) {
+        if (listenerData.callback === callback) {
           patternMap.delete(id)
           if (patternMap.size === 0) {
             listeners.delete(eventPattern)
@@ -126,46 +150,127 @@ export const createEventDispatcher = (options = {}) => {
       }
     },
 
-    // Properties for test compatibility
-    listeners,
-    eventHistory,
-    debugMode: config.enableLogging,
+    // Once method with dual API
+    once: (eventPattern, callback) => {
+      // If two parameters provided, use traditional API
+      if (callback !== undefined) {
+        let isRemoved = false
+        const unsubscribe = addListener(eventPattern, data => {
+          if (!isRemoved) {
+            isRemoved = true
+            unsubscribe()
+            callback(data)
+          }
+        })
+        return unsubscribe
+      }
+      // If one parameter, use curried API
 
-    once: eventPattern => callback => {
-      const unsubscribe = createEventDispatcher(config).on(eventPattern)(data => {
-        unsubscribe()
-        callback(data)
-      })
-      return unsubscribe
+      return callback => {
+        let isRemoved = false
+        const unsubscribe = addListener(eventPattern, data => {
+          if (!isRemoved) {
+            isRemoved = true
+            unsubscribe()
+            callback(data)
+          }
+        })
+        return unsubscribe
+      }
     },
 
-    emit: (eventName, data = {}) => {
+    emit: (eventName, data = {}, options = {}) => {
+      if (typeof eventName !== 'string' || !eventName.trim()) {
+        throw new Error('Event name must be a non-empty string')
+      }
+
+      if (options.async) {
+        // Emit asynchronously by directly calling handlers
+        setImmediate(() => {
+          const matchingCallbacks = []
+
+          for (const [pattern, callbackMap] of listeners.entries()) {
+            if (
+              config.enablePatterns ? matchesPattern(eventName, pattern) : pattern === eventName
+            ) {
+              for (const listenerData of callbackMap.values()) {
+                matchingCallbacks.push(listenerData)
+              }
+            }
+          }
+
+          // Sort by priority (higher priority first)
+          matchingCallbacks.sort((a, b) => b.priority - a.priority)
+
+          for (const listenerData of matchingCallbacks) {
+            try {
+              listenerData.callback(data, eventName)
+            } catch (error) {
+              const errorMessage = `Error in event handler for '${eventName}':`
+              console.error(errorMessage, error)
+
+              // Emit error event for error handling
+              const errorListeners = listeners.get('error')
+              if (errorListeners && errorListeners.size > 0) {
+                for (const errorListener of errorListeners.values()) {
+                  try {
+                    errorListener.callback(error, 'error')
+                  } catch (nestedError) {
+                    console.error('Error in error handler:', nestedError)
+                  }
+                }
+              }
+            }
+          }
+        })
+        return true
+      }
+
       if (isEmitting) {
         pendingEvents.push({ eventName, data })
-        return
+        return false
       }
 
       logEvent(eventName, data)
       addToHistory(eventName, data)
 
       isEmitting = true
+      let hasListeners = false
 
       try {
         const matchingCallbacks = []
 
         for (const [pattern, callbackMap] of listeners.entries()) {
           if (config.enablePatterns ? matchesPattern(eventName, pattern) : pattern === eventName) {
-            for (const callback of callbackMap.values()) {
-              matchingCallbacks.push(callback)
+            for (const listenerData of callbackMap.values()) {
+              matchingCallbacks.push(listenerData)
             }
           }
         }
 
-        for (const callback of matchingCallbacks) {
+        // Sort by priority (higher priority first)
+        matchingCallbacks.sort((a, b) => b.priority - a.priority)
+
+        hasListeners = matchingCallbacks.length > 0
+
+        for (const listenerData of matchingCallbacks) {
           try {
-            callback(data, eventName)
+            listenerData.callback(data, eventName)
           } catch (error) {
-            console.error(`Event listener error for ${eventName}:`, error)
+            const errorMessage = `Error in event handler for '${eventName}':`
+            console.error(errorMessage, error)
+
+            // Emit error event for error handling
+            const errorListeners = listeners.get('error')
+            if (errorListeners && errorListeners.size > 0) {
+              for (const errorListener of errorListeners.values()) {
+                try {
+                  errorListener.callback(error, 'error')
+                } catch (nestedError) {
+                  console.error('Error in error handler:', nestedError)
+                }
+              }
+            }
           }
         }
       } finally {
@@ -178,15 +283,18 @@ export const createEventDispatcher = (options = {}) => {
           })
         }
       }
+
+      return hasListeners
     },
 
-    removeAllListeners: eventPattern => {
-      if (eventPattern) {
-        listeners.delete(eventPattern)
-        logEvent('listeners:removed', { pattern: eventPattern })
-      } else {
-        listeners.clear()
-        logEvent('listeners:cleared', {})
+    // Additional methods required by tests
+    removeAllMatching: pattern => {
+      if (!pattern) return
+
+      for (const listenerPattern of listeners.keys()) {
+        if (matchesPattern(listenerPattern, pattern)) {
+          listeners.delete(listenerPattern)
+        }
       }
     },
 
@@ -203,10 +311,72 @@ export const createEventDispatcher = (options = {}) => {
       return total
     },
 
+    getTotalListenerCount: () => {
+      let total = 0
+      for (const patternMap of listeners.values()) {
+        total += patternMap.size
+      }
+      return total
+    },
+
+    getEventNames: () => {
+      return Array.from(listeners.keys())
+    },
+
+    isValidEventName: eventName => {
+      if (typeof eventName !== 'string') return false
+      if (eventName.trim() === '') return false
+      if (eventName.includes(' ')) return false
+      if (eventName.includes('@')) return false
+      return true
+    },
+
+    clear: () => {
+      listeners.clear()
+      eventHistory.length = 0
+    },
+
+    setDebugMode: enabled => {
+      config.enableLogging = enabled
+      if (enabled) {
+        console.log('[EventDispatcher] Debug mode enabled')
+      }
+    },
+
+    // Properties for test compatibility
+    listeners,
+    eventHistory,
+    debugMode: config.enableLogging,
+
+    get maxHistorySize() {
+      return config.maxHistorySize
+    },
+
+    set maxHistorySize(value) {
+      config.maxHistorySize = value
+      // Trim current history if needed
+      while (eventHistory.length > value) {
+        eventHistory.shift()
+      }
+    },
+
+    // Helper methods
+    removeAllListeners: eventPattern => {
+      if (eventPattern) {
+        listeners.delete(eventPattern)
+        logEvent('listeners:removed', { pattern: eventPattern })
+      } else {
+        listeners.clear()
+        logEvent('listeners:cleared', {})
+      }
+    },
+
     getEventHistory: () => [...eventHistory],
+
     clearHistory: () => {
       eventHistory.length = 0
     },
+
     _getListenerPatterns: () => Array.from(listeners.keys())
   }
 }

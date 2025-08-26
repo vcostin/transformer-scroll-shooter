@@ -278,21 +278,21 @@ export class Game {
 
   initializeGameState() {
     // Initialize all game state through StateManager
-    this.stateManager.setState('game.score', 0)
-    this.stateManager.setState('game.gameOver', false)
-    this.stateManager.setState('game.paused', false)
-    this.stateManager.setState('game.showFPS', false)
-    this.stateManager.setState('game.difficulty', 'Normal')
-    this.stateManager.setState('game.level', 1)
-    this.stateManager.setState('game.enemiesKilled', 0)
-    this.stateManager.setState('game.enemiesPerLevel', GAME_CONSTANTS.ENEMIES_PER_LEVEL)
-    this.stateManager.setState('game.bossActive', false)
-    this.stateManager.setState('game.bossSpawnedThisLevel', false)
+    this.stateManager.setState('game.score')(0)()
+    this.stateManager.setState('game.gameOver')(false)()
+    this.stateManager.setState('game.paused')(false)()
+    this.stateManager.setState('game.showFPS')(false)()
+    this.stateManager.setState('game.difficulty')('Normal')()
+    this.stateManager.setState('game.level')(1)()
+    this.stateManager.setState('game.enemiesKilled')(0)()
+    this.stateManager.setState('game.enemiesPerLevel')(GAME_CONSTANTS.ENEMIES_PER_LEVEL)()
+    this.stateManager.setState('game.bossActive')(false)()
+    this.stateManager.setState('game.bossSpawnedThisLevel')(false)()
 
     // Initialize story state
-    this.stateManager.setState('story', createStoryState())
-    this.stateManager.setState('game.powerupsCollected', 0)
-    this.stateManager.setState('game.bossesDefeated', 0)
+    this.stateManager.setState('story')(createStoryState())()
+    this.stateManager.setState('game.powerupsCollected')(0)()
+    this.stateManager.setState('game.bossesDefeated')(0)()
 
     // Setup UI event listeners
     this.storyJournal.setupEventListeners()
@@ -302,80 +302,80 @@ export class Game {
   // Note: Always fetch from StateManager to ensure consistency and reactive behavior
   // StateManager is internally optimized, caching here would break event-driven patterns
   get score() {
-    return this.stateManager.getState('game.score')
+    return this.stateManager.getState('game.score')()
   }
   set score(value) {
-    this.stateManager.setState('game.score', value)
+    this.stateManager.setState('game.score')(value)()
   }
 
   get gameOver() {
-    return this.stateManager.getState('game.gameOver')
+    return this.stateManager.getState('game.gameOver')()
   }
   set gameOver(value) {
-    this.stateManager.setState('game.gameOver', value)
+    this.stateManager.setState('game.gameOver')(value)()
   }
 
   get paused() {
-    return this.stateManager.getState('game.paused')
+    return this.stateManager.getState('game.paused')()
   }
   set paused(value) {
-    this.stateManager.setState('game.paused', value)
+    this.stateManager.setState('game.paused')(value)()
   }
 
   get level() {
-    return this.stateManager.getState('game.level')
+    return this.stateManager.getState('game.level')()
   }
   set level(value) {
-    this.stateManager.setState('game.level', value)
+    this.stateManager.setState('game.level')(value)()
   }
 
   get enemiesKilled() {
-    return this.stateManager.getState('game.enemiesKilled')
+    return this.stateManager.getState('game.enemiesKilled')()
   }
   set enemiesKilled(value) {
-    this.stateManager.setState('game.enemiesKilled', value)
+    this.stateManager.setState('game.enemiesKilled')(value)()
   }
 
   get showFPS() {
-    return this.stateManager.getState('game.showFPS')
+    return this.stateManager.getState('game.showFPS')()
   }
   set showFPS(value) {
-    this.stateManager.setState('game.showFPS', value)
+    this.stateManager.setState('game.showFPS')(value)()
   }
 
   get difficulty() {
-    return this.stateManager.getState('game.difficulty')
+    return this.stateManager.getState('game.difficulty')()
   }
   set difficulty(value) {
-    this.stateManager.setState('game.difficulty', value)
+    this.stateManager.setState('game.difficulty')(value)()
   }
 
   get bossActive() {
-    return this.stateManager.getState('game.bossActive')
+    return this.stateManager.getState('game.bossActive')()
   }
   set bossActive(value) {
-    this.stateManager.setState('game.bossActive', value)
+    this.stateManager.setState('game.bossActive')(value)()
   }
 
   get bossSpawnedThisLevel() {
-    return this.stateManager.getState('game.bossSpawnedThisLevel')
+    return this.stateManager.getState('game.bossSpawnedThisLevel')()
   }
   set bossSpawnedThisLevel(value) {
-    this.stateManager.setState('game.bossSpawnedThisLevel', value)
+    this.stateManager.setState('game.bossSpawnedThisLevel')(value)()
   }
 
   get bossesDefeated() {
-    return this.stateManager.getState('game.bossesDefeated')
+    return this.stateManager.getState('game.bossesDefeated')()
   }
   set bossesDefeated(value) {
-    this.stateManager.setState('game.bossesDefeated', value)
+    this.stateManager.setState('game.bossesDefeated')(value)()
   }
 
   get powerupsCollected() {
-    return this.stateManager.getState('game.powerupsCollected')
+    return this.stateManager.getState('game.powerupsCollected')()
   }
   set powerupsCollected(value) {
-    this.stateManager.setState('game.powerupsCollected', value)
+    this.stateManager.setState('game.powerupsCollected')(value)()
   }
 
   setupEffects() {
@@ -402,7 +402,7 @@ export class Game {
     })
 
     // Set up state change listeners to emit UI events
-    const unsubscribeScore = this.stateManager.subscribe('game.score', (newScore, oldScore) => {
+    const unsubscribeScore = this.stateManager.subscribe('game.score')((newScore, oldScore) => {
       if (oldScore !== undefined) {
         this.eventDispatcher.emit(GAME_EVENTS.UI_SCORE_UPDATE, {
           score: newScore,
