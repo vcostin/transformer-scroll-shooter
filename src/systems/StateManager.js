@@ -250,20 +250,20 @@ export const createStateActions = eventDispatcher => {
  */
 export const createGameStateActions = stateActions => ({
   // Player actions
-  setPlayerHealth: health => stateActions.setState('game.player.health')(health),
+  setPlayerHealth: health => stateActions.setState('game.player.health', health),
   setPlayerPosition: (x, y) =>
     stateActions.batchUpdate([
       { path: 'game.player.x', value: x },
       { path: 'game.player.y', value: y }
     ]),
-  setPlayerPowerLevel: level => stateActions.setState('game.player.powerLevel')(level),
+  setPlayerPowerLevel: level => stateActions.setState('game.player.powerLevel', level),
 
   // Game state actions
   pauseGame:
     (reason = 'system') =>
     currentState => {
-      const newState = stateActions.setState('game.paused')(true)(currentState)
-      return stateActions.setState('game.pauseSource')(reason)(newState)
+      const newState = stateActions.setState('game.paused', true)(currentState)
+      return stateActions.setState('game.pauseSource', reason)(newState)
     },
 
   resumeGame:
@@ -277,26 +277,26 @@ export const createGameStateActions = stateActions => ({
         return currentState
       }
 
-      const newState = stateActions.setState('game.paused')(false)(currentState)
-      return stateActions.setState('game.pauseSource')(null)(newState)
+      const newState = stateActions.setState('game.paused', false)(currentState)
+      return stateActions.setState('game.pauseSource', null)(newState)
     },
 
   // UI state actions
   openOptionsMenu: () => currentState => {
-    let newState = stateActions.setState('ui.options.open')(true)(currentState)
+    let newState = stateActions.setState('ui.options.open', true)(currentState)
     // Options menu takes absolute priority
-    newState = stateActions.setState('game.paused')(true)(newState)
-    return stateActions.setState('game.pauseSource')('menu')(newState)
+    newState = stateActions.setState('game.paused', true)(newState)
+    return stateActions.setState('game.pauseSource', 'menu')(newState)
   },
 
   closeOptionsMenu: () => currentState => {
-    let newState = stateActions.setState('ui.options.open')(false)(currentState)
+    let newState = stateActions.setState('ui.options.open', false)(currentState)
 
     // Resume game if menu was the pause source
     const pauseSource = stateActions.getState('game.pauseSource')(currentState)
     if (pauseSource === 'menu') {
-      newState = stateActions.setState('game.paused')(false)(newState)
-      newState = stateActions.setState('game.pauseSource')(null)(newState)
+      newState = stateActions.setState('game.paused', false)(newState)
+      newState = stateActions.setState('game.pauseSource', null)(newState)
     }
 
     return newState
@@ -305,19 +305,19 @@ export const createGameStateActions = stateActions => ({
   // Score actions
   addScore: points => currentState => {
     const currentScore = stateActions.getState('game.score')(currentState) || 0
-    return stateActions.setState('game.score')(currentScore + points)(currentState)
+    return stateActions.setState('game.score', currentScore + points)(currentState)
   },
 
   // Enemy actions
   addEnemy: enemyData => currentState => {
     const enemies = stateActions.getState('game.entities.enemies')(currentState) || []
-    return stateActions.setState('game.entities.enemies')([...enemies, enemyData])(currentState)
+    return stateActions.setState('game.entities.enemies', [...enemies, enemyData])(currentState)
   },
 
   removeEnemy: enemyId => currentState => {
     const enemies = stateActions.getState('game.entities.enemies')(currentState) || []
     const filteredEnemies = enemies.filter(enemy => enemy.id !== enemyId)
-    return stateActions.setState('game.entities.enemies')(filteredEnemies)(currentState)
+    return stateActions.setState('game.entities.enemies', filteredEnemies)(currentState)
   }
 })
 
