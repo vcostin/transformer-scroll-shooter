@@ -268,11 +268,11 @@ export const Player = {
     const bulletId = createBullet(stateManager, {
       position: {
         x: position.x + dimensions.width / 2,
-        y: position.y
+        y: position.y + dimensions.height / 2 // Front of player
       },
       velocity: {
-        x: 0, // velocityX
-        y: -400 // velocityY (upward)
+        x: 400, // velocityX (forward movement)
+        y: 0 // velocityY (horizontal shot)
       },
       type: bulletType,
       friendly: true // player bullet
