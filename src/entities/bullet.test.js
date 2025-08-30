@@ -4,7 +4,11 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { createBullet, updateBullet, renderBullet } from '@/entities/bullet.js'
+import {
+  createBullet,
+  updateBulletLegacy as updateBullet,
+  renderBulletLegacy as renderBullet
+} from '@/entities/bullet.js'
 
 describe('Bullet', () => {
   let mockGame

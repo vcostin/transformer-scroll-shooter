@@ -264,18 +264,18 @@ export const Player = {
     const bulletType = stateManager.getState('player.currentBulletType')
     const shootRate = stateManager.getState('player.currentShootRate')
 
-    // Create bullet
+    // Create bullet using legacy API for compatibility
     const bullet = createBullet(
       game,
       position.x + dimensions.width / 2,
       position.y,
-      -400, // upward velocity
-      0,
+      0, // velocityX
+      -400, // velocityY (upward)
       bulletType,
       true // friendly (player bullet)
     )
 
-    // Add to game bullets array (assuming bullets are managed globally)
+    // Add to game bullets array
     if (game.bullets) {
       game.bullets.push(bullet)
     }
