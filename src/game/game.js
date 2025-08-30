@@ -22,7 +22,7 @@ import {
   shootPlayer,
   transformPlayer
 } from '@/entities/player.js'
-import { createEnemy, takeDamage as takeDamageEnemy } from '@/entities/enemies/enemy.js'
+import { createEnemy, takeDamage as takeDamageEnemy, Enemy } from '@/entities/enemies/enemy.js'
 import { createEventDispatcher } from '@/systems/EventDispatcher.js'
 import { createStateManager } from '@/systems/StateManager.js'
 import { EffectManager } from '@/systems/EffectManager.js'
@@ -1145,13 +1145,20 @@ export class Game {
       ]
     }
     const randomType = enemyTypes[Math.floor(Math.random() * enemyTypes.length)]
-    const enemy = createEnemy(
-      this,
+    const enemyId = createEnemy(
+      this.stateManager,
+      this.eventDispatcher,
+      this.effectManager,
       this.width + 50,
       Math.random() * (this.height - 100) + 50,
       randomType
     )
-    this.enemies.push(enemy)
+    // Convert to compatibility object for Game code
+    const enemy = Enemy.getEnemyState(this.stateManager, enemyId)
+    if (enemy) {
+      enemy['id'] = enemyId // Store ID for StateManager operations
+      this.enemies.push(enemy)
+    }
   }
 
   /**
@@ -1183,8 +1190,20 @@ export class Game {
       selectedBossType = BOSS_TYPES[Math.floor(Math.random() * BOSS_TYPES.length)]
     }
 
-    const boss = createEnemy(this, this.width - 100, this.height / 2 - 30, selectedBossType)
-    this.enemies.push(boss)
+    const bossId = createEnemy(
+      this.stateManager,
+      this.eventDispatcher,
+      this.effectManager,
+      this.width - 100,
+      this.height / 2 - 30,
+      selectedBossType
+    )
+    // Convert to compatibility object for Game code
+    const boss = Enemy.getEnemyState(this.stateManager, bossId)
+    if (boss) {
+      boss['id'] = bossId // Store ID for StateManager operations
+      this.enemies.push(boss)
+    }
     this.bossActive = true
     this.bossSpawnedThisLevel = true
     this.currentBossType = selectedBossType // Track current boss type

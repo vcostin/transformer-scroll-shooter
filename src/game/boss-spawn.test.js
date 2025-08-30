@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import Game from '@/game/game.js'
-import Enemy from '@/entities/enemies/enemy.js'
+import { createEnemy, Enemy } from '@/entities/enemies/enemy.js'
 import { GAME_CONSTANTS } from '@/constants/game-constants.js'
 
 describe('Boss Spawn Logic', () => {
@@ -399,7 +399,15 @@ describe('Boss Spawn Logic', () => {
       const bossTypes = ['boss', 'boss_heavy', 'boss_fast', 'boss_sniper']
 
       bossTypes.forEach(bossType => {
-        const boss = new Enemy(game, 100, 100, bossType)
+        const bossId = createEnemy(
+          game.stateManager,
+          game.eventDispatcher,
+          game.effectManager,
+          100,
+          100,
+          bossType
+        )
+        const boss = Enemy.getEnemyState(game.stateManager, bossId)
         expect(boss.type).toBe(bossType)
         expect(boss.maxHealth).toBeGreaterThan(100) // All bosses should have high health
         expect(boss.points).toBeGreaterThan(400) // All bosses should give high points

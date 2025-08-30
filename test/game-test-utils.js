@@ -9,7 +9,7 @@
 import { vi } from 'vitest'
 import { Game } from '@/game/game.js'
 import { EventDispatcher } from '@/systems/EventDispatcher.js'
-import { StateManager } from '@/systems/StateManager.js'
+import { createStateManager } from '@/systems/StateManager.js'
 import { EffectManager } from '@/systems/EffectManager.js'
 import { createMockCanvas, createMockCanvasContext } from '@test/mocks/canvas-mock.js'
 
@@ -144,12 +144,7 @@ export function createMockGameObject(options = {}) {
     getTotalListenerCount: vi.fn(() => 0)
   }
 
-  const mockStateManager = options.stateManager || {
-    setState: vi.fn(),
-    getState: vi.fn(() => ({})),
-    subscribe: vi.fn(() => () => {}),
-    clearState: vi.fn()
-  }
+  const mockStateManager = options.stateManager || createStateManager()
 
   const mockGame = {
     width: options.width || 800,
@@ -208,13 +203,7 @@ export function createMockEventSystems(options = {}) {
     ...options.eventDispatcherOverrides
   }
 
-  const mockStateManager = {
-    setState: vi.fn(),
-    getState: vi.fn(() => ({})),
-    subscribe: vi.fn(() => () => {}),
-    clearState: vi.fn(),
-    ...options.stateManagerOverrides
-  }
+  const mockStateManager = createStateManager()
 
   const mockEffectManager =
     options.includeEffectManager !== false

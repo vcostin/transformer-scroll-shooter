@@ -1,14 +1,9 @@
 /**
- * Enemy POJO+Functional Implementation
+ * Enemy Entity - Stateless Implementation
  *
- * Current Status: Functional POJO architecture with event-driven updates.
- * Uses new bullet StateManager API for shooting.
- *
- * Next Migration Target: Convert to full Entity-State architecture like Player/Bullet.
- * - Move enemy state to StateManager
- * - Create Enemy.* accessor functions
- * - Make functions pure (stateManager, enemyId) -> void
- * - Remove legacy class wrapper
+ * Entity-State Architecture: Stateless enemy entity operating on global state.
+ * All enemy data is stored in StateManager, entity functions are pure.
+ * State flows: StateManager → Entity Functions → StateManager → Rendering
  */
 
 import { createBullet, Bullet } from '@/entities/bullet.js'
@@ -33,40 +28,277 @@ const PHASE2_TARGET_Y_RANGE = 0.6
 const PHASE2_TARGET_Y_OFFSET = 0.2
 
 /**
- * Create a new enemy state object
- * @param {Object} game - Game instance reference
+ * Enemy State Schema - Defines the structure in StateManager
+ */
+const ENEMY_STATE_SCHEMA = {
+  // Position and physics
+  x: 0,
+  y: 0,
+  width: 30,
+  height: 20,
+
+  // Core stats
+  type: 'fighter',
+  maxHealth: 20,
+  health: 20,
+  speed: 100,
+  damage: 15,
+  points: 10,
+  color: '#ff4444',
+
+  // Combat properties
+  shootRate: 2000,
+  bulletSpeed: 200,
+  shootTimer: 0,
+
+  // AI and behavior
+  moveTimer: 0,
+  targetY: 0,
+  aiState: AI_STATES.SPAWNING,
+  behavior: ENEMY_BEHAVIORS.AGGRESSIVE,
+  zigDirection: 1,
+
+  // Lifecycle
+  markedForDeletion: false,
+
+  // Boss-specific properties (optional, only set for bosses)
+  phase: 1,
+  sweepAngle: 0,
+  sweepDirection: 1,
+  vulnerabilityTimer: 0,
+  ringBeamActive: false,
+  nodeMode: false,
+  phaseTransitionTriggered: false
+}
+
+/**
+ * Generate unique enemy ID
+ * @returns {string} Unique enemy identifier
+ */
+let enemyIdCounter = 0
+
+function generateEnemyId() {
+  return `enemy_${Date.now()}_${++enemyIdCounter}`
+}
+
+/**
+ * Stateless Enemy Entity - Pure functions operating on StateManager
+ */
+export const Enemy = {
+  // === STATE ACCESSORS (READ) ===
+
+  getPosition: (stateManager, enemyId) => ({
+    x: stateManager.getState(`enemies.${enemyId}.x`),
+    y: stateManager.getState(`enemies.${enemyId}.y`)
+  }),
+
+  getDimensions: (stateManager, enemyId) => ({
+    width: stateManager.getState(`enemies.${enemyId}.width`),
+    height: stateManager.getState(`enemies.${enemyId}.height`)
+  }),
+
+  getHealth: (stateManager, enemyId) => stateManager.getState(`enemies.${enemyId}.health`),
+  getMaxHealth: (stateManager, enemyId) => stateManager.getState(`enemies.${enemyId}.maxHealth`),
+  getType: (stateManager, enemyId) => stateManager.getState(`enemies.${enemyId}.type`),
+  getSpeed: (stateManager, enemyId) => stateManager.getState(`enemies.${enemyId}.speed`),
+  getDamage: (stateManager, enemyId) => stateManager.getState(`enemies.${enemyId}.damage`),
+  getPoints: (stateManager, enemyId) => stateManager.getState(`enemies.${enemyId}.points`),
+  getColor: (stateManager, enemyId) => stateManager.getState(`enemies.${enemyId}.color`),
+
+  getShootRate: (stateManager, enemyId) => stateManager.getState(`enemies.${enemyId}.shootRate`),
+  getBulletSpeed: (stateManager, enemyId) =>
+    stateManager.getState(`enemies.${enemyId}.bulletSpeed`),
+  getShootTimer: (stateManager, enemyId) => stateManager.getState(`enemies.${enemyId}.shootTimer`),
+
+  getAIState: (stateManager, enemyId) => stateManager.getState(`enemies.${enemyId}.aiState`),
+  getBehavior: (stateManager, enemyId) => stateManager.getState(`enemies.${enemyId}.behavior`),
+  getTargetY: (stateManager, enemyId) => stateManager.getState(`enemies.${enemyId}.targetY`),
+  getMoveTimer: (stateManager, enemyId) => stateManager.getState(`enemies.${enemyId}.moveTimer`),
+  getZigDirection: (stateManager, enemyId) =>
+    stateManager.getState(`enemies.${enemyId}.zigDirection`),
+
+  // Boss-specific getters
+  getPhase: (stateManager, enemyId) => stateManager.getState(`enemies.${enemyId}.phase`),
+  getSweepAngle: (stateManager, enemyId) => stateManager.getState(`enemies.${enemyId}.sweepAngle`),
+  getSweepDirection: (stateManager, enemyId) =>
+    stateManager.getState(`enemies.${enemyId}.sweepDirection`),
+  getVulnerabilityTimer: (stateManager, enemyId) =>
+    stateManager.getState(`enemies.${enemyId}.vulnerabilityTimer`),
+
+  isMarkedForDeletion: (stateManager, enemyId) =>
+    stateManager.getState(`enemies.${enemyId}.markedForDeletion`),
+
+  // === STATE MUTATIONS (WRITE) ===
+
+  setPosition: (stateManager, enemyId, position) => {
+    stateManager.setState(`enemies.${enemyId}.x`, position.x)
+    stateManager.setState(`enemies.${enemyId}.y`, position.y)
+  },
+
+  move: (stateManager, enemyId, dx, dy) => {
+    const current = Enemy.getPosition(stateManager, enemyId)
+    Enemy.setPosition(stateManager, enemyId, { x: current.x + dx, y: current.y + dy })
+  },
+
+  setHealth: (stateManager, enemyId, health) => {
+    const maxHealth = Enemy.getMaxHealth(stateManager, enemyId)
+    stateManager.setState(`enemies.${enemyId}.health`, Math.max(0, Math.min(health, maxHealth)))
+  },
+
+  takeDamage: (stateManager, enemyId, damage) => {
+    const currentHealth = Enemy.getHealth(stateManager, enemyId)
+    Enemy.setHealth(stateManager, enemyId, currentHealth - damage)
+  },
+
+  setShootTimer: (stateManager, enemyId, timer) => {
+    stateManager.setState(`enemies.${enemyId}.shootTimer`, timer)
+  },
+
+  updateShootTimer: (stateManager, enemyId, deltaTime) => {
+    const currentTimer = Enemy.getShootTimer(stateManager, enemyId)
+    Enemy.setShootTimer(stateManager, enemyId, currentTimer + deltaTime)
+  },
+
+  setMoveTimer: (stateManager, enemyId, timer) => {
+    stateManager.setState(`enemies.${enemyId}.moveTimer`, timer)
+  },
+
+  updateMoveTimer: (stateManager, enemyId, deltaTime) => {
+    const currentTimer = Enemy.getMoveTimer(stateManager, enemyId)
+    Enemy.setMoveTimer(stateManager, enemyId, currentTimer + deltaTime)
+  },
+
+  setTargetY: (stateManager, enemyId, targetY) => {
+    stateManager.setState(`enemies.${enemyId}.targetY`, targetY)
+  },
+
+  setAIState: (stateManager, enemyId, aiState) => {
+    stateManager.setState(`enemies.${enemyId}.aiState`, aiState)
+  },
+
+  setZigDirection: (stateManager, enemyId, direction) => {
+    stateManager.setState(`enemies.${enemyId}.zigDirection`, direction)
+  },
+
+  // Boss-specific setters
+  setPhase: (stateManager, enemyId, phase) => {
+    stateManager.setState(`enemies.${enemyId}.phase`, phase)
+  },
+
+  setSweepAngle: (stateManager, enemyId, angle) => {
+    stateManager.setState(`enemies.${enemyId}.sweepAngle`, angle)
+  },
+
+  setSweepDirection: (stateManager, enemyId, direction) => {
+    stateManager.setState(`enemies.${enemyId}.sweepDirection`, direction)
+  },
+
+  setVulnerabilityTimer: (stateManager, enemyId, timer) => {
+    stateManager.setState(`enemies.${enemyId}.vulnerabilityTimer`, timer)
+  },
+
+  updateVulnerabilityTimer: (stateManager, enemyId, deltaTime) => {
+    const currentTimer = Enemy.getVulnerabilityTimer(stateManager, enemyId)
+    Enemy.setVulnerabilityTimer(stateManager, enemyId, currentTimer + deltaTime)
+  },
+
+  markForDeletion: (stateManager, enemyId) => {
+    stateManager.setState(`enemies.${enemyId}.markedForDeletion`, true)
+  },
+
+  // === ENEMY MANAGEMENT ===
+
+  exists: (stateManager, enemyId) => {
+    return stateManager.getState(`enemies.${enemyId}`) !== undefined
+  },
+
+  remove: (stateManager, enemyId) => {
+    stateManager.setState(`enemies.${enemyId}`, undefined)
+  },
+
+  getAllEnemyIds: stateManager => {
+    const enemiesState = stateManager.getState('enemies') || {}
+    return Object.keys(enemiesState).filter(id => enemiesState[id] !== undefined)
+  },
+
+  // Get complete enemy state as object for compatibility
+  getEnemyState: (stateManager, enemyId) => {
+    if (!Enemy.exists(stateManager, enemyId)) return null
+
+    const position = Enemy.getPosition(stateManager, enemyId)
+    const dimensions = Enemy.getDimensions(stateManager, enemyId)
+
+    return {
+      position,
+      ...dimensions,
+      type: Enemy.getType(stateManager, enemyId),
+      health: Enemy.getHealth(stateManager, enemyId),
+      maxHealth: Enemy.getMaxHealth(stateManager, enemyId),
+      speed: Enemy.getSpeed(stateManager, enemyId),
+      damage: Enemy.getDamage(stateManager, enemyId),
+      points: Enemy.getPoints(stateManager, enemyId),
+      color: Enemy.getColor(stateManager, enemyId),
+      shootRate: Enemy.getShootRate(stateManager, enemyId),
+      bulletSpeed: Enemy.getBulletSpeed(stateManager, enemyId),
+      shootTimer: Enemy.getShootTimer(stateManager, enemyId),
+      aiState: Enemy.getAIState(stateManager, enemyId),
+      behavior: Enemy.getBehavior(stateManager, enemyId),
+      targetY: Enemy.getTargetY(stateManager, enemyId),
+      moveTimer: Enemy.getMoveTimer(stateManager, enemyId),
+      zigDirection: Enemy.getZigDirection(stateManager, enemyId),
+      markedForDeletion: Enemy.isMarkedForDeletion(stateManager, enemyId),
+      // Legacy compatibility properties
+      x: position.x,
+      y: position.y,
+      friendly: false // enemies are never friendly
+    }
+  }
+}
+
+/**
+ * Initialize Enemy State in StateManager and return enemy ID
+ * @param {Object} stateManager - StateManager instance
+ * @param {Object} eventDispatcher - EventDispatcher instance
+ * @param {Object} effectManager - EffectManager instance
  * @param {number} x - Initial x position
  * @param {number} y - Initial y position
  * @param {string} type - Enemy type
- * @returns {Object} Enemy state object
+ * @returns {string} The enemy ID
  */
-export function createEnemy(game, x, y, type) {
-  const enemy = {
-    game,
+export function createEnemy(stateManager, eventDispatcher, effectManager, x, y, type) {
+  const enemyId = generateEnemyId()
+
+  // Create base enemy state
+  const enemyState = {
+    ...ENEMY_STATE_SCHEMA,
     x,
     y,
     type,
-    markedForDeletion: false,
-
-    // AI and behavior
-    shootTimer: 0,
-    moveTimer: 0,
-    targetY: y,
-    aiState: AI_STATES.SPAWNING,
-    behavior: ENEMY_BEHAVIORS.AGGRESSIVE,
-
-    // Initialize enemy-specific properties
-    zigDirection: 1, // Used by drone for zig-zag movement
-
-    // Event-driven architecture references
-    eventDispatcher: game.eventDispatcher,
-    stateManager: game.stateManager,
-    effectManager: game.effectManager
+    targetY: y
   }
 
-  // Set properties based on type and return initialized enemy
-  const configuredEnemy = setupEnemyType(enemy)
-  return initializeEnemy(configuredEnemy)
+  // Apply type-specific properties
+  const configuredEnemy = setupEnemyType(enemyState)
+
+  // Initialize all enemy state paths in StateManager
+  Object.keys(configuredEnemy).forEach(key => {
+    stateManager.setState(`enemies.${enemyId}.${key}`, configuredEnemy[key])
+  })
+
+  // Setup event-driven effects
+  setupEnemyEffects(stateManager, eventDispatcher, effectManager, enemyId)
+
+  // Emit creation event
+  eventDispatcher.emit(ENEMY_EVENTS.ENEMY_CREATED, {
+    enemyId: enemyId,
+    type: type,
+    x: x,
+    y: y,
+    health: configuredEnemy.health,
+    maxHealth: configuredEnemy.maxHealth
+  })
+
+  return enemyId
 }
 
 /**
@@ -218,10 +450,12 @@ function setupEnemyType(enemy) {
  * Initialize a created enemy with effects and state
  * @param {Object} enemy - Enemy POJO state
  * @returns {Object} Initialized enemy
+ * @deprecated - Use createEnemy instead which handles setup automatically
  */
 export function initializeEnemy(enemy) {
-  setupEnemyEffects(enemy)
-  initializeEnemyState(enemy)
+  // TODO: This function may be legacy - createEnemy handles setup now
+  // setupEnemyEffects(enemy)
+  // initializeEnemyState(enemy)
 
   // Emit creation event
   enemy.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_CREATED, {
@@ -822,61 +1056,64 @@ export function cleanupEnemy(enemy) {
 
 /**
  * Setup effects-based event handling using EffectManager
- * @param {Object} enemy - Enemy POJO state
+ * @param {Object} stateManager - StateManager instance
+ * @param {Object} eventDispatcher - EventDispatcher instance
+ * @param {Object} effectManager - EffectManager instance
+ * @param {string} enemyId - Enemy ID
  */
-export function setupEnemyEffects(enemy) {
-  enemy.effectManager.effect(ENEMY_EVENTS.ENEMY_AI_UPDATE, data => {
-    if (data.enemy === enemy) {
-      handleAIUpdate(enemy, data)
+export function setupEnemyEffects(stateManager, eventDispatcher, effectManager, enemyId) {
+  effectManager.effect(ENEMY_EVENTS.ENEMY_AI_UPDATE, data => {
+    if (data.enemyId === enemyId) {
+      handleAIUpdate(stateManager, enemyId, data)
     }
   })
 
-  enemy.effectManager.effect(ENEMY_EVENTS.ENEMY_DAMAGED, data => {
-    if (data.enemy === enemy) {
-      handleDamage(enemy, data)
+  effectManager.effect(ENEMY_EVENTS.ENEMY_DAMAGED, data => {
+    if (data.enemyId === enemyId) {
+      handleDamage(stateManager, enemyId, data)
     }
   })
 
-  enemy.effectManager.effect(ENEMY_EVENTS.ENEMY_AI_TARGET_ACQUIRED, data => {
-    if (data.enemy === enemy) {
-      handleTargetAcquisition(enemy, data)
+  effectManager.effect(ENEMY_EVENTS.ENEMY_AI_TARGET_ACQUIRED, data => {
+    if (data.enemyId === enemyId) {
+      handleTargetAcquisition(stateManager, enemyId, data)
     }
   })
 
-  enemy.effectManager.effect(ENEMY_EVENTS.ENEMY_COLLISION_BULLET, data => {
-    if (data.enemy === enemy) {
-      handleBulletCollision(enemy, data)
+  effectManager.effect(ENEMY_EVENTS.ENEMY_COLLISION_BULLET, data => {
+    if (data.enemyId === enemyId) {
+      handleBulletCollision(stateManager, enemyId, data)
     }
   })
 
-  enemy.effectManager.effect(ENEMY_EVENTS.ENEMY_COLLISION_PLAYER, data => {
-    if (data.enemy === enemy) {
-      handlePlayerCollision(enemy, data)
+  effectManager.effect(ENEMY_EVENTS.ENEMY_COLLISION_PLAYER, data => {
+    if (data.enemyId === enemyId) {
+      handlePlayerCollision(stateManager, enemyId, data)
     }
   })
 
   // State synchronization effects
-  enemy.effectManager.effect(ENEMY_EVENTS.ENEMY_SHOT, data => {
-    if (data.enemy === enemy) {
-      enemy.stateManager.setState(ENEMY_STATES.SHOOT_TIMER, enemy.shootTimer)
+  effectManager.effect(ENEMY_EVENTS.ENEMY_SHOT, data => {
+    if (data.enemyId === enemyId) {
+      stateManager.setState(`enemies.${enemyId}.shootTimer`, data.shootTimer)
     }
   })
 
-  enemy.effectManager.effect(ENEMY_EVENTS.ENEMY_HEALTH_CHANGED, data => {
-    if (data.enemy === enemy) {
-      enemy.stateManager.setState(ENEMY_STATES.HEALTH, data.health)
+  effectManager.effect(ENEMY_EVENTS.ENEMY_HEALTH_CHANGED, data => {
+    if (data.enemyId === enemyId) {
+      stateManager.setState(`enemies.${enemyId}.health`, data.health)
     }
   })
 
-  enemy.effectManager.effect(ENEMY_EVENTS.ENEMY_AI_BEHAVIOR_CHANGE, data => {
-    if (data.enemy === enemy) {
-      enemy.stateManager.setState(ENEMY_STATES.AI_STATE, data.behavior)
+  effectManager.effect(ENEMY_EVENTS.ENEMY_AI_BEHAVIOR_CHANGE, data => {
+    if (data.enemyId === enemyId) {
+      stateManager.setState(`enemies.${enemyId}.aiState`, data.behavior)
     }
   })
 
-  enemy.effectManager.effect(ENEMY_EVENTS.ENEMY_AI_TARGET_ACQUIRED, data => {
-    if (data.enemy === enemy) {
-      enemy.stateManager.setState(ENEMY_STATES.TARGET, data.target)
+  effectManager.effect(ENEMY_EVENTS.ENEMY_AI_TARGET_ACQUIRED, data => {
+    if (data.enemyId === enemyId) {
+      stateManager.setState(`enemies.${enemyId}.target`, data.target)
     }
   })
 }
@@ -1424,108 +1661,6 @@ export function drawHealthBar(enemy, ctx) {
   ctx.fillRect(x, y, barWidth * healthPercent, barHeight)
 }
 
-// Legacy wrapper class for backward compatibility with tests
-export default class Enemy {
-  constructor(game, x, y, type) {
-    const enemy = createEnemy(game, x, y, type)
-    return Object.assign(this, enemy)
-  }
+// Note: Legacy class wrapper removed - use functional API with Enemy.* accessors
 
-  update(deltaTime) {
-    return updateEnemy(this, deltaTime)
-  }
-
-  move(deltaTime) {
-    return moveEnemy(this, deltaTime)
-  }
-
-  shoot() {
-    return shootEnemy(this)
-  }
-
-  takeDamage(damage) {
-    return takeDamage(this, damage)
-  }
-
-  render(ctx) {
-    return renderEnemy(this, ctx)
-  }
-
-  die() {
-    return dieEnemy(this)
-  }
-
-  cleanup() {
-    return cleanupEnemy(this)
-  }
-
-  // Drawing methods
-  drawDrone(ctx) {
-    return drawDrone(this, ctx)
-  }
-
-  drawTurret(ctx) {
-    return drawTurret(this, ctx)
-  }
-
-  drawSeeder(ctx) {
-    return drawSeeder(this, ctx)
-  }
-
-  drawFighter(ctx) {
-    return drawFighter(this, ctx)
-  }
-
-  drawBomber(ctx) {
-    return drawBomber(this, ctx)
-  }
-
-  drawScout(ctx) {
-    return drawScout(this, ctx)
-  }
-
-  drawBoss(ctx) {
-    return drawBoss(this, ctx)
-  }
-
-  drawBossHeavy(ctx) {
-    return drawBossHeavy(this, ctx)
-  }
-
-  drawBossFast(ctx) {
-    return drawBossFast(this, ctx)
-  }
-
-  drawBossSniper(ctx) {
-    return drawBossSniper(this, ctx)
-  }
-
-  drawRelayWarden(ctx) {
-    return drawRelayWarden(this, ctx)
-  }
-
-  drawHealthBar(ctx) {
-    return drawHealthBar(this, ctx)
-  }
-
-  // Event handler methods for backward compatibility
-  handleAIUpdate(data) {
-    return handleAIUpdate(this, data)
-  }
-
-  handleDamage(data) {
-    return handleDamage(this, data)
-  }
-
-  handleTargetAcquisition(data) {
-    return handleTargetAcquisition(this, data)
-  }
-
-  handleBulletCollision(data) {
-    return handleBulletCollision(this, data)
-  }
-
-  handlePlayerCollision(data) {
-    return handlePlayerCollision(this, data)
-  }
-}
+// Note: Legacy compatibility layer removed - tests now use Entity-State architecture directly

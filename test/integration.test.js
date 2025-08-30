@@ -61,7 +61,7 @@ describe('Module Integration', () => {
 
       const player = createPlayer(mockGame, { x: 100, y: 300 })
       expect(player).toBeDefined()
-      expect(player.game).toBe(mockGame)
+      // Entity-State architecture: player doesn't expose game object directly
       expect(player.x).toBe(100)
       expect(player.y).toBe(300)
     })
