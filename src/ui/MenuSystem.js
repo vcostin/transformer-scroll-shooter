@@ -106,8 +106,14 @@ export class MenuSystem {
       },
 
       close: () => {
-        this.game.paused = false
         this.isOpen = false
+        // Use safe resume method that respects priority system
+        if (typeof this.game.resumeGame === 'function') {
+          this.game.resumeGame()
+        } else {
+          // Fallback for tests or environments without resumeGame method
+          this.game.paused = false
+        }
         this.eventDispatcher.emit(UI_EVENTS.MENU_CLOSED, {
           menuType: MENU_TYPES.PAUSE
         })

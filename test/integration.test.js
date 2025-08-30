@@ -8,7 +8,7 @@ import { describe, it, expect } from 'vitest'
 import { GAME_CONSTANTS, GAME_INFO } from '@/constants/game-constants.js'
 import * as CollisionUtils from '@/utils/collision.js'
 import * as MathUtils from '@/utils/math.js'
-import Player from '@/entities/player.js'
+import { createPlayer } from '@/entities/player.js'
 import { EventDispatcher } from '@/systems/EventDispatcher.js'
 import { StateManager } from '@/systems/StateManager.js'
 import { EffectManager } from '@/systems/EffectManager.js'
@@ -59,7 +59,7 @@ describe('Module Integration', () => {
     it('should create player with proper game integration', () => {
       const mockGame = createMockGame()
 
-      const player = new Player(mockGame, 100, 300)
+      const player = createPlayer(mockGame, 100, 300)
       expect(player).toBeDefined()
       expect(player.game).toBe(mockGame)
       expect(player.x).toBe(100)
@@ -69,7 +69,7 @@ describe('Module Integration', () => {
     it('should have proper mode system integration', () => {
       const mockGame = createMockGame()
 
-      const player = new Player(mockGame, 100, 300)
+      const player = createPlayer(mockGame, 100, 300)
 
       // Test mode integration
       expect(player.modes).toEqual(['car', 'scuba', 'boat', 'plane'])
@@ -88,7 +88,7 @@ describe('Module Integration', () => {
     it('should be able to use utils with player', () => {
       const mockGame = createMockGame()
 
-      const player = new Player(mockGame, 100, 300)
+      const player = createPlayer(mockGame, 100, 300)
 
       // Test using math utils with player
       const clampedX = MathUtils.clamp(player.x, 0, 800)
@@ -136,10 +136,15 @@ describe('Module Integration', () => {
       expect(collisionExports).toContain('isWithinBounds')
     })
 
-    it('should export player class properly', () => {
-      expect(Player).toBeDefined()
-      expect(typeof Player).toBe('function')
-      expect(Player.prototype).toBeDefined()
+    it('should export player function properly', () => {
+      expect(createPlayer).toBeDefined()
+      expect(typeof createPlayer).toBe('function')
+      // Test that it returns an object with expected properties
+      const mockGame = createMockGame()
+      const testPlayer = createPlayer(mockGame, 0, 0)
+      expect(testPlayer).toBeDefined()
+      expect(testPlayer.x).toBeDefined()
+      expect(testPlayer.y).toBeDefined()
     })
   })
 })

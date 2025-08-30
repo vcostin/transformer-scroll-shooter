@@ -5,6 +5,7 @@
  */
 
 import { beforeEach, vi } from 'vitest'
+import { eventDispatcher } from '@/systems/EventDispatcher.js'
 
 // Suppress only Web Audio API warnings during tests
 const originalWarn = console.warn
@@ -58,9 +59,14 @@ global.performance = {
   now: vi.fn(() => Date.now())
 }
 
-// Reset all mocks before each test
+// Reset all mocks and clear EventDispatcher before each test
 beforeEach(() => {
   vi.clearAllMocks()
+
+  // Clear EventDispatcher to prevent memory leaks across tests
+  if (eventDispatcher && typeof eventDispatcher.clear === 'function') {
+    eventDispatcher.clear()
+  }
 })
 
 console.log('🧪 Vitest setup complete - Game testing environment ready')

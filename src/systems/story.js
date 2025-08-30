@@ -160,13 +160,17 @@ const isUnlocked = (element, gameState) => {
 /**
  * Get all available story logs for current game state
  * @param {Object} gameState - Current game state
- * @param {Set} viewedLogs - Set of already viewed log IDs
+ * @param {Set|Array|undefined} viewedLogs - Set of already viewed log IDs (handles deserialization)
  * @returns {Array} - Array of available log objects
  */
 const getAvailableLogs = (gameState, viewedLogs = new Set()) => {
+  // Handle deserialization cases where Set becomes Array or other types
+  const viewedLogsSet =
+    viewedLogs instanceof Set ? viewedLogs : new Set(Array.isArray(viewedLogs) ? viewedLogs : [])
+
   return Object.values(STORY_LOGS)
     .filter(log => isUnlocked(log, gameState))
-    .filter(log => !viewedLogs.has(log.id))
+    .filter(log => !viewedLogsSet.has(log.id))
 }
 
 /**
@@ -206,7 +210,13 @@ const updateStoryProgress = (storyState, gameState) => {
   // Only create new Set if there are new logs to unlock (performance optimization)
   let newUnlockedLogs
   if (availableLogs.length > 0) {
-    newUnlockedLogs = new Set(storyState.unlockedLogs)
+    // Handle deserialization cases where Set becomes Array or other types
+    const currentUnlockedLogs =
+      storyState.unlockedLogs instanceof Set
+        ? storyState.unlockedLogs
+        : new Set(Array.isArray(storyState.unlockedLogs) ? storyState.unlockedLogs : [])
+
+    newUnlockedLogs = new Set(currentUnlockedLogs)
     availableLogs.forEach(log => newUnlockedLogs.add(log.id))
   } else {
     newUnlockedLogs = storyState.unlockedLogs
@@ -227,7 +237,13 @@ const updateStoryProgress = (storyState, gameState) => {
  * @returns {Object} - New story state (immutable)
  */
 const markLogAsViewed = (storyState, logId) => {
-  const newViewedLogs = new Set(storyState.viewedCutscenes)
+  // Ensure viewedCutscenes is always a Set (handle serialization issues)
+  const currentViewed =
+    storyState.viewedCutscenes instanceof Set
+      ? storyState.viewedCutscenes
+      : new Set(Array.isArray(storyState.viewedCutscenes) ? storyState.viewedCutscenes : [])
+
+  const newViewedLogs = new Set(currentViewed)
   newViewedLogs.add(logId)
 
   return {
@@ -252,7 +268,13 @@ const getStoryContent = (gameState, storyState, context) => {
       // Check if the chapter transition has already been viewed
       const cutsceneKey = `chapter_${chapter.id}`
 
-      if (storyState.viewedCutscenes?.has(cutsceneKey)) {
+      // Ensure viewedCutscenes is always a Set (handle serialization issues)
+      const currentViewed =
+        storyState.viewedCutscenes instanceof Set
+          ? storyState.viewedCutscenes
+          : new Set(Array.isArray(storyState.viewedCutscenes) ? storyState.viewedCutscenes : [])
+
+      if (currentViewed.has(cutsceneKey)) {
         return null // Don't show the same chapter transition again
       }
 

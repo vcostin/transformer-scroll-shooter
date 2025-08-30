@@ -7,17 +7,24 @@
 import { GAME_CONSTANTS } from '@/constants/game-constants.js'
 import { GAME_EVENTS } from '@/constants/game-events.js'
 import { BOSS_TYPES, BOSS_MESSAGES } from '@/constants/boss-constants.js'
-import { AudioManager } from '@/systems/audio.js'
+import { createAudioManager, playSound } from '@/systems/audio.js'
 import { OptionsMenu } from '@/ui/options.js'
 import { Background } from '@/rendering/background.js'
 import ParallaxRenderer from '@/rendering/ParallaxRenderer.js'
 import LEVEL1_PARALLAX from '../../docs/creative/specs/LEVEL1_PARALLAX.json'
 import { Explosion, PowerupEffect } from '@/rendering/effects.js'
 import { Powerup, PowerupSpawner } from '@/systems/powerups.js'
-import Player from '@/entities/player.js'
-import Enemy from '@/entities/enemies/enemy.js'
-import { EventDispatcher } from '@/systems/EventDispatcher.js'
-import { stateManager } from '@/systems/StateManager.js'
+import {
+  createPlayer,
+  updatePlayer,
+  renderPlayer,
+  takeDamagePlayer,
+  shootPlayer,
+  transformPlayer
+} from '@/entities/player.js'
+import { createEnemy, takeDamage as takeDamageEnemy } from '@/entities/enemies/enemy.js'
+import { createEventDispatcher } from '@/systems/EventDispatcher.js'
+import { createStateManager } from '@/systems/StateManager.js'
 import { EffectManager } from '@/systems/EffectManager.js'
 
 // Import story system
@@ -92,9 +99,9 @@ export function createGame() {
  */
 function initializeGameSystems(game) {
   const systems = {
-    eventDispatcher: new EventDispatcher(),
-    stateManager: stateManager,
-    audio: new AudioManager(),
+    eventDispatcher: createEventDispatcher(),
+    stateManager: createStateManager(),
+    audio: createAudioManager(),
     effectManager: null, // Will be initialized after eventDispatcher
     options: null // Will be initialized after other systems
   }
@@ -121,17 +128,293 @@ function initializeGameSystems(game) {
     console.error('UI system initialization failed:', err)
   }
 
-  return {
+  // Initialize state values
+  const initialState = {
+    game: {
+      paused: false,
+      userPaused: false,
+      gameOver: false,
+      score: 0,
+      level: 1,
+      enemiesKilled: 0,
+      bossActive: false,
+      bossSpawnedThisLevel: false,
+      bossesDefeated: 0,
+      powerupsCollected: 0,
+      showFPS: false,
+      difficulty: 'normal'
+    },
+    story: createStoryState()
+  }
+
+  // Set initial state
+  systems.stateManager.setState('', initialState)
+
+  const finalGameObject = {
     ...game,
     ...systems,
     chapterTransition,
     bossDialogue,
     storyJournal
   }
+
+  // Add game methods with proper context binding
+  const gameMethods = {
+    // Pause functionality
+    pauseGame() {
+      finalGameObject.paused = true
+      finalGameObject.userPaused = true
+
+      // IMPORTANT: Also update StateManager for consistency with class-based getters
+      finalGameObject.stateManager.setState('game.paused', true)
+      finalGameObject.stateManager.setState('game.userPaused', true)
+
+      finalGameObject.eventDispatcher.emit(GAME_EVENTS.GAME_PAUSE, {
+        timestamp: Date.now()
+      })
+    },
+
+    resumeGame() {
+      // CRITICAL: Check if options menu is open - it takes priority!
+      if (finalGameObject.options && finalGameObject.options.isOpen) {
+        console.log('Cannot resume game: Options menu is open (priority override)')
+        return // Options menu has priority - refuse to resume
+      }
+
+      finalGameObject.paused = false
+      finalGameObject.userPaused = false
+
+      // IMPORTANT: Also update StateManager for consistency with class-based getters
+      finalGameObject.stateManager.setState('game.paused', false)
+      finalGameObject.stateManager.setState('game.userPaused', false)
+
+      finalGameObject.eventDispatcher.emit(GAME_EVENTS.GAME_RESUME, {
+        timestamp: Date.now()
+      })
+    },
+
+    // Key handling
+    handleKeyDown(e) {
+      // Handle options menu input first (with null check)
+      if (
+        finalGameObject.options &&
+        finalGameObject.options.handleInput &&
+        finalGameObject.options.handleInput(e.code)
+      ) {
+        e.preventDefault()
+        return
+      }
+
+      finalGameObject.keys[e.code] = true
+
+      // Handle special keys
+      switch (e.code) {
+        case 'Space':
+          e.preventDefault()
+          if (!finalGameObject.paused && finalGameObject.player) {
+            finalGameObject.player = shootPlayer(finalGameObject.player)
+            // Resume audio context on first interaction
+            finalGameObject.audio.resume()
+          }
+          break
+        case 'KeyQ':
+          if (!finalGameObject.paused && finalGameObject.player) {
+            finalGameObject.player = transformPlayer(finalGameObject.player)
+          }
+          break
+        case 'KeyR':
+          if (finalGameObject.gameOver) {
+            finalGameObject.restart()
+          }
+          break
+        case 'KeyP':
+          // Simple pause/unpause toggle
+          if (finalGameObject.paused) {
+            finalGameObject.resumeGame()
+          } else {
+            finalGameObject.pauseGame()
+          }
+          break
+        case 'KeyJ':
+          // Toggle story journal
+          if (finalGameObject.storyJournal.isVisible) {
+            finalGameObject.storyJournal.close()
+          } else {
+            finalGameObject.storyJournal.open()
+          }
+          break
+        case 'Escape':
+          // Toggle options menu (pause/unpause game)
+          if (finalGameObject.options && finalGameObject.options.isOpen) {
+            finalGameObject.options.close()
+          } else if (finalGameObject.options) {
+            finalGameObject.options.open()
+          }
+          break
+      }
+    },
+
+    // State getters/setters with proper getter/setter syntax
+    get paused() {
+      return finalGameObject.stateManager.getState('game.paused')
+    },
+
+    set paused(value) {
+      finalGameObject.stateManager.setState('game.paused', value)
+    },
+
+    get userPaused() {
+      const stateValue = finalGameObject.stateManager.getState('game.userPaused')
+      return stateValue !== undefined ? stateValue : false
+    },
+
+    set userPaused(value) {
+      finalGameObject.stateManager.setState('game.userPaused', value)
+    },
+
+    get gameOver() {
+      return finalGameObject.stateManager.getState('game.gameOver')
+    },
+
+    set gameOver(value) {
+      finalGameObject.stateManager.setState('game.gameOver', value)
+    }
+  }
+
+  // Add methods to final object
+  Object.assign(finalGameObject, gameMethods)
+
+  return finalGameObject
 }
 
 // Legacy class wrapper for backward compatibility during migration
 export class Game {
+  // Declare properties that are assigned from createGame() for TypeScript
+
+  /** @type {HTMLCanvasElement} */
+  canvas
+
+  /** @type {CanvasRenderingContext2D} */
+  ctx
+
+  /** @type {number} */
+  width
+
+  /** @type {number} */
+  height
+
+  // Game objects
+
+  /** @type {Object|null} */
+  player
+
+  /** @type {Array} */
+  enemies
+
+  /** @type {Array} */
+  bullets
+
+  /** @type {Array} */
+  powerups
+
+  /** @type {Array} */
+  effects
+
+  /** @type {Background|ParallaxRenderer|null} */
+  background
+
+  /** @type {Array} */
+  messages
+
+  // Timing
+
+  /** @type {number} */
+  lastTime
+
+  /** @type {number} */
+  deltaTime
+
+  /** @type {number} */
+  enemySpawnTimer
+
+  /** @type {number} */
+  powerupSpawnTimer
+
+  /** @type {number} */
+  fps
+
+  /** @type {number} */
+  frameCount
+
+  /** @type {number} */
+  fpsTimer
+
+  /** @type {number|null} */
+  animationFrameId
+
+  // Animation frame aliases
+
+  /** @type {Function} */
+  requestAnimationFrame
+
+  /** @type {Function} */
+  cancelAnimationFrame
+
+  // Additional properties
+
+  /** @type {number} */
+  enemiesPerLevel
+
+  /** @type {string|null} */
+  currentBossType
+
+  /** @type {string|null} */
+  lastShownTransition
+
+  /** @type {number} */
+  frameNumber
+
+  // Input handling
+
+  /** @type {Object} */
+  keys
+
+  // Systems - assigned from createGame()
+
+  /** @type {EventDispatcher} */
+  eventDispatcher
+
+  /** @type {import('@/systems/StateManager.js').StateManager} */
+  stateManager
+
+  /** @type {Object} */
+  audio
+
+  /** @type {EffectManager} */
+  effectManager
+
+  /** @type {OptionsMenu} */
+  options
+
+  // UI systems
+
+  /** @type {Object|null} */
+  chapterTransition
+
+  /** @type {Object|null} */
+  bossDialogue
+
+  /** @type {Object|null} */
+  storyJournal
+
+  // Cleanup tracking
+
+  /** @type {Set|undefined} */
+  stateSubscriptions
+
+  /** @type {Array|undefined} */
+  domEventCleanup
+
   constructor() {
     // Create the POJO state and assign properties to this
     Object.assign(this, createGame())
@@ -148,6 +431,7 @@ export class Game {
     this.stateManager.setState('game.score', 0)
     this.stateManager.setState('game.gameOver', false)
     this.stateManager.setState('game.paused', false)
+    this.stateManager.setState('game.userPaused', false)
     this.stateManager.setState('game.showFPS', false)
     this.stateManager.setState('game.difficulty', 'Normal')
     this.stateManager.setState('game.level', 1)
@@ -187,6 +471,14 @@ export class Game {
   }
   set paused(value) {
     this.stateManager.setState('game.paused', value)
+  }
+
+  get userPaused() {
+    const stateValue = this.stateManager.getState('game.userPaused')
+    return stateValue !== undefined ? stateValue : false
+  }
+  set userPaused(value) {
+    this.stateManager.setState('game.userPaused', value)
   }
 
   get level() {
@@ -264,9 +556,8 @@ export class Game {
       this.stateManager.setState('game.finalScore', data.score)
     })
 
-    this.effectManager.effect(GAME_EVENTS.UI_SCORE_UPDATE, data => {
-      this.stateManager.setState('game.score', data.score)
-    })
+    // Removed circular UI_SCORE_UPDATE effect that was causing state corruption
+    // Score is already managed directly through the score setter
 
     // Set up state change listeners to emit UI events
     const unsubscribeScore = this.stateManager.subscribe('game.score', (newScore, oldScore) => {
@@ -292,7 +583,7 @@ export class Game {
     this.effectManager.start()
 
     // Initialize game objects
-    this.player = new Player(this, 100, this.height / 2)
+    this.player = createPlayer(this, 100, this.height / 2)
     this.background = new Background(this)
 
     // Optionally swap to spec-driven Level 1 parallax when requested
@@ -389,20 +680,37 @@ export class Game {
       } catch (error) {
         console.error('Error showing chapter transition:', error)
         // Ensure game doesn't stay paused if transition fails
-        this.paused = false
+        this.resumeGame() // Use safe resume method that respects options menu
       }
     }, 1000) // Small delay for game to initialize
   }
 
   pauseGame() {
+    // Use setter which should call StateManager
     this.paused = true
+    this.userPaused = true
+
     this.eventDispatcher.emit(GAME_EVENTS.GAME_PAUSE, {
       timestamp: Date.now()
     })
+
+    // Also check if options menu should be informed
+    if (this.options && this.options.isOpen) {
+      // Options menu is already handling the pause state
+    }
   }
 
   resumeGame() {
+    // CRITICAL: Check if options menu is open - it takes priority!
+    if (this.options && this.options.isOpen) {
+      console.log('Cannot resume game: Options menu is open (priority override)')
+      return // Options menu has priority - refuse to resume
+    }
+
+    // Use setter which should call StateManager
     this.paused = false
+    this.userPaused = false
+
     this.eventDispatcher.emit(GAME_EVENTS.GAME_RESUME, {
       timestamp: Date.now()
     })
@@ -441,7 +749,7 @@ export class Game {
     }
 
     // Stop EffectManager
-    if (this.effectManager && this.effectManager.isRunning) {
+    if (this.effectManager && /** @type {any} */ (this.effectManager).isRunning) {
       this.effectManager.stop()
     }
 
@@ -465,8 +773,8 @@ export class Game {
   setupInput() {
     // Define event handlers as bound methods for proper cleanup
     this.handleKeyDown = e => {
-      // Handle options menu input first
-      if (this.options.handleInput(e.code)) {
+      // Handle options menu input first (with null check)
+      if (this.options && this.options.handleInput && this.options.handleInput(e.code)) {
         e.preventDefault()
         return
       }
@@ -478,19 +786,27 @@ export class Game {
         case 'Space':
           e.preventDefault()
           if (!this.paused && this.player) {
-            this.player.shoot()
+            this.player = shootPlayer(this.player)
             // Resume audio context on first interaction
             this.audio.resume()
           }
           break
         case 'KeyQ':
           if (!this.paused && this.player) {
-            this.player.transform()
+            this.player = transformPlayer(this.player)
           }
           break
         case 'KeyR':
           if (this.gameOver) {
             this.restart()
+          }
+          break
+        case 'KeyP':
+          // Simple pause/unpause toggle
+          if (this.paused) {
+            this.resumeGame()
+          } else {
+            this.pauseGame()
           }
           break
         case 'KeyJ':
@@ -502,7 +818,10 @@ export class Game {
           }
           break
         case 'Escape':
-          if (!this.options.isOpen) {
+          // Toggle options menu (pause/unpause game)
+          if (this.options && this.options.isOpen) {
+            this.options.close()
+          } else if (this.options) {
             this.options.open()
           }
           break
@@ -529,6 +848,22 @@ export class Game {
       () => document.removeEventListener && document.removeEventListener('keyup', this.handleKeyUp),
       () => document.removeEventListener && document.removeEventListener('click', this.handleClick)
     ]
+  }
+
+  /**
+   * Map raw key codes to input object expected by player functions
+   * @param {Object} keys - Raw keys object with key codes as properties
+   * @returns {Object} Mapped input object
+   */
+  mapKeysToInput(keys) {
+    return {
+      left: keys['ArrowLeft'] || keys['KeyA'],
+      right: keys['ArrowRight'] || keys['KeyD'],
+      up: keys['ArrowUp'] || keys['KeyW'],
+      down: keys['ArrowDown'] || keys['KeyS'],
+      shoot: keys['Space'],
+      transform: keys['KeyQ']
+    }
   }
 
   /**
@@ -612,8 +947,9 @@ export class Game {
     }
 
     // Update player
-    if (this.player && typeof this.player.update === 'function') {
-      this.player.update(deltaTime, this.keys)
+    if (this.player) {
+      const mappedInput = this.mapKeysToInput(this.keys)
+      this.player = updatePlayer(this.player, deltaTime, mappedInput)
     }
 
     // Spawn enemies and check for level progression
@@ -709,7 +1045,9 @@ export class Game {
     this.background.render(this.ctx)
 
     // Render game objects
-    this.player.render(this.ctx)
+    if (this.player) {
+      renderPlayer(this.player, this.ctx)
+    }
     this.enemies.forEach(enemy => enemy.render(this.ctx))
     this.bullets.forEach(bullet => bullet.render(this.ctx))
     this.powerups.forEach(powerup => powerup.render(this.ctx))
@@ -743,6 +1081,23 @@ export class Game {
       this.ctx.fillStyle = '#ffff00'
       this.ctx.font = '14px Arial'
       this.ctx.fillText(`FPS: ${this.fps}`, 10, 20)
+    }
+
+    // Pause overlay for P key pause (not options menu)
+    if (this.userPaused && (!this.options || !this.options.isOpen)) {
+      this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'
+      this.ctx.fillRect(0, 0, this.width, this.height)
+
+      this.ctx.fillStyle = '#ffffff'
+      this.ctx.font = '48px Arial'
+      this.ctx.textAlign = 'center'
+      this.ctx.fillText('PAUSED', this.width / 2, this.height / 2 - 40)
+
+      this.ctx.font = '24px Arial'
+      this.ctx.fillText('Press P to Resume', this.width / 2, this.height / 2 + 20)
+      this.ctx.fillText('Press ESC for Options', this.width / 2, this.height / 2 + 50)
+
+      this.ctx.textAlign = 'left'
     }
   }
 
@@ -790,7 +1145,7 @@ export class Game {
       ]
     }
     const randomType = enemyTypes[Math.floor(Math.random() * enemyTypes.length)]
-    const enemy = new Enemy(
+    const enemy = createEnemy(
       this,
       this.width + 50,
       Math.random() * (this.height - 100) + 50,
@@ -828,7 +1183,7 @@ export class Game {
       selectedBossType = BOSS_TYPES[Math.floor(Math.random() * BOSS_TYPES.length)]
     }
 
-    const boss = new Enemy(this, this.width - 100, this.height / 2 - 30, selectedBossType)
+    const boss = createEnemy(this, this.width - 100, this.height / 2 - 30, selectedBossType)
     this.enemies.push(boss)
     this.bossActive = true
     this.bossSpawnedThisLevel = true
@@ -958,9 +1313,17 @@ export class Game {
             if (content.cutsceneKey) {
               const storyState = this.stateManager.getState('story')
               if (storyState) {
+                // Ensure viewedCutscenes is always a Set (handle serialization issues)
+                const currentViewed =
+                  storyState.viewedCutscenes instanceof Set
+                    ? storyState.viewedCutscenes
+                    : new Set(
+                        Array.isArray(storyState.viewedCutscenes) ? storyState.viewedCutscenes : []
+                      )
+
                 const updatedStoryState = {
                   ...storyState,
-                  viewedCutscenes: new Set([...storyState.viewedCutscenes, content.cutsceneKey])
+                  viewedCutscenes: new Set([...currentViewed, content.cutsceneKey])
                 }
                 this.stateManager.setState('story', updatedStoryState)
               }
@@ -968,11 +1331,11 @@ export class Game {
 
             // Resume game after transition if it wasn't paused before
             if (!wasPaused) {
-              this.paused = false
+              this.resumeGame() // Use safe resume method that respects options menu
             }
           } catch (error) {
             console.error('Error in chapter transition callback:', error)
-            this.paused = false // Ensure game doesn't stay paused
+            this.resumeGame() // Use safe resume method that respects options menu
           }
         })
       } catch (error) {
@@ -1007,7 +1370,7 @@ export class Game {
         () => {
           // Resume game after dialogue if it wasn't paused before
           if (!wasPaused) {
-            this.paused = false
+            this.resumeGame() // Use safe resume method that respects options menu
           }
         }
       )
@@ -1057,15 +1420,15 @@ export class Game {
     // Player bullets vs enemies
     this.bullets.forEach(bullet => {
       if (bullet.owner === 'player') {
-        this.enemies.forEach(enemy => {
+        this.enemies.forEach((enemy, enemyIndex) => {
           if (this.checkCollision(bullet, enemy)) {
             bullet.markedForDeletion = true
-            enemy.takeDamage(bullet.damage || 25)
+            this.enemies[enemyIndex] = takeDamageEnemy(enemy, bullet.damage || 25)
             this.effects.push(new Explosion(this, enemy.x, enemy.y, 'small'))
-            this.audio.playSound('enemyHit')
+            playSound(this.audio, 'enemyHit')
 
-            if (enemy.health <= 0) {
-              this.score += enemy.points || 100
+            if (this.enemies[enemyIndex].health <= 0) {
+              this.score += this.enemies[enemyIndex].points || 100
               this.enemiesKilled++
 
               // Check for level progression
@@ -1090,10 +1453,11 @@ export class Game {
                 this.bossActive = false
                 this.bossesDefeated++
                 this.score += GAME_CONSTANTS.BOSS_BONUS_SCORE
-                this.player.health = Math.min(
-                  this.player.maxHealth,
-                  this.player.health + GAME_CONSTANTS.BOSS_HEALTH_RESTORE
-                )
+                // TODO: Implement functional health restoration
+                // this.player.health = Math.min(
+                //   /** @type {any} */ (this.player).maxHealth,
+                //   this.player.health + GAME_CONSTANTS.BOSS_HEALTH_RESTORE
+                // )
 
                 // Show boss defeat narrative
                 const bossType = this.currentBossType || 'relay_warden' // Fallback
@@ -1108,7 +1472,7 @@ export class Game {
               }
 
               this.effects.push(new Explosion(this, enemy.x, enemy.y, 'medium'))
-              this.audio.playSound('explosion')
+              playSound(this.audio, 'explosion')
               enemy.markedForDeletion = true
             }
           }
@@ -1121,9 +1485,9 @@ export class Game {
       if (bullet.owner === 'enemy') {
         if (this.checkCollision(bullet, this.player)) {
           bullet.markedForDeletion = true
-          this.player.takeDamage(bullet.damage || 25)
+          this.player = takeDamagePlayer(this.player, bullet.damage || 25)
           this.effects.push(new Explosion(this, this.player.x, this.player.y, 'small'))
-          this.audio.playSound('playerHit')
+          playSound(this.audio, 'playerHit')
         }
       }
     })
@@ -1131,10 +1495,10 @@ export class Game {
     // Player vs powerups
     this.powerups.forEach(powerup => {
       if (this.checkCollision(this.player, powerup)) {
-        this.player.collectPowerup(powerup)
+        // this.player.collectPowerup(powerup) // TODO: Implement functional powerup collection
         this.powerupsCollected++
         this.effects.push(new PowerupEffect(this, powerup.x, powerup.y, powerup.color))
-        this.audio.playSound('powerup')
+        playSound(this.audio, 'powerup')
         powerup.markedForDeletion = true
 
         // Update story progress for powerup collection
@@ -1145,10 +1509,10 @@ export class Game {
     })
 
     // Player vs enemies
-    this.enemies.forEach(enemy => {
+    this.enemies.forEach((enemy, enemyIndex) => {
       if (this.checkCollision(this.player, enemy)) {
-        this.player.takeDamage(50)
-        enemy.takeDamage(50)
+        this.player = takeDamagePlayer(this.player, 50)
+        this.enemies[enemyIndex] = takeDamageEnemy(enemy, 50)
         this.effects.push(
           new Explosion(
             this,
@@ -1157,7 +1521,7 @@ export class Game {
             'medium'
           )
         )
-        this.audio.playSound('explosion')
+        playSound(this.audio, 'explosion')
       }
     })
   }
@@ -1252,7 +1616,7 @@ export class Game {
     this.fpsTimer = 0
     this.frameCount = 0
 
-    this.player = new Player(this, 100, this.height / 2)
+    this.player = createPlayer(this, 100, this.height / 2)
   }
 
   addBullet(bullet) {

@@ -11,6 +11,7 @@ export const PLAYER_EVENTS = {
   INPUT_TRANSFORM: 'input.transform',
 
   // Player state events
+  PLAYER_UPDATED: 'player.updated',
   PLAYER_MOVED: 'player.moved',
   PLAYER_SHOT: 'player.shot',
   PLAYER_TRANSFORMED: 'player.transformed',
