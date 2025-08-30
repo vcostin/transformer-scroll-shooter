@@ -240,6 +240,15 @@ describe('Enemy', () => {
   describe('shoot', () => {
     beforeEach(() => {
       enemy = new Enemy(mockGame, 700, 200, 'fighter')
+
+      // Mock StateManager to actually store and retrieve bullet data
+      const bulletStore = {}
+      mockGame.stateManager.setState.mockImplementation((path, value) => {
+        bulletStore[path] = value
+      })
+      mockGame.stateManager.getState.mockImplementation(path => {
+        return bulletStore[path]
+      })
     })
 
     it('should create bullet aimed at player', () => {
@@ -247,9 +256,11 @@ describe('Enemy', () => {
 
       expect(mockGame.addBullet).toHaveBeenCalledWith(
         expect.objectContaining({
-          game: mockGame,
-          x: enemy.x,
-          y: enemy.y + enemy.height / 2,
+          id: expect.any(String),
+          position: expect.objectContaining({
+            x: enemy.x,
+            y: enemy.y + enemy.height / 2
+          }),
           friendly: false
         })
       )
@@ -259,8 +270,8 @@ describe('Enemy', () => {
       enemy.shoot()
 
       const bulletCall = mockGame.addBullet.mock.calls[0][0]
-      expect(bulletCall.velocityX).toBeLessThan(0) // Moving left towards player
-      expect(bulletCall.velocityY).toBeGreaterThan(0) // Moving down towards player (enemy at y=200, player at y=300)
+      expect(bulletCall.velocity.x).toBeLessThan(0) // Moving left towards player
+      expect(bulletCall.velocity.y).toBeGreaterThan(0) // Moving down towards player (enemy at y=200, player at y=300)
     })
 
     it('should not shoot when player distance is zero', () => {
@@ -575,7 +586,7 @@ describe('Enemy', () => {
           'enemy.shot',
           expect.objectContaining({
             enemy: eventDrivenEnemy,
-            bullet: expect.any(Object),
+            bulletId: expect.any(String),
             x: 700,
             y: 210, // y + height/2
             velocityX: expect.any(Number),

@@ -5,7 +5,7 @@
  * Eliminates legacy class wrapper for better performance and testability.
  */
 
-import { createBullet } from '@/entities/bullet.js'
+import { createBullet, Bullet } from '@/entities/bullet.js'
 import { BOSS_CONFIGS } from '@/constants/boss-constants.js'
 import { ENEMY_EVENTS, ENEMY_STATES, ENEMY_BEHAVIORS, AI_STATES } from '@/constants/enemy-events.js'
 
@@ -506,21 +506,28 @@ export function shootEnemy(enemy) {
     const velocityY = (dy / distance) * enemy.bulletSpeed
     const bulletType = enemy.type === 'seeder' ? 'seed' : 'enemy'
 
-    const bullet = createBullet(
-      enemy.game,
-      enemy.x,
-      enemy.y + enemy.height / 2,
-      velocityX,
-      velocityY,
-      bulletType,
-      false
-    )
+    const bulletId = createBullet(enemy.game.stateManager, {
+      position: {
+        x: enemy.x,
+        y: enemy.y + enemy.height / 2
+      },
+      velocity: {
+        x: velocityX,
+        y: velocityY
+      },
+      type: bulletType,
+      friendly: false
+    })
 
-    enemy.game.addBullet(bullet)
+    const bulletState = Bullet.getBulletState(enemy.game.stateManager, bulletId)
+    enemy.game.addBullet({
+      id: bulletId,
+      ...bulletState
+    })
 
     enemy.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_SHOT, {
       enemy: enemy,
-      bullet: bullet,
+      bulletId: bulletId,
       x: enemy.x,
       y: enemy.y + enemy.height / 2,
       velocityX,
@@ -569,8 +576,17 @@ export function firePhase1Pattern(enemy, centerX, centerY, player) {
     const velocityX = Math.cos(bulletAngle) * enemy.bulletSpeed
     const velocityY = Math.sin(bulletAngle) * enemy.bulletSpeed
 
-    const bullet = createBullet(enemy.game, centerX, centerY, velocityX, velocityY, 'enemy', false)
-    enemy.game.addBullet(bullet)
+    const bulletId = createBullet(enemy.game.stateManager, {
+      position: { x: centerX, y: centerY },
+      velocity: { x: velocityX, y: velocityY },
+      type: 'enemy',
+      friendly: false
+    })
+    const bulletState = Bullet.getBulletState(enemy.game.stateManager, bulletId)
+    enemy.game.addBullet({
+      id: bulletId,
+      ...bulletState
+    })
   }
 
   if (Math.random() < DRONE_SPAWN_PROBABILITY) {
@@ -596,16 +612,17 @@ export function firePhase2Pattern(enemy, centerX, centerY, player) {
       const velocityX = Math.cos(bulletAngle) * enemy.bulletSpeed * 0.8
       const velocityY = Math.sin(bulletAngle) * enemy.bulletSpeed * 0.8
 
-      const bullet = createBullet(
-        enemy.game,
-        centerX,
-        centerY,
-        velocityX,
-        velocityY,
-        'enemy',
-        false
-      )
-      enemy.game.addBullet(bullet)
+      const bulletId = createBullet(enemy.game.stateManager, {
+        position: { x: centerX, y: centerY },
+        velocity: { x: velocityX, y: velocityY },
+        type: 'enemy',
+        friendly: false
+      })
+      const bulletState = Bullet.getBulletState(enemy.game.stateManager, bulletId)
+      enemy.game.addBullet({
+        id: bulletId,
+        ...bulletState
+      })
     }
   }
 }

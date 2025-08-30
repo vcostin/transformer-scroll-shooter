@@ -6,7 +6,7 @@
  * State flows: StateManager → Entity Functions → StateManager → Rendering
  */
 
-import { createBullet } from '@/entities/bullet.js'
+import { createBullet, Bullet } from '@/entities/bullet.js'
 import { PLAYER_EVENTS } from '@/constants/player-events.js'
 
 /**
@@ -264,20 +264,27 @@ export const Player = {
     const bulletType = stateManager.getState('player.currentBulletType')
     const shootRate = stateManager.getState('player.currentShootRate')
 
-    // Create bullet using legacy API for compatibility
-    const bullet = createBullet(
-      game,
-      position.x + dimensions.width / 2,
-      position.y,
-      0, // velocityX
-      -400, // velocityY (upward)
-      bulletType,
-      true // friendly (player bullet)
-    )
+    // Create bullet using StateManager API
+    const bulletId = createBullet(stateManager, {
+      position: {
+        x: position.x + dimensions.width / 2,
+        y: position.y
+      },
+      velocity: {
+        x: 0, // velocityX
+        y: -400 // velocityY (upward)
+      },
+      type: bulletType,
+      friendly: true // player bullet
+    })
 
-    // Add to game bullets array
+    // Add to game bullets array for compatibility with game loop
     if (game.bullets) {
-      game.bullets.push(bullet)
+      // Get the bullet object for the game.bullets array
+      const bulletState = Bullet.getBulletState(stateManager, bulletId)
+      if (bulletState) {
+        game.bullets.push({ id: bulletId, ...bulletState })
+      }
     }
 
     // Set cooldown
