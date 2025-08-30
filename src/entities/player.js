@@ -509,6 +509,11 @@ function updatePlayerModeProperties(stateManager) {
  * @returns {Object} Player API object
  */
 export function createPlayer(game, x, y) {
+  // Validate that we have required systems
+  if (!game.stateManager || !game.eventDispatcher) {
+    throw new Error('Player requires stateManager and eventDispatcher in game object')
+  }
+
   // Initialize state in StateManager
   initializePlayerState(game.stateManager, x, y)
 
@@ -525,28 +530,36 @@ export function createPlayer(game, x, y) {
 
     // Expose getters for backward compatibility
     get x() {
-      return Player.getPosition(game.stateManager).x
+      const pos = Player.getPosition(game.stateManager)
+      return pos ? pos.x : 0
     },
     get y() {
-      return Player.getPosition(game.stateManager).y
+      const pos = Player.getPosition(game.stateManager)
+      return pos ? pos.y : 0
     },
     get health() {
-      return Player.getHealth(game.stateManager)
+      const health = Player.getHealth(game.stateManager)
+      return health !== undefined ? health : 100
     },
     get maxHealth() {
-      return Player.getMaxHealth(game.stateManager)
+      const maxHealth = Player.getMaxHealth(game.stateManager)
+      return maxHealth !== undefined ? maxHealth : 100
     },
     get mode() {
-      return Player.getMode(game.stateManager)
+      const mode = Player.getMode(game.stateManager)
+      return mode !== undefined ? mode : 'car'
     },
     get speed() {
-      return Player.getSpeed(game.stateManager)
+      const speed = Player.getSpeed(game.stateManager)
+      return speed !== undefined ? speed : 250
     },
     get width() {
-      return Player.getDimensions(game.stateManager).width
+      const dims = Player.getDimensions(game.stateManager)
+      return dims ? dims.width : 40
     },
     get height() {
-      return Player.getDimensions(game.stateManager).height
+      const dims = Player.getDimensions(game.stateManager)
+      return dims ? dims.height : 30
     },
 
     // Additional backward compatibility getters
