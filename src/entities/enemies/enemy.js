@@ -833,7 +833,7 @@ export function spawnDroneAdd(enemy) {
   const spawnX = enemy.game.width + 50
   const spawnY = Math.random() * (enemy.game.height - 50) + 25
 
-  const droneAdd = createEnemy(
+  const droneId = createEnemy(
     enemy.game.stateManager,
     enemy.eventDispatcher,
     enemy.game.effectManager,
@@ -841,7 +841,13 @@ export function spawnDroneAdd(enemy) {
     spawnY,
     'drone'
   )
-  enemy.game.enemies.push(droneAdd)
+
+  // Convert to compatibility object for Game code - maintains StateManager as source of truth
+  const droneAdd = Enemy.getEnemyState(enemy.game.stateManager, droneId)
+  if (droneAdd) {
+    droneAdd['id'] = droneId // Store ID for StateManager operations
+    enemy.game.enemies.push(droneAdd)
+  }
 
   enemy.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_SPAWNED, {
     enemy: droneAdd,
