@@ -300,12 +300,6 @@ export const Player = {
   updatePowerups: (stateManager, deltaTime) => {
     const powerups = stateManager.getState('player.activePowerups') || []
 
-    // Ensure powerups is an array
-    if (!Array.isArray(powerups)) {
-      stateManager.setState('player.activePowerups', [])
-      return
-    }
-
     const updatedPowerups = powerups
       .map(powerup => ({
         ...powerup,
@@ -512,8 +506,8 @@ export function createPlayer(game, x, y) {
   // Initialize state in StateManager
   initializePlayerState(game.stateManager, x, y)
 
-  // Return API object that uses the stateless entity with backward compatibility
-  const playerApi = {
+  // Return API object that uses the stateless entity
+  return {
     // Expose stateless entity methods bound to game systems
     update: (deltaTime, input) =>
       Player.update(game.stateManager, game.eventDispatcher, deltaTime, input),
@@ -533,14 +527,8 @@ export function createPlayer(game, x, y) {
     get health() {
       return Player.getHealth(game.stateManager)
     },
-    get maxHealth() {
-      return Player.getMaxHealth(game.stateManager)
-    },
     get mode() {
       return Player.getMode(game.stateManager)
-    },
-    get speed() {
-      return Player.getSpeed(game.stateManager)
     },
     get width() {
       return Player.getDimensions(game.stateManager).width
@@ -549,77 +537,29 @@ export function createPlayer(game, x, y) {
       return Player.getDimensions(game.stateManager).height
     },
 
-    // Additional backward compatibility getters
-    get modes() {
-      return game.stateManager.getState('player.modes')
-    },
-    get currentModeIndex() {
-      return game.stateManager.getState('player.currentModeIndex')
-    },
-    get transformCooldown() {
-      return game.stateManager.getState('player.transformCooldown')
-    },
-    get shootCooldown() {
-      return game.stateManager.getState('player.shootCooldown')
-    },
-    get baseShootRate() {
-      return game.stateManager.getState('player.baseShootRate')
-    },
-    get currentShootRate() {
-      return game.stateManager.getState('player.currentShootRate')
-    },
-    get currentBulletType() {
-      return game.stateManager.getState('player.currentBulletType')
-    },
-    get currentColor() {
-      return game.stateManager.getState('player.currentColor')
-    },
-    get activePowerups() {
-      return game.stateManager.getState('player.activePowerups')
-    },
-    get shield() {
-      return game.stateManager.getState('player.shield')
-    },
-    get modeProperties() {
-      return game.stateManager.getState('player.modeProperties')
-    },
-
     // Expose direct state access for advanced use
     stateManager: game.stateManager,
     eventDispatcher: game.eventDispatcher
   }
-
-  return playerApi
 }
 
 // Legacy function exports for backward compatibility
 export function updatePlayer(playerApi, deltaTime, input) {
-  playerApi.update(deltaTime, input)
-  return playerApi
+  return playerApi.update(deltaTime, input)
 }
 
 export function renderPlayer(playerApi, ctx) {
-  playerApi.render(ctx)
-  return playerApi
+  return playerApi.render(ctx)
 }
 
 export function transformPlayer(playerApi) {
-  playerApi.transform()
-  return playerApi
+  return playerApi.transform()
 }
 
 export function shootPlayer(playerApi) {
-  playerApi.shoot()
-  return playerApi
+  return playerApi.shoot()
 }
 
 export function takeDamagePlayer(playerApi, damage) {
-  playerApi.takeDamage(damage)
-  return playerApi
-}
-
-export function movePlayer(playerApi, deltaTime, input) {
-  // Handle movement using the stateless player update
-  playerApi.update(deltaTime, input)
-  return playerApi
+  return playerApi.takeDamage(damage)
 }
