@@ -59,7 +59,7 @@ describe('Module Integration', () => {
     it('should create player with proper game integration', () => {
       const mockGame = createMockGame()
 
-      const player = createPlayer(mockGame, 100, 300)
+      const player = createPlayer(mockGame, { x: 100, y: 300 })
       expect(player).toBeDefined()
       expect(player.game).toBe(mockGame)
       expect(player.x).toBe(100)
@@ -69,7 +69,7 @@ describe('Module Integration', () => {
     it('should have proper mode system integration', () => {
       const mockGame = createMockGame()
 
-      const player = createPlayer(mockGame, 100, 300)
+      const player = createPlayer(mockGame, { x: 100, y: 300 })
 
       // Test mode integration
       expect(player.modes).toEqual(['car', 'scuba', 'boat', 'plane'])
@@ -88,7 +88,7 @@ describe('Module Integration', () => {
     it('should be able to use utils with player', () => {
       const mockGame = createMockGame()
 
-      const player = createPlayer(mockGame, 100, 300)
+      const player = createPlayer(mockGame, { x: 100, y: 300 })
 
       // Test using math utils with player
       const clampedX = MathUtils.clamp(player.x, 0, 800)
@@ -141,7 +141,7 @@ describe('Module Integration', () => {
       expect(typeof createPlayer).toBe('function')
       // Test that it returns an object with expected properties
       const mockGame = createMockGame()
-      const testPlayer = createPlayer(mockGame, 0, 0)
+      const testPlayer = createPlayer(mockGame, { x: 0, y: 0 })
       expect(testPlayer).toBeDefined()
       expect(testPlayer.x).toBeDefined()
       expect(testPlayer.y).toBeDefined()

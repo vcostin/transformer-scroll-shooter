@@ -81,20 +81,10 @@ const PLAYER_STATE_SCHEMA = {
 /**
  * Initialize Player State in StateManager
  * @param {Object} stateManager - StateManager instance
- * @param {Object|number} position - Position object {x, y} or legacy x coordinate
- * @param {number} [legacyY] - Legacy y coordinate (when using separate parameters)
+ * @param {Object} position - Position object {x, y}
  */
-export function initializePlayerState(stateManager, position = { x: 400, y: 300 }, legacyY) {
-  // Support both position object and separate x,y parameters for backward compatibility
-  let x, y
-  if (typeof position === 'object' && position !== null) {
-    x = position.x || 400
-    y = position.y || 300
-  } else {
-    // Legacy support: initializePlayerState(stateManager, x, y)
-    x = position || 400
-    y = legacyY || 300
-  }
+export function initializePlayerState(stateManager, position = { x: 400, y: 300 }) {
+  const { x = 400, y = 300 } = position
 
   const initialState = {
     ...PLAYER_STATE_SCHEMA,
@@ -139,18 +129,9 @@ export const Player = {
 
   // === STATE MUTATIONS (WRITE) ===
 
-  setPosition: (stateManager, position, legacyY) => {
-    // Support both position object and separate x,y parameters for backward compatibility
-    if (typeof position === 'object' && position !== null) {
-      stateManager.setState('player.x', position.x)
-      stateManager.setState('player.y', position.y)
-    } else {
-      // Legacy support: setPosition(stateManager, x, y)
-      const x = position
-      const y = legacyY
-      stateManager.setState('player.x', x)
-      stateManager.setState('player.y', y)
-    }
+  setPosition: (stateManager, position) => {
+    stateManager.setState('player.x', position.x)
+    stateManager.setState('player.y', position.y)
   },
 
   move: (stateManager, dx, dy) => {
@@ -522,20 +503,19 @@ function updatePlayerModeProperties(stateManager) {
 }
 
 /**
- * Backward compatibility: Create player using stateless architecture
+ * Create player using stateless architecture
  * @param {Object} game - Game instance
- * @param {Object|number} position - Position object {x, y} or legacy x coordinate
- * @param {number} [legacyY] - Legacy y coordinate (when using separate parameters)
+ * @param {Object} position - Position object {x, y}
  * @returns {Object} Player API object
  */
-export function createPlayer(game, position, legacyY) {
+export function createPlayer(game, position) {
   // Validate that we have required systems
   if (!game.stateManager || !game.eventDispatcher) {
     throw new Error('Player requires stateManager and eventDispatcher in game object')
   }
 
   // Initialize state in StateManager
-  initializePlayerState(game.stateManager, position, legacyY)
+  initializePlayerState(game.stateManager, position)
 
   // Return API object that uses the stateless entity with backward compatibility
   const playerApi = {

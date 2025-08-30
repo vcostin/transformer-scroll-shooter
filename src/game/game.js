@@ -583,7 +583,7 @@ export class Game {
     this.effectManager.start()
 
     // Initialize game objects
-    this.player = createPlayer(this, 100, this.height / 2)
+    this.player = createPlayer(this, { x: 100, y: this.height / 2 })
     this.background = new Background(this)
 
     // Optionally swap to spec-driven Level 1 parallax when requested
@@ -1616,7 +1616,7 @@ export class Game {
     this.fpsTimer = 0
     this.frameCount = 0
 
-    this.player = createPlayer(this, 100, this.height / 2)
+    this.player = createPlayer(this, { x: 100, y: this.height / 2 })
   }
 
   addBullet(bullet) {

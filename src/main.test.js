@@ -165,7 +165,7 @@ describe('Main Entry Point', () => {
       }
 
       // Test functional entity creation
-      expect(() => mainModule.createPlayer(mockGame, 100, 300)).not.toThrow()
+      expect(() => mainModule.createPlayer(mockGame, { x: 100, y: 300 })).not.toThrow()
       expect(() => mainModule.createEnemy(mockGame, 100, 200, 'fighter')).not.toThrow()
       expect(() => mainModule.createBullet(mockGame, 100, 200, 5, 0, 'normal', true)).not.toThrow()
     })
