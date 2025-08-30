@@ -1,8 +1,14 @@
 /**
- * Enemy POJO+Functional - Pure Functional Implementation
+ * Enemy POJO+Functional Implementation
  *
- * Complete POJO+Functional implementation of enemy system.
- * Eliminates legacy class wrapper for better performance and testability.
+ * Current Status: Functional POJO architecture with event-driven updates.
+ * Uses new bullet StateManager API for shooting.
+ *
+ * Next Migration Target: Convert to full Entity-State architecture like Player/Bullet.
+ * - Move enemy state to StateManager
+ * - Create Enemy.* accessor functions
+ * - Make functions pure (stateManager, enemyId) -> void
+ * - Remove legacy class wrapper
  */
 
 import { createBullet, Bullet } from '@/entities/bullet.js'
