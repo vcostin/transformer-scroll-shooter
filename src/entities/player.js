@@ -81,10 +81,21 @@ const PLAYER_STATE_SCHEMA = {
 /**
  * Initialize Player State in StateManager
  * @param {Object} stateManager - StateManager instance
- * @param {number} x - Initial x position
- * @param {number} y - Initial y position
+ * @param {Object|number} position - Position object {x, y} or legacy x coordinate
+ * @param {number} [legacyY] - Legacy y coordinate (when using separate parameters)
  */
-export function initializePlayerState(stateManager, x = 400, y = 300) {
+export function initializePlayerState(stateManager, position = { x: 400, y: 300 }, legacyY) {
+  // Support both position object and separate x,y parameters for backward compatibility
+  let x, y
+  if (typeof position === 'object' && position !== null) {
+    x = position.x || 400
+    y = position.y || 300
+  } else {
+    // Legacy support: initializePlayerState(stateManager, x, y)
+    x = position || 400
+    y = legacyY || 300
+  }
+
   const initialState = {
     ...PLAYER_STATE_SCHEMA,
     x,
@@ -128,14 +139,23 @@ export const Player = {
 
   // === STATE MUTATIONS (WRITE) ===
 
-  setPosition: (stateManager, x, y) => {
-    stateManager.setState('player.x', x)
-    stateManager.setState('player.y', y)
+  setPosition: (stateManager, position, legacyY) => {
+    // Support both position object and separate x,y parameters for backward compatibility
+    if (typeof position === 'object' && position !== null) {
+      stateManager.setState('player.x', position.x)
+      stateManager.setState('player.y', position.y)
+    } else {
+      // Legacy support: setPosition(stateManager, x, y)
+      const x = position
+      const y = legacyY
+      stateManager.setState('player.x', x)
+      stateManager.setState('player.y', y)
+    }
   },
 
   move: (stateManager, dx, dy) => {
     const current = Player.getPosition(stateManager)
-    Player.setPosition(stateManager, current.x + dx, current.y + dy)
+    Player.setPosition(stateManager, { x: current.x + dx, y: current.y + dy })
   },
 
   setHealth: (stateManager, health) => {
@@ -212,7 +232,7 @@ export const Player = {
       const clampedX = Math.max(0, Math.min(800 - dimensions.width, position.x))
       const clampedY = Math.max(0, Math.min(600 - dimensions.height, position.y))
 
-      Player.setPosition(stateManager, clampedX, clampedY)
+      Player.setPosition(stateManager, { x: clampedX, y: clampedY })
     }
   },
 
@@ -504,18 +524,18 @@ function updatePlayerModeProperties(stateManager) {
 /**
  * Backward compatibility: Create player using stateless architecture
  * @param {Object} game - Game instance
- * @param {number} x - Initial x position
- * @param {number} y - Initial y position
+ * @param {Object|number} position - Position object {x, y} or legacy x coordinate
+ * @param {number} [legacyY] - Legacy y coordinate (when using separate parameters)
  * @returns {Object} Player API object
  */
-export function createPlayer(game, x, y) {
+export function createPlayer(game, position, legacyY) {
   // Validate that we have required systems
   if (!game.stateManager || !game.eventDispatcher) {
     throw new Error('Player requires stateManager and eventDispatcher in game object')
   }
 
   // Initialize state in StateManager
-  initializePlayerState(game.stateManager, x, y)
+  initializePlayerState(game.stateManager, position, legacyY)
 
   // Return API object that uses the stateless entity with backward compatibility
   const playerApi = {
