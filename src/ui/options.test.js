@@ -13,7 +13,7 @@ import { OptionsMenu } from '@/ui/options.js'
 import { UI_EVENTS } from '@/constants/ui-events.js'
 import { EventDispatcher } from '@/systems/EventDispatcher.js'
 import { StateManager } from '@/systems/StateManager.js'
-import { EffectManager } from '@/systems/EffectManager.js'
+import { createEffectManager } from '@/systems/EffectManager.js'
 
 describe('OptionsMenu', () => {
   let optionsMenu

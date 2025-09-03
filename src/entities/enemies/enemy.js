@@ -1,8 +1,9 @@
 /**
- * Enemy POJO+Functional - Pure Functional Implementation
+ * Enemy Entity - Stateless Implementation
  *
- * Complete POJO+Functional implementation of enemy system.
- * Eliminates legacy class wrapper for better performance and testability.
+ * Entity-State Architecture: Stateless enemy entity operating on global state.
+ * All enemy data is stored in StateManager, entity functions are pure.
+ * State flows: StateManager → Entity Functions → StateManager → Rendering
  */
 
 import { createBullet } from '@/entities/bullet.js'
@@ -21,46 +22,312 @@ const MOVEMENT_SPEED_MULTIPLIER = 0.8
 const DRONE_SPAWN_PROBABILITY = 0.2
 const CONNECTION_BEAM_LENGTH = 100
 const CONNECTION_BEAM_OFFSET_Y = -50
-const PHASE2_POSITION_X_FACTOR = 0.75
-const PHASE2_POSITION_Y_FACTOR = 0.25
-const PHASE2_TARGET_Y_RANGE = 0.6
-const PHASE2_TARGET_Y_OFFSET = 0.2
+// Legacy constants removed - now handled in Entity-State updateRelayWardenMovement()
 
 /**
- * Create a new enemy state object
- * @param {Object} game - Game instance reference
+ * Enemy State Schema - Defines the structure in StateManager
+ */
+const ENEMY_STATE_SCHEMA = {
+  // Position and physics
+  x: 0,
+  y: 0,
+  width: 30,
+  height: 20,
+
+  // Core stats
+  type: 'fighter',
+  maxHealth: 20,
+  health: 20,
+  speed: 100,
+  damage: 15,
+  points: 10,
+  color: '#ff4444',
+
+  // Combat properties
+  shootRate: 2000,
+  bulletSpeed: 200,
+  shootTimer: 0,
+
+  // AI and behavior
+  moveTimer: 0,
+  targetY: 0,
+  target: null,
+  aiState: AI_STATES.SPAWNING,
+  behavior: ENEMY_BEHAVIORS.AGGRESSIVE,
+  zigDirection: 1,
+
+  // Lifecycle
+  markedForDeletion: false,
+
+  // Boss-specific properties (optional, only set for bosses)
+  phase: 1,
+  sweepAngle: 0,
+  sweepDirection: 1,
+  vulnerabilityTimer: 0,
+  ringBeamActive: false,
+  nodeMode: false,
+  phaseTransitionTriggered: false
+}
+
+/**
+ * Generate unique enemy ID
+ * @returns {string} Unique enemy identifier
+ */
+let enemyIdCounter = 0
+
+function generateEnemyId() {
+  return `enemy_${Date.now()}_${++enemyIdCounter}`
+}
+
+/**
+ * Stateless Enemy Entity - Pure functions operating on StateManager
+ */
+export const Enemy = {
+  // === STATE ACCESSORS (READ) ===
+
+  getPosition: (stateManager, enemyId) => ({
+    x: stateManager.getState(`enemies.${enemyId}.x`),
+    y: stateManager.getState(`enemies.${enemyId}.y`)
+  }),
+
+  getDimensions: (stateManager, enemyId) => ({
+    width: stateManager.getState(`enemies.${enemyId}.width`),
+    height: stateManager.getState(`enemies.${enemyId}.height`)
+  }),
+
+  getHealth: (stateManager, enemyId) => stateManager.getState(`enemies.${enemyId}.health`),
+  getMaxHealth: (stateManager, enemyId) => stateManager.getState(`enemies.${enemyId}.maxHealth`),
+  getType: (stateManager, enemyId) => stateManager.getState(`enemies.${enemyId}.type`),
+  getSpeed: (stateManager, enemyId) => stateManager.getState(`enemies.${enemyId}.speed`),
+  getDamage: (stateManager, enemyId) => stateManager.getState(`enemies.${enemyId}.damage`),
+  getPoints: (stateManager, enemyId) => stateManager.getState(`enemies.${enemyId}.points`),
+  getColor: (stateManager, enemyId) => stateManager.getState(`enemies.${enemyId}.color`),
+
+  getShootRate: (stateManager, enemyId) => stateManager.getState(`enemies.${enemyId}.shootRate`),
+  getBulletSpeed: (stateManager, enemyId) =>
+    stateManager.getState(`enemies.${enemyId}.bulletSpeed`),
+  getShootTimer: (stateManager, enemyId) => stateManager.getState(`enemies.${enemyId}.shootTimer`),
+
+  getAIState: (stateManager, enemyId) => stateManager.getState(`enemies.${enemyId}.aiState`),
+  getBehavior: (stateManager, enemyId) => stateManager.getState(`enemies.${enemyId}.behavior`),
+  getTarget: (stateManager, enemyId) => stateManager.getState(`enemies.${enemyId}.target`),
+  getTargetY: (stateManager, enemyId) => stateManager.getState(`enemies.${enemyId}.targetY`),
+  getMoveTimer: (stateManager, enemyId) => stateManager.getState(`enemies.${enemyId}.moveTimer`),
+  getZigDirection: (stateManager, enemyId) =>
+    stateManager.getState(`enemies.${enemyId}.zigDirection`),
+
+  // Boss-specific getters
+  getPhase: (stateManager, enemyId) => stateManager.getState(`enemies.${enemyId}.phase`),
+  getSweepAngle: (stateManager, enemyId) => stateManager.getState(`enemies.${enemyId}.sweepAngle`),
+  getSweepDirection: (stateManager, enemyId) =>
+    stateManager.getState(`enemies.${enemyId}.sweepDirection`),
+  getVulnerabilityTimer: (stateManager, enemyId) =>
+    stateManager.getState(`enemies.${enemyId}.vulnerabilityTimer`),
+
+  isMarkedForDeletion: (stateManager, enemyId) =>
+    stateManager.getState(`enemies.${enemyId}.markedForDeletion`),
+
+  // === STATE MUTATIONS (WRITE) ===
+
+  setPosition: (stateManager, enemyId, position) => {
+    stateManager.setState(`enemies.${enemyId}.x`, position.x)
+    stateManager.setState(`enemies.${enemyId}.y`, position.y)
+  },
+
+  move: (stateManager, enemyId, dx, dy) => {
+    const current = Enemy.getPosition(stateManager, enemyId)
+    Enemy.setPosition(stateManager, enemyId, { x: current.x + dx, y: current.y + dy })
+  },
+
+  setHealth: (stateManager, enemyId, health) => {
+    const maxHealth = Enemy.getMaxHealth(stateManager, enemyId)
+    stateManager.setState(`enemies.${enemyId}.health`, Math.max(0, Math.min(health, maxHealth)))
+  },
+
+  takeDamage: (stateManager, enemyId, damage, eventDispatcher, gameInstance) => {
+    // Apply damage directly for immediate effect
+    const oldHealth = Enemy.getHealth(stateManager, enemyId)
+    const newHealth = Math.max(0, oldHealth - damage)
+    Enemy.setHealth(stateManager, enemyId, newHealth)
+
+    // Update the compatibility object in game.enemies array
+    if (gameInstance && gameInstance.enemies) {
+      const enemyObj = gameInstance.enemies.find(e => e.id === enemyId)
+      if (enemyObj) {
+        enemyObj.health = newHealth
+      }
+    }
+
+    // Also emit damage event for effects system (if available)
+    if (eventDispatcher && typeof eventDispatcher.emit === 'function') {
+      eventDispatcher.emit(ENEMY_EVENTS.ENEMY_DAMAGED, {
+        enemyId: enemyId,
+        damage: damage
+      })
+    }
+
+    // Handle death directly
+    if (newHealth <= 0) {
+      const enemyState = Enemy.getEnemyState(stateManager, enemyId)
+      if (enemyState) {
+        dieEnemy(enemyState)
+      }
+    }
+  },
+
+  setShootTimer: (stateManager, enemyId, timer) => {
+    stateManager.setState(`enemies.${enemyId}.shootTimer`, timer)
+  },
+
+  updateShootTimer: (stateManager, enemyId, deltaTime) => {
+    const currentTimer = Enemy.getShootTimer(stateManager, enemyId)
+    Enemy.setShootTimer(stateManager, enemyId, currentTimer + deltaTime)
+  },
+
+  setMoveTimer: (stateManager, enemyId, timer) => {
+    stateManager.setState(`enemies.${enemyId}.moveTimer`, timer)
+  },
+
+  updateMoveTimer: (stateManager, enemyId, deltaTime) => {
+    const currentTimer = Enemy.getMoveTimer(stateManager, enemyId)
+    Enemy.setMoveTimer(stateManager, enemyId, currentTimer + deltaTime)
+  },
+
+  setTargetY: (stateManager, enemyId, targetY) => {
+    stateManager.setState(`enemies.${enemyId}.targetY`, targetY)
+  },
+
+  setAIState: (stateManager, enemyId, aiState) => {
+    stateManager.setState(`enemies.${enemyId}.aiState`, aiState)
+  },
+
+  setTarget: (stateManager, enemyId, target) => {
+    stateManager.setState(`enemies.${enemyId}.target`, target)
+  },
+
+  setZigDirection: (stateManager, enemyId, direction) => {
+    stateManager.setState(`enemies.${enemyId}.zigDirection`, direction)
+  },
+
+  // Boss-specific setters
+  setPhase: (stateManager, enemyId, phase) => {
+    stateManager.setState(`enemies.${enemyId}.phase`, phase)
+  },
+
+  setSweepAngle: (stateManager, enemyId, angle) => {
+    stateManager.setState(`enemies.${enemyId}.sweepAngle`, angle)
+  },
+
+  setSweepDirection: (stateManager, enemyId, direction) => {
+    stateManager.setState(`enemies.${enemyId}.sweepDirection`, direction)
+  },
+
+  setVulnerabilityTimer: (stateManager, enemyId, timer) => {
+    stateManager.setState(`enemies.${enemyId}.vulnerabilityTimer`, timer)
+  },
+
+  updateVulnerabilityTimer: (stateManager, enemyId, deltaTime) => {
+    const currentTimer = Enemy.getVulnerabilityTimer(stateManager, enemyId)
+    Enemy.setVulnerabilityTimer(stateManager, enemyId, currentTimer + deltaTime)
+  },
+
+  markForDeletion: (stateManager, enemyId) => {
+    stateManager.setState(`enemies.${enemyId}.markedForDeletion`, true)
+  },
+
+  // === ENEMY MANAGEMENT ===
+
+  exists: (stateManager, enemyId) => {
+    return stateManager.getState(`enemies.${enemyId}`) !== undefined
+  },
+
+  remove: (stateManager, enemyId) => {
+    stateManager.setState(`enemies.${enemyId}`, undefined)
+  },
+
+  getAllEnemyIds: stateManager => {
+    const enemiesState = stateManager.getState('enemies') || {}
+    return Object.keys(enemiesState).filter(id => enemiesState[id] !== undefined)
+  },
+
+  // Get complete enemy state as object for compatibility
+  getEnemyState: (stateManager, enemyId) => {
+    if (!Enemy.exists(stateManager, enemyId)) return null
+
+    const position = Enemy.getPosition(stateManager, enemyId)
+    const dimensions = Enemy.getDimensions(stateManager, enemyId)
+
+    return {
+      position,
+      ...dimensions,
+      type: Enemy.getType(stateManager, enemyId),
+      health: Enemy.getHealth(stateManager, enemyId),
+      maxHealth: Enemy.getMaxHealth(stateManager, enemyId),
+      speed: Enemy.getSpeed(stateManager, enemyId),
+      damage: Enemy.getDamage(stateManager, enemyId),
+      points: Enemy.getPoints(stateManager, enemyId),
+      color: Enemy.getColor(stateManager, enemyId),
+      shootRate: Enemy.getShootRate(stateManager, enemyId),
+      bulletSpeed: Enemy.getBulletSpeed(stateManager, enemyId),
+      shootTimer: Enemy.getShootTimer(stateManager, enemyId),
+      aiState: Enemy.getAIState(stateManager, enemyId),
+      behavior: Enemy.getBehavior(stateManager, enemyId),
+      targetY: Enemy.getTargetY(stateManager, enemyId),
+      moveTimer: Enemy.getMoveTimer(stateManager, enemyId),
+      zigDirection: Enemy.getZigDirection(stateManager, enemyId),
+      markedForDeletion: Enemy.isMarkedForDeletion(stateManager, enemyId),
+      // Legacy compatibility properties
+      x: position.x,
+      y: position.y,
+      friendly: false // enemies are never friendly
+    }
+  }
+}
+
+/**
+ * Initialize Enemy State in StateManager and return enemy ID
+ * @param {Object} stateManager - StateManager instance
+ * @param {Object} eventDispatcher - EventDispatcher instance
+ * @param {Object} effectManager - EffectManager instance
  * @param {number} x - Initial x position
  * @param {number} y - Initial y position
  * @param {string} type - Enemy type
- * @returns {Object} Enemy state object
+ * @returns {string} The enemy ID
  */
-export function createEnemy(game, x, y, type) {
-  const enemy = {
-    game,
+export function createEnemy(stateManager, eventDispatcher, effectManager, x, y, type) {
+  const enemyId = generateEnemyId()
+
+  // Create base enemy state
+  const enemyState = {
+    ...ENEMY_STATE_SCHEMA,
     x,
     y,
     type,
-    markedForDeletion: false,
-
-    // AI and behavior
-    shootTimer: 0,
-    moveTimer: 0,
-    targetY: y,
-    aiState: AI_STATES.SPAWNING,
-    behavior: ENEMY_BEHAVIORS.AGGRESSIVE,
-
-    // Initialize enemy-specific properties
-    zigDirection: 1, // Used by drone for zig-zag movement
-
-    // Event-driven architecture references
-    eventDispatcher: game.eventDispatcher,
-    stateManager: game.stateManager,
-    effectManager: game.effectManager
+    targetY: y
   }
 
-  // Set properties based on type and return initialized enemy
-  const configuredEnemy = setupEnemyType(enemy)
-  return initializeEnemy(configuredEnemy)
+  // Apply type-specific properties
+  const configuredEnemy = setupEnemyType(enemyState)
+
+  // Initialize all enemy state paths in StateManager
+  Object.keys(configuredEnemy).forEach(key => {
+    stateManager.setState(`enemies.${enemyId}.${key}`, configuredEnemy[key])
+  })
+
+  // Setup event-driven effects
+  setupEnemyEffects(stateManager, eventDispatcher, effectManager, enemyId)
+
+  // Emit creation event
+  eventDispatcher.emit(ENEMY_EVENTS.ENEMY_CREATED, {
+    enemyId: enemyId,
+    type: type,
+    x: x,
+    y: y,
+    health: configuredEnemy.health,
+    maxHealth: configuredEnemy.maxHealth
+  })
+
+  return enemyId
 }
 
 /**
@@ -212,10 +479,12 @@ function setupEnemyType(enemy) {
  * Initialize a created enemy with effects and state
  * @param {Object} enemy - Enemy POJO state
  * @returns {Object} Initialized enemy
+ * @deprecated - Use createEnemy instead which handles setup automatically
  */
 export function initializeEnemy(enemy) {
-  setupEnemyEffects(enemy)
-  initializeEnemyState(enemy)
+  // TODO: This function may be legacy - createEnemy handles setup now
+  // setupEnemyEffects(enemy)
+  // initializeEnemyState(enemy)
 
   // Emit creation event
   enemy.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_CREATED, {
@@ -227,67 +496,6 @@ export function initializeEnemy(enemy) {
     maxHealth: enemy.maxHealth
   })
 
-  // Add backward-compatible method wrappers for tests
-  enemy.update = function (deltaTime) {
-    Object.assign(this, updateEnemy(this, deltaTime))
-    return this
-  }
-
-  enemy.shoot = function () {
-    Object.assign(this, shootEnemy(this))
-    return this
-  }
-
-  enemy.takeDamage = function (damage) {
-    Object.assign(this, takeDamage(this, damage))
-    return this
-  }
-
-  enemy.cleanup = function () {
-    Object.assign(this, cleanupEnemy(this))
-    return this
-  }
-
-  enemy.render = function (ctx) {
-    return renderEnemy(this, ctx)
-  }
-
-  enemy.handleDamage = function (data) {
-    Object.assign(this, handleDamage(this, data))
-    return this
-  }
-
-  enemy.handleAIUpdate = function (data) {
-    Object.assign(this, handleAIUpdate(this, data))
-    return this
-  }
-
-  enemy.handleTargetAcquisition = function (data) {
-    Object.assign(this, handleTargetAcquisition(this, data))
-    return this
-  }
-
-  // Add wrapper methods for draw functions to support test spies
-  enemy.drawFighter = function (ctx) {
-    return drawFighter(this, ctx)
-  }
-
-  enemy.drawBomber = function (ctx) {
-    return drawBomber(this, ctx)
-  }
-
-  enemy.drawScout = function (ctx) {
-    return drawScout(this, ctx)
-  }
-
-  enemy.drawBoss = function (ctx) {
-    return drawBoss(this, ctx)
-  }
-
-  enemy.drawHealthBar = function (ctx) {
-    return drawHealthBar(this, ctx)
-  }
-
   return enemy
 }
 
@@ -297,268 +505,428 @@ export function initializeEnemy(enemy) {
  * @param {number} deltaTime - Time elapsed since last update
  */
 export function updateEnemy(enemy, deltaTime) {
-  // Move towards player
-  moveEnemy(enemy, deltaTime)
+  // DEPRECATED - This function is kept for backwards compatibility only
+  console.warn('updateEnemy is deprecated - use updateEnemyMovement and updateEnemyAI instead')
 
-  // Update timers
-  enemy.shootTimer += deltaTime
-  enemy.moveTimer += deltaTime
-
-  // Handle shooting
-  if (enemy.shootTimer > enemy.shootRate) {
-    // Use wrapper method if it exists (for test compatibility), otherwise functional approach
-    if (typeof enemy.shoot === 'function') {
-      enemy.shoot()
-    } else {
-      shootEnemy(enemy)
-    }
-    enemy.shootTimer = 0
+  // Create minimal compatibility by calling Entity-State functions
+  const gameContext = {
+    player: enemy.game?.player,
+    width: enemy.game?.width || 800,
+    height: enemy.game?.height || 600,
+    eventDispatcher: enemy.eventDispatcher
   }
 
-  // Event-driven update
-  enemy.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_AI_UPDATE, {
-    enemy: enemy,
-    deltaTime: deltaTime
-  })
-
-  // Check for off-screen or death conditions
-  if (enemy.x < OFF_SCREEN_BOUNDARY || enemy.health <= 0) {
-    if (enemy.x < OFF_SCREEN_BOUNDARY) {
-      enemy.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_OFF_SCREEN, {
-        enemy: enemy,
-        x: enemy.x,
-        y: enemy.y
-      })
-    }
-    enemy.markedForDeletion = true
+  if (enemy.id && enemy.game?.stateManager) {
+    updateEnemyMovement(enemy.game.stateManager, enemy.id, deltaTime, gameContext)
+    updateEnemyAI(enemy.game.stateManager, enemy.id, deltaTime, gameContext)
   }
 }
 
 /**
- * Move enemy based on type and behavior
- * @param {Object} enemy - Enemy POJO state
+ * Update enemy movement - Pure Entity-State Architecture
+ * @param {Object} stateManager - StateManager instance
+ * @param {string} enemyId - Enemy ID
  * @param {number} deltaTime - Time elapsed since last update
+ * @param {Object} gameContext - Game context (player, dimensions)
  */
-export function moveEnemy(enemy, deltaTime) {
-  const player = enemy.game.player
-  const moveSpeed = enemy.speed * (deltaTime / 1000)
-  const previousX = enemy.x
-  const previousY = enemy.y
+export function updateEnemyMovement(stateManager, enemyId, deltaTime, gameContext) {
+  if (!Enemy.exists(stateManager, enemyId)) return
 
-  switch (enemy.type) {
+  const { player, width: gameWidth, height: gameHeight } = gameContext
+  if (!player) return
+
+  const position = Enemy.getPosition(stateManager, enemyId)
+  const speed = Enemy.getSpeed(stateManager, enemyId)
+  const type = Enemy.getType(stateManager, enemyId)
+  const dimensions = Enemy.getDimensions(stateManager, enemyId)
+
+  const moveSpeed = speed * (deltaTime / 1000)
+  const previousX = position.x
+  const previousY = position.y
+  let newX = position.x
+  let newY = position.y
+
+  switch (type) {
     case 'drone': {
-      enemy.x -= moveSpeed
-      enemy.moveTimer += deltaTime
-      if (enemy.moveTimer > 300) {
-        enemy.moveTimer = 0
-        enemy.zigDirection = enemy.zigDirection === 1 ? -1 : 1
+      newX -= moveSpeed
+      Enemy.updateMoveTimer(stateManager, enemyId, deltaTime)
+      const moveTimer = Enemy.getMoveTimer(stateManager, enemyId)
+
+      if (moveTimer > 300) {
+        Enemy.setMoveTimer(stateManager, enemyId, 0)
+        const currentDir = Enemy.getZigDirection(stateManager, enemyId)
+        Enemy.setZigDirection(stateManager, enemyId, currentDir === 1 ? -1 : 1)
       }
-      enemy.y += enemy.zigDirection * moveSpeed * MOVEMENT_SPEED_MULTIPLIER
+
+      const zigDirection = Enemy.getZigDirection(stateManager, enemyId)
+      newY += zigDirection * moveSpeed * MOVEMENT_SPEED_MULTIPLIER
       break
     }
 
     case 'turret': {
-      enemy.x -= moveSpeed
+      newX -= moveSpeed
       break
     }
 
     case 'seeder': {
-      enemy.x -= moveSpeed
-      enemy.moveTimer += deltaTime
+      newX -= moveSpeed
+      Enemy.updateMoveTimer(stateManager, enemyId, deltaTime)
+      const moveTimer = Enemy.getMoveTimer(stateManager, enemyId)
       const bob =
-        Math.sin((enemy.moveTimer / BOB_PERIOD_MS) * BOB_WAVE_CYCLE) *
-        BOB_AMPLITUDE_FACTOR *
-        moveSpeed
-      enemy.y += bob
+        Math.sin((moveTimer / BOB_PERIOD_MS) * BOB_WAVE_CYCLE) * BOB_AMPLITUDE_FACTOR * moveSpeed
+      newY += bob
       break
     }
 
     case 'fighter': {
-      enemy.x -= moveSpeed
-      if (player) {
-        const dy = player.y - enemy.y
-        if (Math.abs(dy) > 5) {
-          enemy.y += Math.sign(dy) * moveSpeed * 0.3
-        }
+      newX -= moveSpeed
+      const dy = player.y - position.y
+      if (Math.abs(dy) > 5) {
+        newY += Math.sign(dy) * moveSpeed * 0.3
       }
       break
     }
 
     case 'bomber': {
-      enemy.x -= moveSpeed
+      newX -= moveSpeed
       break
     }
 
     case 'scout': {
-      enemy.x -= moveSpeed
-      enemy.moveTimer += deltaTime
-      if (enemy.moveTimer > 1000) {
-        enemy.targetY = Math.random() * (enemy.game.height - enemy.height)
-        enemy.moveTimer = 0
+      newX -= moveSpeed
+      Enemy.updateMoveTimer(stateManager, enemyId, deltaTime)
+      const moveTimer = Enemy.getMoveTimer(stateManager, enemyId)
+
+      if (moveTimer > 1000) {
+        const targetY = Math.random() * (gameHeight - dimensions.height)
+        Enemy.setTargetY(stateManager, enemyId, targetY)
+        Enemy.setMoveTimer(stateManager, enemyId, 0)
       }
-      const scoutTargetDy = enemy.targetY - enemy.y
+
+      const targetY = Enemy.getTargetY(stateManager, enemyId)
+      const scoutTargetDy = targetY - position.y
       if (Math.abs(scoutTargetDy) > 5) {
-        enemy.y += Math.sign(scoutTargetDy) * moveSpeed * MOVEMENT_SPEED_MULTIPLIER
+        newY += Math.sign(scoutTargetDy) * moveSpeed * MOVEMENT_SPEED_MULTIPLIER
       }
       break
     }
 
     case 'boss': {
-      enemy.x -= moveSpeed * 0.5
-      if (player) {
-        const bossTargetY = player.y - enemy.height / 2
-        const maxY = enemy.game.height - enemy.height
-        const clampedTargetY = Math.max(0, Math.min(maxY, bossTargetY))
-        const bossDy = clampedTargetY - enemy.y
-        if (Math.abs(bossDy) > 5) {
-          enemy.y += Math.sign(bossDy) * moveSpeed * 0.4
-        }
+      newX -= moveSpeed * 0.5
+      const bossTargetY = player.y - dimensions.height / 2
+      const maxY = gameHeight - dimensions.height
+      const clampedTargetY = Math.max(0, Math.min(maxY, bossTargetY))
+      const bossDy = clampedTargetY - position.y
+      if (Math.abs(bossDy) > 5) {
+        newY += Math.sign(bossDy) * moveSpeed * 0.4
       }
       break
     }
 
     case 'boss_heavy': {
-      enemy.x -= moveSpeed * 0.3
-      if (player) {
-        const centerY = enemy.game.height / 2 - enemy.height / 2
-        const dy = centerY - enemy.y
-        if (Math.abs(dy) > 20) {
-          enemy.y += Math.sign(dy) * moveSpeed * 0.2
-        }
+      newX -= moveSpeed * 0.3
+      const centerY = gameHeight / 2 - dimensions.height / 2
+      const dy = centerY - position.y
+      if (Math.abs(dy) > 20) {
+        newY += Math.sign(dy) * moveSpeed * 0.2
       }
       break
     }
 
     case 'boss_fast': {
-      enemy.x -= moveSpeed * MOVEMENT_SPEED_MULTIPLIER
-      if (player) {
-        const bossTargetY = player.y - enemy.height / 2
-        const maxY = enemy.game.height - enemy.height
-        const clampedTargetY = Math.max(0, Math.min(maxY, bossTargetY))
-        const bossDy = clampedTargetY - enemy.y
-        if (Math.abs(bossDy) > 2) {
-          enemy.y += Math.sign(bossDy) * moveSpeed * 0.7
-        }
+      newX -= moveSpeed * MOVEMENT_SPEED_MULTIPLIER
+      const bossTargetY = player.y - dimensions.height / 2
+      const maxY = gameHeight - dimensions.height
+      const clampedTargetY = Math.max(0, Math.min(maxY, bossTargetY))
+      const bossDy = clampedTargetY - position.y
+      if (Math.abs(bossDy) > 2) {
+        newY += Math.sign(bossDy) * moveSpeed * 0.7
       }
       break
     }
 
     case 'boss_sniper': {
-      enemy.x -= moveSpeed * 0.2
-      enemy.moveTimer += deltaTime
-      if (enemy.moveTimer > 2000) {
-        enemy.targetY = Math.random() * (enemy.game.height - enemy.height)
-        enemy.moveTimer = 0
+      newX -= moveSpeed * 0.2
+      Enemy.updateMoveTimer(stateManager, enemyId, deltaTime)
+      const moveTimer = Enemy.getMoveTimer(stateManager, enemyId)
+
+      if (moveTimer > 2000) {
+        const targetY = Math.random() * (gameHeight - dimensions.height)
+        Enemy.setTargetY(stateManager, enemyId, targetY)
+        Enemy.setMoveTimer(stateManager, enemyId, 0)
       }
-      const sniperTargetDy = enemy.targetY - enemy.y
+
+      const targetY = Enemy.getTargetY(stateManager, enemyId)
+      const sniperTargetDy = targetY - position.y
       if (Math.abs(sniperTargetDy) > 5) {
-        enemy.y += Math.sign(sniperTargetDy) * moveSpeed * 0.3
+        newY += Math.sign(sniperTargetDy) * moveSpeed * 0.3
       }
       break
     }
 
     case 'relay_warden': {
-      updateRelayWardenBehavior(enemy, deltaTime, moveSpeed, player)
-      break
+      updateRelayWardenMovement(stateManager, enemyId, deltaTime, moveSpeed, player, gameContext)
+      return // Relay Warden handles its own position updates
     }
   }
 
-  // Emit movement events if position changed
-  if (enemy.x !== previousX || enemy.y !== previousY) {
-    enemy.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_POSITION_CHANGED, {
-      enemy: enemy,
-      x: enemy.x,
-      y: enemy.y,
-      previousX,
-      previousY,
-      type: enemy.type
-    })
-    enemy.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_MOVED, {
-      enemy: enemy,
-      x: enemy.x,
-      y: enemy.y,
-      previousX,
-      previousY,
-      type: enemy.type
-    })
+  // Update position if it changed
+  if (newX !== previousX || newY !== previousY) {
+    Enemy.setPosition(stateManager, enemyId, { x: newX, y: newY })
+
+    // Emit movement events through game context
+    if (gameContext.eventDispatcher) {
+      gameContext.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_POSITION_CHANGED, {
+        enemyId,
+        x: newX,
+        y: newY,
+        previousX,
+        previousY,
+        type
+      })
+    }
+  }
+
+  // Check for off-screen deletion
+  if (newX < OFF_SCREEN_BOUNDARY) {
+    Enemy.markForDeletion(stateManager, enemyId)
+    if (gameContext.eventDispatcher) {
+      gameContext.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_OFF_SCREEN, {
+        enemyId,
+        x: newX,
+        y: newY
+      })
+    }
   }
 }
 
 /**
- * Enemy shooting behavior
- * @param {Object} enemy - Enemy POJO state
+ * Update Relay Warden movement - Pure Entity-State Architecture
  */
-export function shootEnemy(enemy) {
-  const player = enemy.game.player
+export function updateRelayWardenMovement(
+  stateManager,
+  enemyId,
+  deltaTime,
+  moveSpeed,
+  player,
+  gameContext
+) {
+  const health = Enemy.getHealth(stateManager, enemyId)
+  const maxHealth = Enemy.getMaxHealth(stateManager, enemyId)
+
+  // Phase transition check
+  if (health <= maxHealth * 0.5) {
+    const phase = Enemy.getPhase(stateManager, enemyId) || 1
+    if (phase === 1) {
+      Enemy.setPhase(stateManager, enemyId, 2)
+      const newX = gameContext.width * 0.75
+      const newY = gameContext.height * 0.25
+      Enemy.setPosition(stateManager, enemyId, { x: newX, y: newY })
+      return
+    }
+  }
+
+  const phase = Enemy.getPhase(stateManager, enemyId) || 1
+  if (phase === 1) {
+    const position = Enemy.getPosition(stateManager, enemyId)
+    const dimensions = Enemy.getDimensions(stateManager, enemyId)
+
+    const newX = position.x - moveSpeed * 0.15
+    let newY = position.y
+
+    if (player) {
+      const centerY = gameContext.height / 2 - dimensions.height / 2
+      const dy = centerY - position.y
+      if (Math.abs(dy) > 30) {
+        newY += Math.sign(dy) * moveSpeed * 0.2
+      }
+    }
+
+    Enemy.setPosition(stateManager, enemyId, { x: newX, y: newY })
+  } else {
+    const position = Enemy.getPosition(stateManager, enemyId)
+
+    Enemy.updateMoveTimer(stateManager, enemyId, deltaTime)
+    const moveTimer = Enemy.getMoveTimer(stateManager, enemyId)
+
+    if (moveTimer > 2000) {
+      const targetY = Math.random() * (gameContext.height * 0.6) + gameContext.height * 0.2
+      Enemy.setTargetY(stateManager, enemyId, targetY)
+      Enemy.setMoveTimer(stateManager, enemyId, 0)
+    }
+
+    const targetY = Enemy.getTargetY(stateManager, enemyId)
+    const newX = position.x - moveSpeed * 0.1
+    let newY = position.y
+
+    if (targetY) {
+      const dy = targetY - position.y
+      if (Math.abs(dy) > 5) {
+        newY += Math.sign(dy) * moveSpeed * 0.3
+      }
+    }
+
+    Enemy.setPosition(stateManager, enemyId, { x: newX, y: newY })
+  }
+}
+
+/**
+ * Update enemy AI and behavior - Pure Entity-State Architecture
+ */
+export function updateEnemyAI(stateManager, enemyId, deltaTime, gameContext) {
+  if (!Enemy.exists(stateManager, enemyId)) return
+
+  // Update shoot timer
+  Enemy.updateShootTimer(stateManager, enemyId, deltaTime)
+
+  // Handle AI state and shooting
+  const aiState = Enemy.getAIState(stateManager, enemyId)
+  const shootTimer = Enemy.getShootTimer(stateManager, enemyId)
+  const shootRate = Enemy.getShootRate(stateManager, enemyId)
+
+  switch (aiState) {
+    case AI_STATES.SPAWNING:
+      Enemy.setAIState(stateManager, enemyId, AI_STATES.MOVING)
+      break
+
+    case AI_STATES.MOVING:
+      if (gameContext.player) {
+        Enemy.setAIState(stateManager, enemyId, AI_STATES.ATTACKING)
+      }
+      break
+
+    case AI_STATES.ATTACKING:
+      if (shootTimer > shootRate && gameContext.player) {
+        shootEnemy(stateManager, gameContext.eventDispatcher, gameContext, enemyId)
+        Enemy.setShootTimer(stateManager, enemyId, 0)
+      }
+      break
+
+    case AI_STATES.SEARCHING:
+      if (gameContext.player) {
+        Enemy.setTarget(stateManager, enemyId, gameContext.player)
+        Enemy.setAIState(stateManager, enemyId, AI_STATES.ATTACKING)
+      }
+      break
+  }
+
+  // Check health for death
+  const health = Enemy.getHealth(stateManager, enemyId)
+  if (health <= 0) {
+    Enemy.markForDeletion(stateManager, enemyId)
+    if (gameContext.eventDispatcher) {
+      gameContext.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_DIED, {
+        enemyId,
+        type: Enemy.getType(stateManager, enemyId),
+        x: Enemy.getPosition(stateManager, enemyId).x,
+        y: Enemy.getPosition(stateManager, enemyId).y,
+        points: Enemy.getPoints(stateManager, enemyId)
+      })
+    }
+  }
+}
+
+/**
+ * Enemy shooting behavior - Entity-State Architecture
+ * @param {Object} stateManager - StateManager instance
+ * @param {Object} eventDispatcher - EventDispatcher instance
+ * @param {Object} game - Game instance for player access and bullet creation
+ * @param {string} enemyId - Enemy ID
+ */
+export function shootEnemy(stateManager, eventDispatcher, game, enemyId) {
+  const player = game.player
   if (!player) return
 
-  if (enemy.type === 'relay_warden') {
-    relayWardenShoot(enemy, player)
+  const enemyType = Enemy.getType(stateManager, enemyId)
+  if (enemyType === 'relay_warden') {
+    relayWardenShoot(stateManager, eventDispatcher, game, enemyId)
     return
   }
 
-  const dx = player.x - enemy.x
-  const dy = player.y - enemy.y
+  const position = Enemy.getPosition(stateManager, enemyId)
+  const dimensions = Enemy.getDimensions(stateManager, enemyId)
+  const bulletSpeed = Enemy.getBulletSpeed(stateManager, enemyId)
+
+  const dx = player.x - position.x
+  const dy = player.y - position.y
   const distance = Math.sqrt(dx * dx + dy * dy)
 
   if (distance > 0) {
-    const velocityX = (dx / distance) * enemy.bulletSpeed
-    const velocityY = (dy / distance) * enemy.bulletSpeed
-    const bulletType = enemy.type === 'seeder' ? 'seed' : 'enemy'
+    const velocityX = (dx / distance) * bulletSpeed
+    const velocityY = (dy / distance) * bulletSpeed
+    const bulletType = enemyType === 'seeder' ? 'seed' : 'enemy'
 
-    const bullet = createBullet(
-      enemy.game,
-      enemy.x,
-      enemy.y + enemy.height / 2,
-      velocityX,
-      velocityY,
-      bulletType,
-      false
-    )
+    const bulletId = createBullet(stateManager, {
+      position: {
+        x: position.x,
+        y: position.y + dimensions.height / 2
+      },
+      velocity: {
+        x: velocityX,
+        y: velocityY
+      },
+      type: bulletType,
+      friendly: false
+    })
 
-    enemy.game.addBullet(bullet)
+    // StateManager is the single source of truth - no need for game.addBullet
+    // The bullet-manager.js handles synchronization with game.bullets array
 
-    enemy.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_SHOT, {
-      enemy: enemy,
-      bullet: bullet,
-      x: enemy.x,
-      y: enemy.y + enemy.height / 2,
+    eventDispatcher.emit(ENEMY_EVENTS.ENEMY_SHOT, {
+      enemyId: enemyId,
+      bulletId: bulletId,
+      x: position.x,
+      y: position.y + dimensions.height / 2,
       velocityX,
       velocityY,
       target: player,
-      type: enemy.type
+      type: enemyType
     })
 
-    enemy.stateManager.setState(ENEMY_STATES.SHOOT_TIMER, enemy.shootTimer)
+    // Reset shoot timer
+    Enemy.setShootTimer(stateManager, enemyId, 0)
   }
 }
 
 /**
- * Relay Warden specific shooting behavior
- * @param {Object} enemy - Enemy POJO state
- * @param {Object} player - Player reference
+ * Relay Warden specific shooting behavior - Entity-State Architecture
+ * @param {Object} stateManager - StateManager instance
+ * @param {Object} eventDispatcher - EventDispatcher instance
+ * @param {Object} game - Game context
+ * @param {string} enemyId - Enemy ID
  */
-export function relayWardenShoot(enemy, player) {
-  const centerX = enemy.x + enemy.width / 2
-  const centerY = enemy.y + enemy.height / 2
+export function relayWardenShoot(stateManager, eventDispatcher, game, enemyId) {
+  const position = Enemy.getPosition(stateManager, enemyId)
+  const dimensions = Enemy.getDimensions(stateManager, enemyId)
+  const centerX = position.x + dimensions.width / 2
+  const centerY = position.y + dimensions.height / 2
 
-  if (enemy.phase === 1) {
-    firePhase1Pattern(enemy, centerX, centerY, player)
+  const phase = Enemy.getPhase(stateManager, enemyId)
+
+  if (phase === 1) {
+    firePhase1Pattern(stateManager, eventDispatcher, game, enemyId, centerX, centerY)
   } else {
-    firePhase2Pattern(enemy, centerX, centerY, player)
+    firePhase2Pattern(stateManager, eventDispatcher, game, enemyId, centerX, centerY)
   }
 }
 
 /**
- * Fire Phase 1 pattern for Relay Warden
- * @param {Object} enemy - Enemy POJO state
+ * Fire Phase 1 pattern for Relay Warden - Entity-State Architecture
+ * @param {Object} stateManager - StateManager instance
+ * @param {Object} eventDispatcher - EventDispatcher instance
+ * @param {Object} game - Game context
+ * @param {string} enemyId - Enemy ID
  * @param {number} centerX - Center X position
  * @param {number} centerY - Center Y position
- * @param {Object} player - Player reference
  */
-export function firePhase1Pattern(enemy, centerX, centerY, player) {
+export function firePhase1Pattern(stateManager, eventDispatcher, game, enemyId, centerX, centerY) {
   const fanCount = 5
   const fanSpread = Math.PI / 3
+  const bulletSpeed = Enemy.getBulletSpeed(stateManager, enemyId)
+  const player = game.player
+
+  if (!player) return
+
   const dx = player.x - centerX
   const dy = player.y - centerY
   const playerAngle = Math.atan2(dy, dx)
@@ -566,46 +934,56 @@ export function firePhase1Pattern(enemy, centerX, centerY, player) {
   for (let i = 0; i < fanCount; i++) {
     const angleOffset = (i - 2) * (fanSpread / (fanCount - 1))
     const bulletAngle = playerAngle + angleOffset
-    const velocityX = Math.cos(bulletAngle) * enemy.bulletSpeed
-    const velocityY = Math.sin(bulletAngle) * enemy.bulletSpeed
+    const velocityX = Math.cos(bulletAngle) * bulletSpeed
+    const velocityY = Math.sin(bulletAngle) * bulletSpeed
 
-    const bullet = createBullet(enemy.game, centerX, centerY, velocityX, velocityY, 'enemy', false)
-    enemy.game.addBullet(bullet)
+    createBullet(stateManager, {
+      position: { x: centerX, y: centerY },
+      velocity: { x: velocityX, y: velocityY },
+      type: 'enemy',
+      friendly: false
+    })
   }
 
   if (Math.random() < DRONE_SPAWN_PROBABILITY) {
-    spawnDroneAdd(enemy)
+    // TODO: Convert spawnDroneAdd to Entity-State
+    const enemyState = Enemy.getEnemyState(stateManager, enemyId)
+    spawnDroneAdd(enemyState)
   }
 }
 
 /**
- * Fire Phase 2 pattern for Relay Warden
- * @param {Object} enemy - Enemy POJO state
+ * Fire Phase 2 pattern for Relay Warden - Entity-State Architecture
+ * @param {Object} stateManager - StateManager instance
+ * @param {Object} eventDispatcher - EventDispatcher instance
+ * @param {Object} game - Game context
+ * @param {string} enemyId - Enemy ID
  * @param {number} centerX - Center X position
  * @param {number} centerY - Center Y position
- * @param {Object} player - Player reference
  */
-export function firePhase2Pattern(enemy, centerX, centerY, player) {
-  if (enemy.vulnerabilityTimer > 2000 && enemy.vulnerabilityTimer < 3000) {
+export function firePhase2Pattern(stateManager, eventDispatcher, game, enemyId, centerX, centerY) {
+  const vulnerabilityTimer = Enemy.getVulnerabilityTimer(stateManager, enemyId)
+  const bulletSpeed = Enemy.getBulletSpeed(stateManager, enemyId)
+  const player = game.player
+
+  if (!player) return
+
+  if (vulnerabilityTimer > 2000 && vulnerabilityTimer < 3000) {
     const sweepCount = 3
     const baseAngle = Math.atan2(player.y - centerY, player.x - centerX)
 
     for (let i = 0; i < sweepCount; i++) {
       const angleOffset = (i - 1) * 0.2
       const bulletAngle = baseAngle + angleOffset
-      const velocityX = Math.cos(bulletAngle) * enemy.bulletSpeed * 0.8
-      const velocityY = Math.sin(bulletAngle) * enemy.bulletSpeed * 0.8
+      const velocityX = Math.cos(bulletAngle) * bulletSpeed * 0.8
+      const velocityY = Math.sin(bulletAngle) * bulletSpeed * 0.8
 
-      const bullet = createBullet(
-        enemy.game,
-        centerX,
-        centerY,
-        velocityX,
-        velocityY,
-        'enemy',
-        false
-      )
-      enemy.game.addBullet(bullet)
+      createBullet(stateManager, {
+        position: { x: centerX, y: centerY },
+        velocity: { x: velocityX, y: velocityY },
+        type: 'enemy',
+        friendly: false
+      })
     }
   }
 }
@@ -618,8 +996,21 @@ export function spawnDroneAdd(enemy) {
   const spawnX = enemy.game.width + 50
   const spawnY = Math.random() * (enemy.game.height - 50) + 25
 
-  const droneAdd = createEnemy(enemy.game, spawnX, spawnY, 'drone')
-  enemy.game.enemies.push(droneAdd)
+  const droneId = createEnemy(
+    enemy.game.stateManager,
+    enemy.eventDispatcher,
+    enemy.game.effectManager,
+    spawnX,
+    spawnY,
+    'drone'
+  )
+
+  // Convert to compatibility object for Game code - maintains StateManager as source of truth
+  const droneAdd = Enemy.getEnemyState(enemy.game.stateManager, droneId)
+  if (droneAdd) {
+    droneAdd['id'] = droneId // Store ID for StateManager operations
+    enemy.game.enemies.push(droneAdd)
+  }
 
   enemy.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_SPAWNED, {
     enemy: droneAdd,
@@ -628,132 +1019,13 @@ export function spawnDroneAdd(enemy) {
   })
 }
 
-/**
- * Relay Warden boss behavior - implements two-phase mechanics
- * @param {Object} enemy - Enemy POJO state
- * @param {number} deltaTime - Time elapsed since last update
- * @param {number} moveSpeed - Calculated move speed
- * @param {Object} player - Player reference
- */
-export function updateRelayWardenBehavior(enemy, deltaTime, moveSpeed, player) {
-  if (enemy.health <= enemy.maxHealth * 0.5 && !enemy.phaseTransitionTriggered) {
-    enemy.phase = 2
-    enemy.phaseTransitionTriggered = true
-    enemy.nodeMode = true
-    enemy.x = enemy.game.width * PHASE2_POSITION_X_FACTOR
-    enemy.y = enemy.game.height * PHASE2_POSITION_Y_FACTOR
-  }
+// Legacy POJO function removed - Entity-State architecture uses updateRelayWardenMovement() instead
 
-  if (enemy.phase === 1) {
-    updatePhase1Behavior(enemy, deltaTime, moveSpeed, player)
-  } else {
-    updatePhase2Behavior(enemy, deltaTime, moveSpeed, player)
-  }
-}
+// Legacy POJO function removed - Entity-State architecture handles phase behavior in updateRelayWardenMovement()
 
-/**
- * Update Phase 1 behavior for Relay Warden
- * @param {Object} enemy - Enemy POJO state
- * @param {number} deltaTime - Time elapsed since last update
- * @param {number} moveSpeed - Calculated move speed
- * @param {Object} player - Player reference
- */
-export function updatePhase1Behavior(enemy, deltaTime, moveSpeed, player) {
-  enemy.x -= moveSpeed * 0.15
+// Legacy POJO function removed - Entity-State architecture handles phase behavior in updateRelayWardenMovement()
 
-  if (player) {
-    const centerY = enemy.game.height / 2 - enemy.height / 2
-    const dy = centerY - enemy.y
-    if (Math.abs(dy) > 30) {
-      enemy.y += Math.sign(dy) * moveSpeed * 0.2
-    }
-  }
-
-  enemy.sweepAngle += enemy.sweepDirection * deltaTime * 0.001
-  if (enemy.sweepAngle > Math.PI * 2) {
-    enemy.sweepAngle = 0
-  }
-
-  enemy.moveTimer += deltaTime
-  if (enemy.moveTimer > 3000) {
-    enemy.ringBeamActive = !enemy.ringBeamActive
-    enemy.moveTimer = 0
-  }
-}
-
-/**
- * Update Phase 2 behavior for Relay Warden
- * @param {Object} enemy - Enemy POJO state
- * @param {number} deltaTime - Time elapsed since last update
- * @param {number} moveSpeed - Calculated move speed
- * @param {Object} _player - Player reference (unused)
- */
-export function updatePhase2Behavior(enemy, deltaTime, moveSpeed, _player) {
-  enemy.moveTimer += deltaTime
-
-  if (enemy.moveTimer > 2000) {
-    enemy.targetY =
-      Math.random() * (enemy.game.height * PHASE2_TARGET_Y_RANGE) +
-      enemy.game.height * PHASE2_TARGET_Y_OFFSET
-    enemy.moveTimer = 0
-  }
-
-  if (enemy.targetY) {
-    const dy = enemy.targetY - enemy.y
-    if (Math.abs(dy) > 5) {
-      enemy.y += Math.sign(dy) * moveSpeed * 0.3
-    }
-  }
-
-  enemy.x -= moveSpeed * 0.1
-  enemy.vulnerabilityTimer += deltaTime
-  if (enemy.vulnerabilityTimer > 4000) {
-    enemy.vulnerabilityTimer = 0
-  }
-}
-
-/**
- * Apply damage to enemy
- * @param {Object} enemy - Enemy POJO state
- * @param {number} damage - Damage amount
- */
-export function takeDamage(enemy, damage) {
-  const oldHealth = enemy.health
-  enemy.health -= damage
-
-  if (enemy.eventDispatcher) {
-    enemy.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_DAMAGED, {
-      enemy: enemy,
-      damage: damage
-    })
-
-    enemy.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_HEALTH_CHANGED, {
-      enemy: enemy,
-      health: enemy.health,
-      maxHealth: enemy.maxHealth,
-      previousHealth: oldHealth,
-      damage: damage
-    })
-  }
-
-  if (
-    enemy.eventDispatcher &&
-    enemy.health <= enemy.maxHealth * CRITICAL_HEALTH_THRESHOLD &&
-    enemy.health > 0
-  ) {
-    enemy.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_HEALTH_CRITICAL, {
-      enemy: enemy,
-      health: enemy.health,
-      maxHealth: enemy.maxHealth
-    })
-  }
-
-  if (enemy.health <= 0) {
-    dieEnemy(enemy)
-  }
-
-  return enemy
-}
+// Legacy POJO function removed - Entity-State architecture uses Enemy.takeDamage() and handleDamage() instead
 
 /**
  * Enemy death handling
@@ -799,61 +1071,64 @@ export function cleanupEnemy(enemy) {
 
 /**
  * Setup effects-based event handling using EffectManager
- * @param {Object} enemy - Enemy POJO state
+ * @param {Object} stateManager - StateManager instance
+ * @param {Object} eventDispatcher - EventDispatcher instance
+ * @param {Object} effectManager - EffectManager instance
+ * @param {string} enemyId - Enemy ID
  */
-export function setupEnemyEffects(enemy) {
-  enemy.effectManager.effect(ENEMY_EVENTS.ENEMY_AI_UPDATE, data => {
-    if (data.enemy === enemy) {
-      handleAIUpdate(enemy, data)
+export function setupEnemyEffects(stateManager, eventDispatcher, effectManager, enemyId) {
+  effectManager.effect(ENEMY_EVENTS.ENEMY_AI_UPDATE, data => {
+    if (data.enemyId === enemyId) {
+      handleAIUpdate(stateManager, enemyId, data)
     }
   })
 
-  enemy.effectManager.effect(ENEMY_EVENTS.ENEMY_DAMAGED, data => {
-    if (data.enemy === enemy) {
-      handleDamage(enemy, data)
+  effectManager.effect(ENEMY_EVENTS.ENEMY_DAMAGED, data => {
+    if (data.enemyId === enemyId) {
+      handleDamage(stateManager, enemyId, data)
     }
   })
 
-  enemy.effectManager.effect(ENEMY_EVENTS.ENEMY_AI_TARGET_ACQUIRED, data => {
-    if (data.enemy === enemy) {
-      handleTargetAcquisition(enemy, data)
+  effectManager.effect(ENEMY_EVENTS.ENEMY_AI_TARGET_ACQUIRED, data => {
+    if (data.enemyId === enemyId) {
+      handleTargetAcquisition(stateManager, enemyId, data)
     }
   })
 
-  enemy.effectManager.effect(ENEMY_EVENTS.ENEMY_COLLISION_BULLET, data => {
-    if (data.enemy === enemy) {
-      handleBulletCollision(enemy, data)
+  effectManager.effect(ENEMY_EVENTS.ENEMY_COLLISION_BULLET, data => {
+    if (data.enemyId === enemyId) {
+      handleBulletCollision(stateManager, enemyId, data)
     }
   })
 
-  enemy.effectManager.effect(ENEMY_EVENTS.ENEMY_COLLISION_PLAYER, data => {
-    if (data.enemy === enemy) {
-      handlePlayerCollision(enemy, data)
+  effectManager.effect(ENEMY_EVENTS.ENEMY_COLLISION_PLAYER, data => {
+    if (data.enemyId === enemyId) {
+      handlePlayerCollision(stateManager, enemyId, data)
     }
   })
 
   // State synchronization effects
-  enemy.effectManager.effect(ENEMY_EVENTS.ENEMY_SHOT, data => {
-    if (data.enemy === enemy) {
-      enemy.stateManager.setState(ENEMY_STATES.SHOOT_TIMER, enemy.shootTimer)
+  effectManager.effect(ENEMY_EVENTS.ENEMY_SHOT, data => {
+    if (data.enemyId === enemyId) {
+      stateManager.setState(`enemies.${enemyId}.shootTimer`, data.shootTimer)
     }
   })
 
-  enemy.effectManager.effect(ENEMY_EVENTS.ENEMY_HEALTH_CHANGED, data => {
-    if (data.enemy === enemy) {
-      enemy.stateManager.setState(ENEMY_STATES.HEALTH, data.health)
+  effectManager.effect(ENEMY_EVENTS.ENEMY_HEALTH_CHANGED, data => {
+    if (data.enemyId === enemyId) {
+      stateManager.setState(`enemies.${enemyId}.health`, data.health)
     }
   })
 
-  enemy.effectManager.effect(ENEMY_EVENTS.ENEMY_AI_BEHAVIOR_CHANGE, data => {
-    if (data.enemy === enemy) {
-      enemy.stateManager.setState(ENEMY_STATES.AI_STATE, data.behavior)
+  effectManager.effect(ENEMY_EVENTS.ENEMY_AI_BEHAVIOR_CHANGE, data => {
+    if (data.enemyId === enemyId) {
+      stateManager.setState(`enemies.${enemyId}.aiState`, data.behavior)
     }
   })
 
-  enemy.effectManager.effect(ENEMY_EVENTS.ENEMY_AI_TARGET_ACQUIRED, data => {
-    if (data.enemy === enemy) {
-      enemy.stateManager.setState(ENEMY_STATES.TARGET, data.target)
+  effectManager.effect(ENEMY_EVENTS.ENEMY_AI_TARGET_ACQUIRED, data => {
+    if (data.enemyId === enemyId) {
+      stateManager.setState(`enemies.${enemyId}.target`, data.target)
     }
   })
 }
@@ -874,50 +1149,53 @@ export function initializeEnemyState(enemy) {
 }
 
 /**
- * Handle AI update events
- * @param {Object} enemy - Enemy POJO state
+ * Handle AI update events - Entity-State Architecture
+ * @param {Object} stateManager - StateManager instance
+ * @param {string} enemyId - Enemy ID
  * @param {Object} data - Event data
  */
-export function handleAIUpdate(enemy, data) {
+export function handleAIUpdate(stateManager, enemyId, data) {
   const { deltaTime } = data
-  const oldAiState = enemy.aiState
+  const oldAiState = Enemy.getAIState(stateManager, enemyId)
 
-  switch (enemy.aiState) {
+  switch (oldAiState) {
     case AI_STATES.SPAWNING: {
-      enemy.aiState = AI_STATES.MOVING
-      // Update state manager when AI state changes
-      if (enemy.stateManager && typeof enemy.stateManager.setState === 'function') {
-        enemy.stateManager.setState('enemy.aiState', enemy.aiState)
-      }
+      Enemy.setAIState(stateManager, enemyId, AI_STATES.MOVING)
       break
     }
 
     case AI_STATES.MOVING: {
-      if (enemy.game.player) {
-        enemy.aiState = AI_STATES.ATTACKING
-        // Update state manager when AI state changes
-        if (enemy.stateManager && typeof enemy.stateManager.setState === 'function') {
-          enemy.stateManager.setState('enemy.aiState', enemy.aiState)
-        }
+      // Check if player exists to transition to attacking
+      const gameState = stateManager.getState('game')
+      if (gameState && gameState.player) {
+        Enemy.setAIState(stateManager, enemyId, AI_STATES.ATTACKING)
       }
       break
     }
 
     case AI_STATES.ATTACKING: {
-      enemy.shootTimer += deltaTime
-      if (enemy.shootTimer > enemy.shootRate) {
-        shootEnemy(enemy)
-        enemy.shootTimer = 0
+      const shootTimer = Enemy.getShootTimer(stateManager, enemyId)
+      const shootRate = Enemy.getShootRate(stateManager, enemyId)
+      const newShootTimer = shootTimer + deltaTime
+      Enemy.setShootTimer(stateManager, enemyId, newShootTimer)
+
+      if (newShootTimer > shootRate) {
+        // Get necessary game context for shooting
+        const gameState = stateManager.getState('game')
+        if (gameState && gameState.eventDispatcher) {
+          shootEnemy(stateManager, gameState.eventDispatcher, gameState, enemyId)
+        }
+        Enemy.setShootTimer(stateManager, enemyId, 0)
       }
       break
     }
 
     case AI_STATES.SEARCHING: {
-      const player = enemy.game.player
-      if (player && enemy.eventDispatcher) {
-        enemy.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_AI_TARGET_ACQUIRED, {
-          enemy: enemy,
-          target: player
+      const gameState = stateManager.getState('game')
+      if (gameState && gameState.player && gameState.eventDispatcher) {
+        gameState.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_AI_TARGET_ACQUIRED, {
+          enemyId: enemyId,
+          target: gameState.player
         })
       }
       break
@@ -928,105 +1206,130 @@ export function handleAIUpdate(enemy, data) {
     }
   }
 
-  if (enemy.aiState !== AI_STATES.SPAWNING && enemy.aiState !== AI_STATES.DYING) {
-    moveEnemy(enemy, deltaTime)
+  const currentAiState = Enemy.getAIState(stateManager, enemyId)
+  if (currentAiState !== AI_STATES.SPAWNING && currentAiState !== AI_STATES.DYING) {
+    // Use Entity-State architecture for movement
+    const gameState = stateManager.getState('game')
+    const gameContext = {
+      player: gameState?.player,
+      width: gameState?.width || 800,
+      height: gameState?.height || 600,
+      eventDispatcher: gameState?.eventDispatcher
+    }
+
+    if (gameContext.player) {
+      updateEnemyMovement(stateManager, enemyId, deltaTime, gameContext)
+    }
   }
 
-  if (enemy.aiState !== oldAiState) {
-    enemy.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_AI_BEHAVIOR_CHANGE, {
-      enemy: enemy,
-      behavior: enemy.aiState,
-      previousBehavior: oldAiState
-    })
+  const newAiState = Enemy.getAIState(stateManager, enemyId)
+  if (newAiState !== oldAiState) {
+    const gameState = stateManager.getState('game')
+    if (gameState && gameState.eventDispatcher) {
+      gameState.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_AI_BEHAVIOR_CHANGE, {
+        enemyId: enemyId,
+        behavior: newAiState,
+        previousBehavior: oldAiState
+      })
+    }
   }
-}
-
-/**
- * Handle damage events
- * @param {Object} enemy - Enemy POJO state
+} /**
+ * Handle damage events - Entity-State Architecture
+ * @param {Object} stateManager - StateManager instance
+ * @param {string} enemyId - Enemy ID
  * @param {Object} data - Event data
  */
-export function handleDamage(enemy, data) {
+
+export function handleDamage(stateManager, enemyId, data) {
   const { damage } = data
-  const oldHealth = enemy.health
+  const oldHealth = Enemy.getHealth(stateManager, enemyId)
+  const maxHealth = Enemy.getMaxHealth(stateManager, enemyId)
 
-  enemy.health -= damage
+  const newHealth = Math.max(0, oldHealth - damage)
+  Enemy.setHealth(stateManager, enemyId, newHealth)
 
-  // Update state manager if available
-  if (enemy.stateManager && typeof enemy.stateManager.setState === 'function') {
-    enemy.stateManager.setState('enemy.health', enemy.health)
-  }
-
-  enemy.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_HEALTH_CHANGED, {
-    enemy: enemy,
-    health: enemy.health,
-    maxHealth: enemy.maxHealth,
-    previousHealth: oldHealth,
-    damage: damage
-  })
-
-  if (enemy.health <= enemy.maxHealth * CRITICAL_HEALTH_THRESHOLD && enemy.health > 0) {
-    enemy.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_HEALTH_CRITICAL, {
-      enemy: enemy,
-      health: enemy.health,
-      maxHealth: enemy.maxHealth
+  const gameState = stateManager.getState('game')
+  if (gameState && gameState.eventDispatcher) {
+    gameState.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_HEALTH_CHANGED, {
+      enemyId: enemyId,
+      health: newHealth,
+      maxHealth: maxHealth,
+      previousHealth: oldHealth,
+      damage: damage
     })
+
+    if (newHealth <= maxHealth * CRITICAL_HEALTH_THRESHOLD && newHealth > 0) {
+      gameState.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_HEALTH_CRITICAL, {
+        enemyId: enemyId,
+        health: newHealth,
+        maxHealth: maxHealth
+      })
+    }
   }
 
-  if (enemy.health <= 0) {
-    dieEnemy(enemy)
+  if (newHealth <= 0) {
+    const enemyState = Enemy.getEnemyState(stateManager, enemyId)
+    dieEnemy(enemyState)
   }
 }
 
 /**
- * Handle target acquisition
- * @param {Object} enemy - Enemy POJO state
+ * Handle target acquisition - Entity-State Architecture
+ * @param {Object} stateManager - StateManager instance
+ * @param {string} enemyId - Enemy ID
  * @param {Object} data - Event data
  */
-export function handleTargetAcquisition(enemy, data) {
+export function handleTargetAcquisition(stateManager, enemyId, data) {
   const { target } = data
 
   if (target) {
-    enemy.target = target
-    enemy.aiState = AI_STATES.ATTACKING
+    Enemy.setTarget(stateManager, enemyId, target)
+    Enemy.setAIState(stateManager, enemyId, AI_STATES.ATTACKING)
 
-    // Update state manager when target and AI state change
-    if (enemy.stateManager && typeof enemy.stateManager.setState === 'function') {
-      enemy.stateManager.setState('enemy.target', target)
-      enemy.stateManager.setState('enemy.aiState', enemy.aiState)
+    const gameState = stateManager.getState('game')
+    if (gameState && gameState.eventDispatcher) {
+      gameState.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_AI_TARGET_ACQUIRED, {
+        enemyId: enemyId,
+        target: target
+      })
     }
+  }
+}
 
-    enemy.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_AI_TARGET_ACQUIRED, {
-      enemy: enemy,
-      target: target
+/**
+ * Handle bullet collision events - Entity-State Architecture
+ * @param {Object} stateManager - StateManager instance
+ * @param {string} enemyId - Enemy ID
+ * @param {Object} data - Event data
+ */
+export function handleBulletCollision(stateManager, enemyId, data) {
+  const { bullet } = data
+
+  const gameState = stateManager.getState('game')
+  if (gameState && gameState.eventDispatcher) {
+    gameState.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_DAMAGED, {
+      enemyId: enemyId,
+      damage: bullet.damage || 10
     })
   }
 }
 
 /**
- * Handle bullet collision events
- * @param {Object} enemy - Enemy POJO state
- * @param {Object} data - Event data
- */
-export function handleBulletCollision(enemy, data) {
-  const { bullet } = data
-
-  enemy.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_DAMAGED, {
-    enemy: enemy,
-    damage: bullet.damage || 10
-  })
-}
-
-/**
- * Handle player collision events
- * @param {Object} enemy - Enemy POJO state
+ * Handle player collision events - Entity-State Architecture
+ * @param {Object} stateManager - StateManager instance
+ * @param {string} enemyId - Enemy ID
  * @param {Object} _data - Event data (unused)
  */
-export function handlePlayerCollision(enemy, _data) {
-  enemy.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_DAMAGED, {
-    enemy: enemy,
-    damage: enemy.maxHealth
-  })
+export function handlePlayerCollision(stateManager, enemyId, _data) {
+  const maxHealth = Enemy.getMaxHealth(stateManager, enemyId)
+
+  const gameState = stateManager.getState('game')
+  if (gameState && gameState.eventDispatcher) {
+    gameState.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_DAMAGED, {
+      enemyId: enemyId,
+      damage: maxHealth
+    })
+  }
 }
 
 /**
@@ -1401,108 +1704,6 @@ export function drawHealthBar(enemy, ctx) {
   ctx.fillRect(x, y, barWidth * healthPercent, barHeight)
 }
 
-// Legacy wrapper class for backward compatibility with tests
-export default class Enemy {
-  constructor(game, x, y, type) {
-    const enemy = createEnemy(game, x, y, type)
-    return Object.assign(this, enemy)
-  }
+// Note: Legacy class wrapper removed - use functional API with Enemy.* accessors
 
-  update(deltaTime) {
-    return updateEnemy(this, deltaTime)
-  }
-
-  move(deltaTime) {
-    return moveEnemy(this, deltaTime)
-  }
-
-  shoot() {
-    return shootEnemy(this)
-  }
-
-  takeDamage(damage) {
-    return takeDamage(this, damage)
-  }
-
-  render(ctx) {
-    return renderEnemy(this, ctx)
-  }
-
-  die() {
-    return dieEnemy(this)
-  }
-
-  cleanup() {
-    return cleanupEnemy(this)
-  }
-
-  // Drawing methods
-  drawDrone(ctx) {
-    return drawDrone(this, ctx)
-  }
-
-  drawTurret(ctx) {
-    return drawTurret(this, ctx)
-  }
-
-  drawSeeder(ctx) {
-    return drawSeeder(this, ctx)
-  }
-
-  drawFighter(ctx) {
-    return drawFighter(this, ctx)
-  }
-
-  drawBomber(ctx) {
-    return drawBomber(this, ctx)
-  }
-
-  drawScout(ctx) {
-    return drawScout(this, ctx)
-  }
-
-  drawBoss(ctx) {
-    return drawBoss(this, ctx)
-  }
-
-  drawBossHeavy(ctx) {
-    return drawBossHeavy(this, ctx)
-  }
-
-  drawBossFast(ctx) {
-    return drawBossFast(this, ctx)
-  }
-
-  drawBossSniper(ctx) {
-    return drawBossSniper(this, ctx)
-  }
-
-  drawRelayWarden(ctx) {
-    return drawRelayWarden(this, ctx)
-  }
-
-  drawHealthBar(ctx) {
-    return drawHealthBar(this, ctx)
-  }
-
-  // Event handler methods for backward compatibility
-  handleAIUpdate(data) {
-    return handleAIUpdate(this, data)
-  }
-
-  handleDamage(data) {
-    return handleDamage(this, data)
-  }
-
-  handleTargetAcquisition(data) {
-    return handleTargetAcquisition(this, data)
-  }
-
-  handleBulletCollision(data) {
-    return handleBulletCollision(this, data)
-  }
-
-  handlePlayerCollision(data) {
-    return handlePlayerCollision(this, data)
-  }
-}
+// Note: Legacy compatibility layer removed - tests now use Entity-State architecture directly

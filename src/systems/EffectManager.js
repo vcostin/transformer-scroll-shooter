@@ -1,4 +1,4 @@
-import { EffectContext } from '@/systems/EffectContext.js'
+import { createEffectContext } from '@/systems/EffectContext.js'
 import { PatternMatcher } from '@/utils/PatternMatcher.js'
 import { GAME_EVENTS } from '@/constants/game-events.js'
 
@@ -431,7 +431,7 @@ function triggerEffects(effectManager, eventName, data) {
  * @param {*} data - Event data
  */
 function executeEffect(effectManager, patternEntry, eventName, data) {
-  const context = new EffectContext(effectManager, effectManager.eventDispatcher)
+  const context = createEffectContext(effectManager, effectManager.eventDispatcher)
 
   const action = {
     type: eventName,

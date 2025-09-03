@@ -227,9 +227,8 @@ export function createStateAsync(options = {}, callbacks = {}) {
 
       // Emit batch success event
       if (configuration.enableEvents) {
-        onEmitEvent('state:async-batch-success', {
-          operations: operations.map(op => op.path),
-          results: results,
+        onEmitEvent('state:batch-success', {
+          operations: operations.length,
           operationId,
           duration: operationTime,
           timestamp: Date.now()
@@ -282,14 +281,6 @@ export function createStateAsync(options = {}, callbacks = {}) {
     if (activeOperations.has(operationId)) {
       const operation = activeOperations.get(operationId)
       operation.cancelled = true
-
-      // Clear loading state if operation has loadingPath
-      if (operation.options.loadingPath) {
-        onSetState(operation.options.loadingPath, false, {
-          skipHistory: true
-        })
-      }
-
       untrackOperation(operationId)
 
       if (configuration.enableEvents) {
@@ -345,11 +336,11 @@ export function createStateAsync(options = {}, callbacks = {}) {
    * @returns {Object} Statistics object
    */
   function getAsyncStats() {
-    const longestRunningOperation = getLongestRunningOperation()
+    const longestRunning = getLongestRunningOperation()
     return {
       ...stats,
       activeOperations: activeOperations.size,
-      longestRunningOperation
+      longestRunning
     }
   }
 
@@ -380,7 +371,7 @@ export function createStateAsync(options = {}, callbacks = {}) {
    * @returns {string} Unique operation ID
    */
   function generateOperationId() {
-    return `async_${++operationCounter}_${Date.now()}`
+    return `async_op_${++operationCounter}_${Date.now()}`
   }
 
   /**
@@ -497,12 +488,14 @@ export function createStateAsync(options = {}, callbacks = {}) {
 
   /**
    * Update failure statistics
-   * @param {number} _operationTime - Operation duration
-   * @param {Error} _error - Error that occurred
+   * @param {number} operationTime - Operation duration
+   * @param {Error} error - Error that occurred
    */
-  function updateFailureStats(_operationTime, _error) {
+  function updateFailureStats(operationTime, error) {
     stats.failedOperations++
-    // Note: timeout stats are already incremented in withTimeout
+    if (error.message && error.message.includes('timed out')) {
+      stats.timeouts++
+    }
   }
 
   /**
@@ -534,7 +527,7 @@ export function createStateAsync(options = {}, callbacks = {}) {
   function formatError(error) {
     if (typeof error === 'string') return error
     if (error && typeof error === 'object' && error.message) return error.message
-    return 'Unknown error'
+    return 'Unknown error occurred'
   }
 
   /**
@@ -557,27 +550,6 @@ export function createStateAsync(options = {}, callbacks = {}) {
     // Add configuration access for compatibility
     get options() {
       return configuration
-    },
-
-    // Expose stats for test compatibility
-    get stats() {
-      return stats
-    },
-
-    // Expose activeOperations for test compatibility (should behave like a Map)
-    get activeOperations() {
-      return {
-        size: activeOperations.size,
-        has: key => activeOperations.has(key),
-        get: key => activeOperations.get(key),
-        keys: () => activeOperations.keys(),
-        values: () => activeOperations.values(),
-        entries: () => activeOperations.entries(),
-        [Symbol.iterator]: () => activeOperations[Symbol.iterator]()
-      }
-    },
-
-    // Expose generateOperationId method for test compatibility
-    generateOperationId
+    }
   }
 }

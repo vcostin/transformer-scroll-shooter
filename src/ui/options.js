@@ -5,6 +5,17 @@
 
 import { UI_EVENTS, UI_STATE_KEYS, MENU_TYPES } from '@/constants/ui-events.js'
 
+/**
+ * Create an OptionsMenu instance using factory function pattern
+ * @param {Object} game - Game instance
+ * @param {Object} eventDispatcher - Event dispatcher instance
+ * @param {Object} stateManager - State manager instance
+ * @returns {OptionsMenu} OptionsMenu instance
+ */
+export function createOptionsMenu(game, eventDispatcher, stateManager) {
+  return new OptionsMenu(game, eventDispatcher, stateManager)
+}
+
 export class OptionsMenu {
   constructor(game, eventDispatcher, stateManager) {
     // Validate required dependencies

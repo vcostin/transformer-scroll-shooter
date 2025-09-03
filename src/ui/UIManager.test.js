@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { UIManager } from '@/ui/UIManager.js'
+import { UIManager, createUIManager } from '@/ui/UIManager.js'
 import { UI_EVENTS, MENU_TYPES, INPUT_ACTIONS, UI_STATE_KEYS } from '@/constants/ui-events.js'
 
 describe('UI Event Integration System', () => {

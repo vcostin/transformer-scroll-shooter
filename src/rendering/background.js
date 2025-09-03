@@ -3,6 +3,15 @@
  * Handles parallax scrolling backgrounds with multiple layers
  */
 
+/**
+ * Create a Background instance using factory function pattern
+ * @param {Object} game - Game instance
+ * @returns {Background} Background instance
+ */
+export function createBackground(game) {
+  return new Background(game)
+}
+
 export class Background {
   constructor(game) {
     this.game = game

@@ -9,4 +9,4 @@
 export { EventDispatcher, eventDispatcher } from '@/systems/EventDispatcher.js'
 export { StateManager, stateManager } from '@/systems/StateManager.js'
 export { EffectManager } from '@/systems/EffectManager.js'
-export { EffectContext } from '@/systems/EffectContext.js'
+export { createEffectContext } from '@/systems/EffectContext.js'

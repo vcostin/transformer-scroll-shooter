@@ -45,6 +45,16 @@ class ImageCache {
   }
 }
 
+/**
+ * Factory function to create a ParallaxRenderer instance.
+ * @param {object} spec - Level parallax spec (object)
+ * @param {object} options - { baseSpeedPxPerSec, viewport: {width,height} }
+ * @returns {Object} ParallaxRenderer instance
+ */
+export function createParallaxRenderer(spec, options = {}) {
+  return new ParallaxRenderer(spec, options)
+}
+
 export default class ParallaxRenderer {
   /**
    * @param {object} spec - Level parallax spec (object)

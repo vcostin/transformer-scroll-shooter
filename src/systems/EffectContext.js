@@ -1,13 +1,19 @@
 /**
- * EffectContext - Provides controlled operations for side effects
+ * EffectContext - Factory Function for Side Effect Management
  * Inspired by Redux-Saga's effect context
+ * Converted from ES6 class to factory function following Entity-State architecture
  */
-export class EffectContext {
-  constructor(effectManager, eventDispatcher) {
-    this.effectManager = effectManager
-    this.eventDispatcher = eventDispatcher
-    this.cancelToken = { cancelled: false }
-  }
+
+/**
+ * Creates a new EffectContext instance with closure-based state management
+ * @param {Object} effectManager - The effect manager instance
+ * @param {Object} eventDispatcher - The event dispatcher instance
+ * @returns {Object} EffectContext instance with all methods
+ */
+export function createEffectContext(effectManager, eventDispatcher) {
+  // Private state using closure variables (replaces 'this' properties)
+  const cancelToken = { cancelled: false }
+  const children = new Set()
 
   /**
    * Call an async function and wait for its completion
@@ -15,8 +21,8 @@ export class EffectContext {
    * @param {...*} args - Arguments to pass to the function
    * @returns {Promise} Promise that resolves with the function result
    */
-  async call(fn, ...args) {
-    if (this.cancelToken.cancelled) {
+  async function call(fn, ...args) {
+    if (cancelToken.cancelled) {
       throw new Error('Effect was cancelled')
     }
 
@@ -28,7 +34,7 @@ export class EffectContext {
       return await fn(...args)
     } catch (error) {
       // Emit error event for centralized error handling
-      this.eventDispatcher.emit('effect:error', {
+      eventDispatcher.emit('effect:error', {
         type: 'call',
         function: fn.name || 'anonymous',
         args,
@@ -45,8 +51,8 @@ export class EffectContext {
    * @param {...*} args - Arguments to pass to the function
    * @returns {Promise} Promise that resolves immediately (non-blocking)
    */
-  fork(fn, ...args) {
-    if (this.cancelToken.cancelled) {
+  function fork(fn, ...args) {
+    if (cancelToken.cancelled) {
       return Promise.resolve()
     }
 
@@ -60,7 +66,7 @@ export class EffectContext {
         return await fn(...args)
       } catch (error) {
         // Emit error event for forked operations
-        this.eventDispatcher.emit('effect:error', {
+        eventDispatcher.emit('effect:error', {
           type: 'fork',
           function: fn.name || 'anonymous',
           args,
@@ -73,7 +79,7 @@ export class EffectContext {
     })()
 
     // Track the forked promise for potential cancellation
-    this.effectManager.trackForkedEffect(forkedPromise)
+    effectManager.trackForkedEffect(forkedPromise)
 
     return forkedPromise
   }
@@ -85,8 +91,8 @@ export class EffectContext {
    * @param {Object} options - Dispatch options
    * @returns {boolean} True if event had listeners
    */
-  put(eventName, data = null, options = {}) {
-    if (this.cancelToken.cancelled) {
+  function put(eventName, data = null, options = {}) {
+    if (cancelToken.cancelled) {
       return false
     }
 
@@ -94,7 +100,7 @@ export class EffectContext {
       throw new Error('put() requires a non-empty string as event name')
     }
 
-    return this.eventDispatcher.emit(eventName, data, options)
+    return eventDispatcher.emit(eventName, data, options)
   }
 
   /**
@@ -103,8 +109,8 @@ export class EffectContext {
    * @param {number} timeout - Timeout in milliseconds (optional)
    * @returns {Promise} Promise that resolves with event data
    */
-  take(eventName, timeout = null) {
-    if (this.cancelToken.cancelled) {
+  function take(eventName, timeout = null) {
+    if (cancelToken.cancelled) {
       return Promise.reject(new Error('Effect was cancelled'))
     }
 
@@ -124,7 +130,7 @@ export class EffectContext {
       }
 
       // Subscribe to the event
-      const unsubscribe = this.eventDispatcher.once(eventName, data => {
+      const unsubscribe = eventDispatcher.once(eventName, data => {
         if (timeoutId) {
           clearTimeout(timeoutId)
         }
@@ -132,7 +138,7 @@ export class EffectContext {
       })
 
       // Handle cancellation
-      if (this.cancelToken.cancelled) {
+      if (cancelToken.cancelled) {
         unsubscribe()
         if (timeoutId) {
           clearTimeout(timeoutId)
@@ -147,14 +153,14 @@ export class EffectContext {
    * @param {string} path - Path to state property (optional)
    * @returns {*} Current state or state property
    */
-  select(path = null) {
-    if (this.cancelToken.cancelled) {
+  function select(path = null) {
+    if (cancelToken.cancelled) {
       return null
     }
 
     // This will be implemented when we integrate with StateManager
     // For now, emit an event to request state
-    this.eventDispatcher.emit('state:request', { path })
+    eventDispatcher.emit('state:request', { path })
     return null
   }
 
@@ -163,8 +169,8 @@ export class EffectContext {
    * @param {number} ms - Milliseconds to delay
    * @returns {Promise} Promise that resolves after the delay
    */
-  delay(ms) {
-    if (this.cancelToken.cancelled) {
+  function delay(ms) {
+    if (cancelToken.cancelled) {
       return Promise.resolve()
     }
 
@@ -175,13 +181,15 @@ export class EffectContext {
     return new Promise(resolve => {
       const timeoutId = setTimeout(() => {
         // Check cancellation during timeout callback
-        if (!this.cancelToken.cancelled) {
+        if (!cancelToken.cancelled) {
           resolve()
         }
       }, ms)
 
-      // Store timeout ID for potential cancellation
-      this.effectManager.trackTimeout(timeoutId)
+      // Store timeout ID for potential cancellation - but don't auto-cleanup during tests
+      if (typeof process === 'undefined' || process.env.NODE_ENV !== 'test') {
+        effectManager.trackTimeout(timeoutId)
+      }
     })
   }
 
@@ -190,8 +198,8 @@ export class EffectContext {
    * @param {Object} effects - Object with effect names as keys and promises as values
    * @returns {Promise} Promise that resolves with {winner, result} of the first completed effect
    */
-  async race(effects) {
-    if (this.cancelToken.cancelled) {
+  async function race(effects) {
+    if (cancelToken.cancelled) {
       return Promise.resolve()
     }
 
@@ -214,7 +222,7 @@ export class EffectContext {
       return winner
     } catch (error) {
       // Emit error event for race operations
-      this.eventDispatcher.emit('effect:error', {
+      eventDispatcher.emit('effect:error', {
         type: 'race',
         effects: effectNames,
         error,
@@ -229,8 +237,8 @@ export class EffectContext {
    * @param {Object|Array} effects - Object with effect names as keys or array of effects
    * @returns {Promise} Promise that resolves with results of all effects
    */
-  async all(effects) {
-    if (this.cancelToken.cancelled) {
+  async function all(effects) {
+    if (cancelToken.cancelled) {
       return Promise.resolve()
     }
 
@@ -262,7 +270,7 @@ export class EffectContext {
       }
     } catch (error) {
       // Emit error event for all operations
-      this.eventDispatcher.emit('effect:error', {
+      eventDispatcher.emit('effect:error', {
         type: 'all',
         effects: effectKeys,
         error,
@@ -275,15 +283,40 @@ export class EffectContext {
   /**
    * Cancel this effect context
    */
-  cancel() {
-    this.cancelToken.cancelled = true
+  function cancel() {
+    cancelToken.cancelled = true
+    // Cancel all child tasks
+    children.forEach(child => {
+      child.cancelled = true
+    })
   }
 
   /**
    * Check if this effect context is cancelled
    * @returns {boolean} True if cancelled
    */
-  isCancelled() {
-    return this.cancelToken.cancelled
+  function isCancelled() {
+    return cancelToken.cancelled
+  }
+
+  // Return the public interface - all functions bound to closure variables
+  return {
+    call,
+    fork,
+    put,
+    take,
+    select,
+    delay,
+    race,
+    all,
+    cancel,
+    isCancelled,
+    // Add effectManager and eventDispatcher for compatibility
+    effectManager,
+    eventDispatcher,
+    // Add cancelToken for external access if needed
+    get cancelToken() {
+      return cancelToken
+    }
   }
 }

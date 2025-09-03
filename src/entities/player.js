@@ -1,560 +1,741 @@
 /**
- * Player POJO+Functional - Pure Functional Implementation
+ * Player Entity - Stateless Implementation
  *
- * Complete POJO+Functional implementation of player system.
- * Eliminates legacy class wrapper for better performance and testability.
+ * Entity-State Architecture: Stateless player entity operating on global state.
+ * All player data is stored in StateManager, entity functions are pure.
+ * State flows: StateManager → Entity Functions → StateManager → Rendering
  */
 
-import { createBullet } from '@/entities/bullet.js'
-import { TransformEffect } from '@/rendering/effects.js'
-import { PLAYER_EVENTS, PLAYER_STATES, MOVE_DIRECTIONS } from '@/constants/player-events.js'
-import { GAME_EVENTS } from '@/constants/game-events.js'
-import * as MathUtils from '@/utils/math.js'
+import { createBullet, Bullet } from '@/entities/bullet.js'
+import { PLAYER_EVENTS } from '@/constants/player-events.js'
 
 /**
- * Extract payload from event data with fallback
- * @param {Object} data - Event data object
- * @returns {Object} Extracted payload
+ * Player State Schema - Defines the structure in StateManager
  */
-function extractEventPayload(data) {
-  return data.payload || data
+const PLAYER_STATE_SCHEMA = {
+  // Position and physics
+  x: 0,
+  y: 0,
+  width: 40,
+  height: 30,
+
+  // Core stats
+  maxHealth: 100,
+  health: 100,
+  speed: 200,
+
+  // Transformation system
+  modes: ['car', 'scuba', 'boat', 'plane'],
+  currentModeIndex: 0,
+  mode: 'car',
+  transformCooldown: 0,
+
+  // Combat system
+  shootCooldown: 0,
+  baseShootRate: 300,
+  currentShootRate: 300,
+  currentBulletType: 'normal',
+  currentColor: '#ff6600',
+
+  // Enhancement system
+  activePowerups: [],
+  shield: 0,
+
+  // Mode properties cache (derived state)
+  modeProperties: {
+    car: {
+      speed: 250,
+      shootRate: 300,
+      bulletType: 'normal',
+      color: '#ff6600',
+      width: 40,
+      height: 25
+    },
+    scuba: {
+      speed: 150,
+      shootRate: 200,
+      bulletType: 'torpedo',
+      color: '#0066ff',
+      width: 35,
+      height: 30
+    },
+    boat: {
+      speed: 180,
+      shootRate: 400,
+      bulletType: 'cannon',
+      color: '#006600',
+      width: 45,
+      height: 28
+    },
+    plane: {
+      speed: 300,
+      shootRate: 150,
+      bulletType: 'laser',
+      color: '#6600ff',
+      width: 50,
+      height: 20
+    }
+  }
 }
 
 /**
- * Create a new player state object
- * @param {Object} game - Game instance reference
- * @param {number} x - Initial x position
- * @param {number} y - Initial y position
- * @returns {Object} Player state object
+ * Initialize Player State in StateManager
+ * @param {Object} stateManager - StateManager instance
+ * @param {Object} position - Position object {x, y}
  */
-export function createPlayer(game, x, y) {
-  // Validate required event-driven systems
-  if (!game.eventDispatcher) {
-    throw new Error('Player requires game.eventDispatcher for event-driven architecture')
-  }
+export function initializePlayerState(stateManager, position = { x: 400, y: 300 }) {
+  const { x = 400, y = 300 } = position
 
-  if (!game.stateManager) {
-    throw new Error('Player requires game.stateManager for state management')
-  }
-
-  const player = {
-    game,
+  const initialState = {
+    ...PLAYER_STATE_SCHEMA,
     x,
-    y,
-    width: 40,
-    height: 30,
+    y
+  }
 
-    // Stats
-    maxHealth: 100,
-    health: 100,
-    speed: 200,
+  // Initialize all player state paths
+  Object.keys(initialState).forEach(key => {
+    stateManager.setState(`player.${key}`, initialState[key])
+  })
 
-    // Transformer modes
-    modes: ['car', 'scuba', 'boat', 'plane'],
-    currentModeIndex: 0,
-    mode: 'car',
-    transformCooldown: 0,
+  // Apply initial mode properties
+  updatePlayerModeProperties(stateManager)
+}
 
-    // Shooting
-    shootCooldown: 0,
-    baseShootRate: 300, // milliseconds
-    currentShootRate: 300,
+/**
+ * Stateless Player Entity - Pure functions operating on StateManager
+ */
+export const Player = {
+  // === STATE ACCESSORS (READ) ===
 
-    // Power-ups
-    activePowerups: [],
-    shield: 0,
+  getPosition: stateManager => ({
+    x: stateManager.getState('player.x'),
+    y: stateManager.getState('player.y')
+  }),
 
-    // Mode-specific properties
-    modeProperties: {
-      car: {
-        speed: 250,
-        shootRate: 300,
-        bulletType: 'normal',
-        color: '#ff6600',
-        width: 40,
-        height: 25
-      },
-      scuba: {
-        speed: 150,
-        shootRate: 200,
-        bulletType: 'torpedo',
-        color: '#0066ff',
-        width: 35,
-        height: 30
-      },
-      boat: {
-        speed: 180,
-        shootRate: 400,
-        bulletType: 'cannon',
-        color: '#006600',
-        width: 45,
-        height: 28
-      },
-      plane: {
-        speed: 300,
-        shootRate: 150,
-        bulletType: 'laser',
-        color: '#6600ff',
-        width: 50,
-        height: 20
+  getHealth: stateManager => stateManager.getState('player.health'),
+  getMaxHealth: stateManager => stateManager.getState('player.maxHealth'),
+  getMode: stateManager => stateManager.getState('player.mode'),
+  getSpeed: stateManager => stateManager.getState('player.speed'),
+
+  getDimensions: stateManager => ({
+    width: stateManager.getState('player.width'),
+    height: stateManager.getState('player.height')
+  }),
+
+  getCooldowns: stateManager => ({
+    shoot: stateManager.getState('player.shootCooldown'),
+    transform: stateManager.getState('player.transformCooldown')
+  }),
+
+  // === STATE MUTATIONS (WRITE) ===
+
+  setPosition: (stateManager, position) => {
+    stateManager.setState('player.x', position.x)
+    stateManager.setState('player.y', position.y)
+  },
+
+  move: (stateManager, dx, dy) => {
+    const current = Player.getPosition(stateManager)
+    Player.setPosition(stateManager, { x: current.x + dx, y: current.y + dy })
+  },
+
+  setHealth: (stateManager, health) => {
+    const maxHealth = Player.getMaxHealth(stateManager)
+    stateManager.setState('player.health', Math.max(0, Math.min(health, maxHealth)))
+  },
+
+  takeDamage: (stateManager, damage) => {
+    const currentHealth = Player.getHealth(stateManager)
+    Player.setHealth(stateManager, currentHealth - damage)
+  },
+
+  takeDamageWithEvents: (stateManager, eventDispatcher, damage) => {
+    const originalDamage = damage
+    let shieldDamage = 0
+    let actualDamage = damage
+
+    // Handle shield protection
+    const shield = stateManager.getState('player.shield') || 0
+    if (shield > 0) {
+      shieldDamage = Math.min(shield, damage)
+      actualDamage = damage - shieldDamage
+      stateManager.setState('player.shield', shield - shieldDamage)
+    }
+
+    // Apply health damage
+    if (actualDamage > 0) {
+      const currentHealth = Player.getHealth(stateManager)
+      Player.setHealth(stateManager, currentHealth - actualDamage)
+    }
+
+    // Emit damage event with test-compatible payload structure
+    eventDispatcher.emit(PLAYER_EVENTS.PLAYER_DAMAGED, {
+      payload: {
+        player: Player.getPlayerState(stateManager),
+        damage: actualDamage,
+        originalDamage: originalDamage,
+        shieldDamage: shieldDamage
       }
+    })
+  },
+
+  heal: (stateManager, amount) => {
+    const currentHealth = Player.getHealth(stateManager)
+    Player.setHealth(stateManager, currentHealth + amount)
+  },
+
+  // === CORE BEHAVIORS ===
+
+  /**
+   * Update player based on input and time
+   * @param {Object} stateManager - StateManager instance
+   * @param {Object} eventDispatcher - EventDispatcher instance
+   * @param {number} deltaTime - Time since last update
+   * @param {Object} input - Input state object
+   */
+  update: (stateManager, eventDispatcher, deltaTime, input) => {
+    // Update cooldowns
+    const cooldowns = Player.getCooldowns(stateManager)
+    stateManager.setState('player.shootCooldown', Math.max(0, cooldowns.shoot - deltaTime))
+    stateManager.setState('player.transformCooldown', Math.max(0, cooldowns.transform - deltaTime))
+
+    // Handle movement
+    if (input) {
+      Player.handleMovement(stateManager, eventDispatcher, deltaTime, input)
+    }
+
+    // Update powerups
+    Player.updatePowerups(stateManager, deltaTime)
+
+    // Emit update event with test-compatible payload structure
+    eventDispatcher.emit(PLAYER_EVENTS.PLAYER_UPDATED, {
+      payload: {
+        player: Player.getPlayerState(stateManager),
+        deltaTime: deltaTime
+      }
+    })
+  },
+
+  /**
+   * Handle player movement based on input
+   * @param {Object} stateManager - StateManager instance
+   * @param {Object} eventDispatcher - EventDispatcher instance
+   * @param {number} deltaTime - Time since last update
+   * @param {Object} input - Input state object
+   */
+  handleMovement: (stateManager, eventDispatcher, deltaTime, input) => {
+    const speed = Player.getSpeed(stateManager)
+    const moveDistance = speed * (deltaTime / 1000)
+
+    let dx = 0
+    let dy = 0
+
+    if (input.left) dx -= moveDistance
+    if (input.right) dx += moveDistance
+    if (input.up) dy -= moveDistance
+    if (input.down) dy += moveDistance
+
+    if (dx !== 0 || dy !== 0) {
+      Player.move(stateManager, dx, dy)
+
+      // Keep player in bounds (assuming game bounds)
+      const position = Player.getPosition(stateManager)
+      const dimensions = Player.getDimensions(stateManager)
+
+      const clampedX = Math.max(0, Math.min(800 - dimensions.width, position.x))
+      const clampedY = Math.max(0, Math.min(600 - dimensions.height, position.y))
+
+      Player.setPosition(stateManager, { x: clampedX, y: clampedY })
+
+      // Emit movement event with test-compatible payload structure
+      eventDispatcher.emit(PLAYER_EVENTS.PLAYER_MOVED, {
+        payload: {
+          player: Player.getPlayerState(stateManager),
+          deltaTime: deltaTime
+        }
+      })
+    }
+  },
+
+  /**
+   * Transform to next mode
+   * @param {Object} stateManager - StateManager instance
+   * @param {Object} eventDispatcher - EventDispatcher instance
+   */
+  transform: (stateManager, eventDispatcher) => {
+    const cooldowns = Player.getCooldowns(stateManager)
+    if (cooldowns.transform > 0) return false
+
+    const modes = stateManager.getState('player.modes')
+    const currentIndex = stateManager.getState('player.currentModeIndex')
+    const nextIndex = (currentIndex + 1) % modes.length
+    const nextMode = modes[nextIndex]
+
+    // Update mode state
+    stateManager.setState('player.currentModeIndex', nextIndex)
+    stateManager.setState('player.mode', nextMode)
+    stateManager.setState('player.transformCooldown', 1000) // 1 second cooldown
+
+    // Apply new mode properties
+    updatePlayerModeProperties(stateManager)
+
+    // Emit transformation event with test-compatible payload structure
+    eventDispatcher.emit(PLAYER_EVENTS.PLAYER_TRANSFORMED, {
+      payload: {
+        player: Player.getPlayerState(stateManager),
+        oldMode: modes[currentIndex],
+        newMode: nextMode,
+        modeIndex: nextIndex
+      }
+    })
+
+    return true
+  },
+
+  /**
+   * Attempt to shoot
+   * @param {Object} stateManager - StateManager instance
+   * @param {Object} eventDispatcher - EventDispatcher instance
+   * @param {Object} game - Game instance for bullet creation
+   */
+  shoot: (stateManager, eventDispatcher, game) => {
+    const cooldowns = Player.getCooldowns(stateManager)
+    if (cooldowns.shoot > 0) return false
+
+    const position = Player.getPosition(stateManager)
+    const dimensions = Player.getDimensions(stateManager)
+    const bulletType = stateManager.getState('player.currentBulletType')
+    const shootRate = stateManager.getState('player.currentShootRate')
+
+    // Create bullet using StateManager API
+    const bulletId = createBullet(stateManager, {
+      position: {
+        x: position.x + dimensions.width / 2,
+        y: position.y + dimensions.height / 2 // Front of player
+      },
+      velocity: {
+        x: 400, // velocityX (forward movement)
+        y: 0 // velocityY (horizontal shot)
+      },
+      type: bulletType,
+      friendly: true // player bullet
+    })
+
+    // Add to game bullets array for compatibility with game loop
+    if (game.bullets) {
+      // Get the bullet object for the game.bullets array
+      const bulletState = Bullet.getBulletState(stateManager, bulletId)
+      if (bulletState) {
+        game.bullets.push({ id: bulletId, ...bulletState })
+      }
+    }
+
+    // Set cooldown
+    stateManager.setState('player.shootCooldown', shootRate)
+
+    // Emit shoot event with test-compatible payload structure
+    eventDispatcher.emit(PLAYER_EVENTS.PLAYER_SHOT, {
+      payload: {
+        player: Player.getPlayerState(stateManager),
+        bullet: {
+          id: bulletId,
+          type: bulletType,
+          x: position.x + dimensions.width / 2,
+          y: position.y
+        }
+      }
+    })
+
+    return true
+  },
+
+  /**
+   * Update active powerups
+   * @param {Object} stateManager - StateManager instance
+   * @param {number} deltaTime - Time since last update
+   */
+  updatePowerups: (stateManager, deltaTime) => {
+    const powerups = stateManager.getState('player.activePowerups') || []
+
+    // Ensure powerups is an array
+    if (!Array.isArray(powerups)) {
+      stateManager.setState('player.activePowerups', [])
+      return
+    }
+
+    const updatedPowerups = powerups
+      .map(powerup => ({
+        ...powerup,
+        duration: powerup.duration - deltaTime
+      }))
+      .filter(powerup => powerup.duration > 0)
+
+    stateManager.setState('player.activePowerups', updatedPowerups)
+
+    // Update shield
+    const shield = stateManager.getState('player.shield')
+    if (shield > 0) {
+      stateManager.setState('player.shield', Math.max(0, shield - deltaTime))
+    }
+  },
+
+  // === PLAYER MANAGEMENT ===
+
+  /**
+   * Get complete player state as object for compatibility
+   * @param {Object} stateManager - StateManager instance
+   * @returns {Object} Complete player state
+   */
+  getPlayerState: stateManager => {
+    const position = Player.getPosition(stateManager)
+    const dimensions = Player.getDimensions(stateManager)
+
+    return {
+      position,
+      ...dimensions,
+      health: Player.getHealth(stateManager),
+      maxHealth: Player.getMaxHealth(stateManager),
+      mode: Player.getMode(stateManager),
+      speed: Player.getSpeed(stateManager),
+      modes: stateManager.getState('player.modes'),
+      currentModeIndex: stateManager.getState('player.currentModeIndex'),
+      transformCooldown: stateManager.getState('player.transformCooldown'),
+      shootCooldown: stateManager.getState('player.shootCooldown'),
+      // Legacy compatibility properties
+      x: position.x,
+      y: position.y
+    }
+  },
+
+  // === RENDERING (PURE) ===
+
+  /**
+   * Render player based on current state
+   * @param {Object} stateManager - StateManager instance
+   * @param {CanvasRenderingContext2D} ctx - Canvas context
+   */
+  render: (stateManager, ctx) => {
+    const mode = Player.getMode(stateManager)
+
+    // Render based on current mode
+    switch (mode) {
+      case 'car':
+        Player.drawCar(stateManager, ctx)
+        break
+      case 'scuba':
+        Player.drawScuba(stateManager, ctx)
+        break
+      case 'boat':
+        Player.drawBoat(stateManager, ctx)
+        break
+      case 'plane':
+        Player.drawPlane(stateManager, ctx)
+        break
+    }
+
+    // Render health bar
+    Player.drawHealthBar(stateManager, ctx)
+
+    // Render shield if active
+    const shield = stateManager.getState('player.shield')
+    if (shield > 0) {
+      Player.drawShield(stateManager, ctx)
+    }
+  },
+
+  /**
+   * Draw car mode
+   * @param {Object} stateManager - StateManager instance
+   * @param {CanvasRenderingContext2D} ctx - Canvas context
+   */
+  drawCar: (stateManager, ctx) => {
+    const position = Player.getPosition(stateManager)
+    const dimensions = Player.getDimensions(stateManager)
+    const color = stateManager.getState('player.currentColor')
+
+    ctx.fillStyle = color
+    ctx.fillRect(position.x, position.y, dimensions.width, dimensions.height)
+
+    // Add car details
+    ctx.fillStyle = '#333'
+    ctx.fillRect(position.x + 5, position.y + 5, dimensions.width - 10, 5)
+    ctx.fillRect(position.x + 5, position.y + dimensions.height - 10, dimensions.width - 10, 5)
+  },
+
+  /**
+   * Draw scuba mode
+   * @param {Object} stateManager - StateManager instance
+   * @param {CanvasRenderingContext2D} ctx - Canvas context
+   */
+  drawScuba: (stateManager, ctx) => {
+    const position = Player.getPosition(stateManager)
+    const dimensions = Player.getDimensions(stateManager)
+    const color = stateManager.getState('player.currentColor')
+
+    ctx.fillStyle = color
+    ctx.fillRect(position.x, position.y, dimensions.width, dimensions.height)
+
+    // Add bubble effects
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'
+    ctx.beginPath()
+    ctx.arc(position.x - 5, position.y + 10, 3, 0, Math.PI * 2)
+    ctx.arc(position.x - 8, position.y + 5, 2, 0, Math.PI * 2)
+    ctx.fill()
+  },
+
+  /**
+   * Draw boat mode
+   * @param {Object} stateManager - StateManager instance
+   * @param {CanvasRenderingContext2D} ctx - Canvas context
+   */
+  drawBoat: (stateManager, ctx) => {
+    const position = Player.getPosition(stateManager)
+    const dimensions = Player.getDimensions(stateManager)
+    const color = stateManager.getState('player.currentColor')
+
+    ctx.fillStyle = color
+    ctx.fillRect(position.x, position.y, dimensions.width, dimensions.height)
+
+    // Add sail
+    ctx.fillStyle = '#fff'
+    ctx.fillRect(position.x + dimensions.width / 2 - 2, position.y - 10, 4, 15)
+  },
+
+  /**
+   * Draw plane mode
+   * @param {Object} stateManager - StateManager instance
+   * @param {CanvasRenderingContext2D} ctx - Canvas context
+   */
+  drawPlane: (stateManager, ctx) => {
+    const position = Player.getPosition(stateManager)
+    const dimensions = Player.getDimensions(stateManager)
+    const color = stateManager.getState('player.currentColor')
+
+    ctx.fillStyle = color
+    ctx.fillRect(position.x, position.y, dimensions.width, dimensions.height)
+
+    // Add wings
+    ctx.fillStyle = '#ccc'
+    ctx.fillRect(position.x - 5, position.y + dimensions.height / 2 - 2, dimensions.width + 10, 4)
+  },
+
+  /**
+   * Draw health bar
+   * @param {Object} stateManager - StateManager instance
+   * @param {CanvasRenderingContext2D} ctx - Canvas context
+   */
+  drawHealthBar: (stateManager, ctx) => {
+    const position = Player.getPosition(stateManager)
+    const health = Player.getHealth(stateManager)
+    const maxHealth = Player.getMaxHealth(stateManager)
+    const healthPercent = health / maxHealth
+
+    const barWidth = 40
+    const barHeight = 4
+    const barX = position.x
+    const barY = position.y - 10
+
+    // Background
+    ctx.fillStyle = '#333'
+    ctx.fillRect(barX, barY, barWidth, barHeight)
+
+    // Health
+    ctx.fillStyle = healthPercent > 0.5 ? '#0f0' : healthPercent > 0.25 ? '#ff0' : '#f00'
+    ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight)
+  },
+
+  /**
+   * Draw shield effect
+   * @param {Object} stateManager - StateManager instance
+   * @param {CanvasRenderingContext2D} ctx - Canvas context
+   */
+  drawShield: (stateManager, ctx) => {
+    const position = Player.getPosition(stateManager)
+    const dimensions = Player.getDimensions(stateManager)
+
+    ctx.strokeStyle = 'rgba(0, 150, 255, 0.8)'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.arc(
+      position.x + dimensions.width / 2,
+      position.y + dimensions.height / 2,
+      Math.max(dimensions.width, dimensions.height) / 2 + 5,
+      0,
+      Math.PI * 2
+    )
+    ctx.stroke()
+  }
+}
+
+/**
+ * Update player mode properties in StateManager
+ * @param {Object} stateManager - StateManager instance
+ */
+function updatePlayerModeProperties(stateManager) {
+  const mode = stateManager.getState('player.mode')
+  const modeProperties = stateManager.getState('player.modeProperties')
+  const currentModeProps = modeProperties[mode]
+
+  if (currentModeProps) {
+    stateManager.setState('player.speed', currentModeProps.speed)
+    stateManager.setState('player.currentShootRate', currentModeProps.shootRate)
+    stateManager.setState('player.currentBulletType', currentModeProps.bulletType)
+    stateManager.setState('player.currentColor', currentModeProps.color)
+    stateManager.setState('player.width', currentModeProps.width)
+    stateManager.setState('player.height', currentModeProps.height)
+  }
+}
+
+/**
+ * Create player using stateless architecture
+ * @param {Object} game - Game instance
+ * @param {Object} position - Position object {x, y}
+ * @returns {Object} Player API object
+ */
+export function createPlayer(game, position) {
+  // Validate that we have required systems
+  if (!game.stateManager || !game.eventDispatcher) {
+    throw new Error('Player requires stateManager and eventDispatcher in game object')
+  }
+
+  // Initialize state in StateManager
+  initializePlayerState(game.stateManager, position)
+
+  // Return API object that uses the stateless entity with backward compatibility
+  const playerApi = {
+    // Expose stateless entity methods bound to game systems
+    update: (deltaTime, input) =>
+      Player.update(game.stateManager, game.eventDispatcher, deltaTime, input),
+    render: ctx => Player.render(game.stateManager, ctx),
+    transform: () => Player.transform(game.stateManager, game.eventDispatcher),
+    shoot: () => Player.shoot(game.stateManager, game.eventDispatcher, game),
+    takeDamage: damage =>
+      Player.takeDamageWithEvents(game.stateManager, game.eventDispatcher, damage),
+    heal: amount => Player.heal(game.stateManager, amount),
+
+    // Expose getters for backward compatibility
+    get x() {
+      const pos = Player.getPosition(game.stateManager)
+      return pos ? pos.x : 0
+    },
+    get y() {
+      const pos = Player.getPosition(game.stateManager)
+      return pos ? pos.y : 0
+    },
+    get health() {
+      const health = Player.getHealth(game.stateManager)
+      return health !== undefined ? health : 100
+    },
+    get maxHealth() {
+      const maxHealth = Player.getMaxHealth(game.stateManager)
+      return maxHealth !== undefined ? maxHealth : 100
+    },
+    get mode() {
+      const mode = Player.getMode(game.stateManager)
+      return mode !== undefined ? mode : 'car'
+    },
+    get speed() {
+      const speed = Player.getSpeed(game.stateManager)
+      return speed !== undefined ? speed : 250
+    },
+    get width() {
+      const dims = Player.getDimensions(game.stateManager)
+      return dims ? dims.width : 40
+    },
+    get height() {
+      const dims = Player.getDimensions(game.stateManager)
+      return dims ? dims.height : 30
     },
 
-    // Event-driven architecture references
-    eventDispatcher: game.eventDispatcher,
+    // Additional backward compatibility getters
+    get modes() {
+      return game.stateManager.getState('player.modes')
+    },
+    get currentModeIndex() {
+      return game.stateManager.getState('player.currentModeIndex')
+    },
+    get transformCooldown() {
+      return game.stateManager.getState('player.transformCooldown')
+    },
+    get shootCooldown() {
+      return game.stateManager.getState('player.shootCooldown')
+    },
+    get baseShootRate() {
+      return game.stateManager.getState('player.baseShootRate')
+    },
+    get currentShootRate() {
+      return game.stateManager.getState('player.currentShootRate')
+    },
+    get currentBulletType() {
+      return game.stateManager.getState('player.currentBulletType')
+    },
+    get currentColor() {
+      return game.stateManager.getState('player.currentColor')
+    },
+    get activePowerups() {
+      return game.stateManager.getState('player.activePowerups')
+    },
+    get shield() {
+      return game.stateManager.getState('player.shield')
+    },
+    get modeProperties() {
+      return game.stateManager.getState('player.modeProperties')
+    },
+
+    // Expose direct state access for advanced use
     stateManager: game.stateManager,
-    effectManager: game.effectManager
+    eventDispatcher: game.eventDispatcher
   }
 
-  // Set properties based on current mode and return initialized player
-  return updatePlayerModeProperties(player)
+  return playerApi
 }
 
-/**
- * Update player mode properties based on current mode
- * @param {Object} player - Player state object
- * @returns {Object} Updated player state with mode properties applied
- */
-function updatePlayerModeProperties(player) {
-  const currentModeProps = player.modeProperties[player.mode]
-
-  return {
-    ...player,
-    speed: currentModeProps.speed,
-    currentShootRate: currentModeProps.shootRate,
-    currentBulletType: currentModeProps.bulletType,
-    currentColor: currentModeProps.color,
-    width: currentModeProps.width,
-    height: currentModeProps.height
+// Legacy function exports for backward compatibility
+export function updatePlayer(playerApi, deltaTime, input) {
+  if (playerApi && typeof playerApi.update === 'function') {
+    playerApi.update(deltaTime, input)
   }
+  return playerApi
 }
 
-/**
- * Update player state and handle input
- * @param {Object} player - Player state object
- * @param {number} deltaTime - Time since last update
- * @param {Object} input - Input state object
- * @returns {Object} Updated player state
- */
-export function updatePlayer(player, deltaTime, input) {
-  let updatedPlayer = { ...player }
-
-  // Update cooldowns
-  updatedPlayer.shootCooldown = Math.max(0, updatedPlayer.shootCooldown - deltaTime)
-  updatedPlayer.transformCooldown = Math.max(0, updatedPlayer.transformCooldown - deltaTime)
-
-  // Handle movement
-  if (input) {
-    updatedPlayer = movePlayer(updatedPlayer, deltaTime, input)
+export function renderPlayer(playerApi, ctx) {
+  if (playerApi && typeof playerApi.render === 'function') {
+    playerApi.render(ctx)
   }
-
-  // Handle transformation
-  if (input && input.transform && updatedPlayer.transformCooldown <= 0) {
-    updatedPlayer = transformPlayer(updatedPlayer)
-  }
-
-  // Handle shooting
-  if (input && input.shoot && updatedPlayer.shootCooldown <= 0) {
-    updatedPlayer = shootPlayer(updatedPlayer)
-  }
-
-  // Update power-ups
-  updatedPlayer = updatePowerups(updatedPlayer, deltaTime)
-
-  // Emit update event
-  if (updatedPlayer.eventDispatcher) {
-    updatedPlayer.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_UPDATED, {
-      payload: { player: updatedPlayer, deltaTime }
-    })
-  }
-
-  return updatedPlayer
+  return playerApi
 }
 
-/**
- * Move player based on input
- * @param {Object} player - Player state object
- * @param {number} deltaTime - Time since last update
- * @param {Object} input - Input state object
- * @returns {Object} Updated player state
- */
-export function movePlayer(player, deltaTime, input) {
-  const moveSpeed = (player.speed * deltaTime) / 1000
-  let newX = player.x
-  let newY = player.y
-  let hasMoved = false
-
-  // Horizontal movement
-  if (input.left && newX > 0) {
-    newX = Math.max(0, newX - moveSpeed)
-    hasMoved = true
+export function transformPlayer(playerApi) {
+  if (playerApi && typeof playerApi.transform === 'function') {
+    playerApi.transform()
   }
-
-  if (input.right && newX < player.game.canvas.width - player.width) {
-    newX = Math.min(player.game.canvas.width - player.width, newX + moveSpeed)
-    hasMoved = true
-  }
-
-  // Vertical movement
-  if (input.up && newY > 0) {
-    newY = Math.max(0, newY - moveSpeed)
-    hasMoved = true
-  }
-
-  if (input.down && newY < player.game.canvas.height - player.height) {
-    newY = Math.min(player.game.canvas.height - player.height, newY + moveSpeed)
-    hasMoved = true
-  }
-
-  const updatedPlayer = { ...player, x: newX, y: newY }
-
-  // Emit movement events if moved
-  if (hasMoved && player.eventDispatcher) {
-    player.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_MOVED, {
-      payload: { player: updatedPlayer, deltaTime }
-    })
-
-    // Update state manager
-    if (player.stateManager) {
-      player.stateManager.setState('player.position', { x: newX, y: newY })
-    }
-  }
-
-  return updatedPlayer
+  return playerApi
 }
 
-/**
- * Transform player to next mode
- * @param {Object} player - Player state object
- * @returns {Object} Updated player state
- */
-export function transformPlayer(player) {
-  const oldMode = player.mode
-  const newModeIndex = (player.currentModeIndex + 1) % player.modes.length
-  const newMode = player.modes[newModeIndex]
-
-  let updatedPlayer = {
-    ...player,
-    currentModeIndex: newModeIndex,
-    mode: newMode,
-    transformCooldown: 1000 // 1 second cooldown
+export function shootPlayer(playerApi) {
+  if (playerApi && typeof playerApi.shoot === 'function') {
+    playerApi.shoot()
   }
-
-  // Apply new mode properties
-  updatedPlayer = updatePlayerModeProperties(updatedPlayer)
-
-  // Create transform effect
-  if (player.game) {
-    const effect = new TransformEffect(
-      player.game,
-      player.x + player.width / 2,
-      player.y + player.height / 2
-    )
-    player.game.addEffect(effect)
-  }
-
-  // Emit transformation events
-  if (player.eventDispatcher) {
-    player.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_TRANSFORMED, {
-      payload: {
-        player: updatedPlayer,
-        oldMode,
-        newMode,
-        modeIndex: newModeIndex
-      }
-    })
-
-    // Update state manager
-    if (player.stateManager) {
-      player.stateManager.setState('player.mode', newMode)
-      player.stateManager.setState('player.modeIndex', newModeIndex)
-    }
-  }
-
-  return updatedPlayer
+  return playerApi
 }
 
-/**
- * Make player shoot a bullet
- * @param {Object} player - Player state object
- * @returns {Object} Updated player state
- */
-export function shootPlayer(player) {
-  const bulletX = player.x + player.width
-  const bulletY = player.y + player.height / 2
-
-  // Create bullet using functional approach
-  const bullet = createBullet(
-    player.game,
-    bulletX,
-    bulletY,
-    200, // velocityX
-    0, // velocityY
-    player.currentBulletType || 'normal',
-    true // friendly (player bullet)
-  )
-
-  // Add bullet to game
-  if (player.game && player.game.bullets) {
-    player.game.bullets.push(bullet)
+export function takeDamagePlayer(playerApi, damage) {
+  if (playerApi && playerApi.stateManager && playerApi.eventDispatcher) {
+    // Use the event-driven version
+    Player.takeDamageWithEvents(playerApi.stateManager, playerApi.eventDispatcher, damage)
+  } else if (playerApi && typeof playerApi.takeDamage === 'function') {
+    playerApi.takeDamage(damage)
+  } else if (playerApi && typeof playerApi.health === 'number') {
+    // Fallback for mock objects - directly modify health
+    playerApi.health = Math.max(0, playerApi.health - damage)
   }
-
-  const updatedPlayer = {
-    ...player,
-    shootCooldown: player.currentShootRate
-  }
-
-  // Emit shoot event
-  if (player.eventDispatcher) {
-    player.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_SHOT, {
-      payload: { player: updatedPlayer, bullet }
-    })
-
-    // Update state manager
-    if (player.stateManager) {
-      player.stateManager.setState('player.bullets', (player.game.bullets || []).length)
-    }
-  }
-
-  return updatedPlayer
+  return playerApi
 }
 
-/**
- * Apply damage to player
- * @param {Object} player - Player state object
- * @param {number} damage - Damage amount
- * @returns {Object} Updated player state
- */
-export function takeDamagePlayer(player, damage) {
-  // Apply shield if available
-  let actualDamage = damage
-  const updatedPlayer = { ...player }
-
-  if (updatedPlayer.shield > 0) {
-    const shieldAbsorbed = Math.min(actualDamage, updatedPlayer.shield)
-    actualDamage -= shieldAbsorbed
-    updatedPlayer.shield -= shieldAbsorbed
+export function movePlayer(playerApi, deltaTime, input) {
+  // Handle movement using the stateless player update that emits PLAYER_MOVED
+  if (playerApi && typeof playerApi.update === 'function') {
+    playerApi.update(deltaTime, input)
   }
-
-  // Apply remaining damage to health
-  updatedPlayer.health = Math.max(0, updatedPlayer.health - actualDamage)
-
-  // Emit damage event
-  if (player.eventDispatcher) {
-    player.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_DAMAGED, {
-      payload: {
-        player: updatedPlayer,
-        damage: actualDamage,
-        originalDamage: damage,
-        shieldDamage: damage - actualDamage
-      }
-    })
-
-    // Check for death
-    if (updatedPlayer.health <= 0) {
-      player.eventDispatcher.emit(PLAYER_EVENTS.PLAYER_DIED, {
-        payload: { player: updatedPlayer }
-      })
-    }
-
-    // Update state manager
-    if (player.stateManager) {
-      player.stateManager.setState('player.health', updatedPlayer.health)
-      player.stateManager.setState('player.shield', updatedPlayer.shield)
-    }
-  }
-
-  return updatedPlayer
-}
-
-/**
- * Update active power-ups
- * @param {Object} player - Player state object
- * @param {number} deltaTime - Time since last update
- * @returns {Object} Updated player state
- */
-export function updatePowerups(player, deltaTime) {
-  // Ensure activePowerups is always an array
-  const currentPowerups = player.activePowerups || []
-
-  const updatedPowerups = currentPowerups
-    .map(powerup => ({
-      ...powerup,
-      duration: powerup.duration - deltaTime
-    }))
-    .filter(powerup => powerup.duration > 0)
-
-  const updatedPlayer = {
-    ...player,
-    activePowerups: updatedPowerups
-  }
-
-  // Emit powerup events if any expired
-  if (updatedPowerups.length !== currentPowerups.length && player.eventDispatcher) {
-    const expiredPowerups = currentPowerups.filter(
-      old => !updatedPowerups.find(current => current.id === old.id)
-    )
-
-    expiredPowerups.forEach(powerup => {
-      player.eventDispatcher.emit(PLAYER_EVENTS.POWERUP_EXPIRED, {
-        payload: { player: updatedPlayer, powerup }
-      })
-    })
-  }
-
-  return updatedPlayer
-}
-
-/**
- * Render player to canvas
- * @param {Object} player - Player state object
- * @param {CanvasRenderingContext2D} ctx - Canvas context
- */
-export function renderPlayer(player, ctx) {
-  if (!player || !ctx) {
-    return
-  }
-
-  ctx.save()
-  ctx.fillStyle = player.currentColor || player.modeProperties[player.mode].color
-
-  // Draw player based on current mode
-  switch (player.mode) {
-    case 'car':
-      drawCar(player, ctx)
-      break
-    case 'scuba':
-      drawScuba(player, ctx)
-      break
-    case 'boat':
-      drawBoat(player, ctx)
-      break
-    case 'plane':
-      drawPlane(player, ctx)
-      break
-    default:
-      drawCar(player, ctx)
-  }
-
-  // Draw health bar if damaged
-  if (player.health < player.maxHealth) {
-    drawHealthBar(player, ctx)
-  }
-
-  ctx.restore()
-}
-
-/**
- * Draw car mode
- * @param {Object} player - Player state object
- * @param {CanvasRenderingContext2D} ctx - Canvas context
- */
-export function drawCar(player, ctx) {
-  // Body
-  ctx.fillRect(player.x, player.y + 5, player.width - 5, player.height - 10)
-
-  // Front
-  ctx.fillRect(player.x + player.width - 5, player.y + 8, 5, player.height - 16)
-
-  // Wheels
-  ctx.fillStyle = '#333'
-  ctx.fillRect(player.x + 5, player.y, 8, 5)
-  ctx.fillRect(player.x + 5, player.y + player.height - 5, 8, 5)
-  ctx.fillRect(player.x + player.width - 15, player.y, 8, 5)
-  ctx.fillRect(player.x + player.width - 15, player.y + player.height - 5, 8, 5)
-}
-
-/**
- * Draw scuba mode
- * @param {Object} player - Player state object
- * @param {CanvasRenderingContext2D} ctx - Canvas context
- */
-export function drawScuba(player, ctx) {
-  // Body
-  ctx.fillRect(player.x + 5, player.y + 5, player.width - 10, player.height - 10)
-
-  // Fins
-  ctx.fillRect(player.x, player.y + 8, 5, player.height - 16)
-
-  // Tank
-  ctx.fillStyle = '#ccc'
-  ctx.fillRect(player.x + player.width - 8, player.y + 2, 8, player.height - 4)
-
-  // Bubbles effect (simple)
-  ctx.fillStyle = '#87CEEB'
-  ctx.beginPath()
-  ctx.arc(player.x + player.width + 5, player.y + player.height / 2, 2, 0, Math.PI * 2)
-  ctx.fill()
-}
-
-/**
- * Draw boat mode
- * @param {Object} player - Player state object
- * @param {CanvasRenderingContext2D} ctx - Canvas context
- */
-export function drawBoat(player, ctx) {
-  // Hull
-  ctx.beginPath()
-  ctx.moveTo(player.x, player.y + player.height / 2)
-  ctx.lineTo(player.x + player.width - 10, player.y + player.height / 2 - 5)
-  ctx.lineTo(player.x + player.width, player.y + player.height / 2)
-  ctx.lineTo(player.x + player.width - 5, player.y + player.height)
-  ctx.lineTo(player.x + 5, player.y + player.height)
-  ctx.closePath()
-  ctx.fill()
-
-  // Mast
-  ctx.fillStyle = '#8B4513'
-  ctx.fillRect(player.x + player.width / 2, player.y, 3, player.height / 2)
-
-  // Sail
-  ctx.fillStyle = '#fff'
-  ctx.fillRect(player.x + player.width / 2 + 3, player.y + 2, 15, 12)
-}
-
-/**
- * Draw plane mode
- * @param {Object} player - Player state object
- * @param {CanvasRenderingContext2D} ctx - Canvas context
- */
-export function drawPlane(player, ctx) {
-  // Fuselage
-  ctx.fillRect(player.x + 10, player.y + player.height / 2 - 3, player.width - 15, 6)
-
-  // Wings
-  ctx.fillRect(player.x + 15, player.y + 2, 20, 4)
-  ctx.fillRect(player.x + 15, player.y + player.height - 6, 20, 4)
-
-  // Tail
-  ctx.fillRect(player.x, player.y + player.height / 2 - 8, 15, 4)
-  ctx.fillRect(player.x, player.y + player.height / 2 + 4, 15, 4)
-
-  // Nose
-  ctx.beginPath()
-  ctx.moveTo(player.x + player.width - 5, player.y + player.height / 2)
-  ctx.lineTo(player.x + player.width, player.y + player.height / 2 - 5)
-  ctx.lineTo(player.x + player.width, player.y + player.height / 2 + 5)
-  ctx.closePath()
-  ctx.fill()
-}
-
-/**
- * Draw health bar
- * @param {Object} player - Player state object
- * @param {CanvasRenderingContext2D} ctx - Canvas context
- */
-export function drawHealthBar(player, ctx) {
-  const barWidth = 40
-  const barHeight = 4
-  const x = player.x + (player.width - barWidth) / 2
-  const y = player.y - 10
-
-  // Background
-  ctx.fillStyle = '#333'
-  ctx.fillRect(x, y, barWidth, barHeight)
-
-  // Health
-  const healthPercent = player.health / player.maxHealth
-  ctx.fillStyle = healthPercent > 0.5 ? '#00ff00' : healthPercent > 0.25 ? '#ffff00' : '#ff0000'
-  ctx.fillRect(x, y, barWidth * healthPercent, barHeight)
+  return playerApi
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { EffectManager } from '@/systems/EffectManager.js'
-import { EffectContext } from '@/systems/EffectContext.js'
+import { createEffectContext } from '@/systems/EffectContext.js'
 import { createMockEventSystems } from '@test/game-test-utils.js'
 
 describe('EffectManager', () => {
@@ -219,7 +219,7 @@ describe('EffectManager', () => {
           payload: { data: 'test' },
           timestamp: expect.any(Number)
         }),
-        expect.any(EffectContext)
+        expect.any(Object)
       )
     })
   })

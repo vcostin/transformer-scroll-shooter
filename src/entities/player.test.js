@@ -16,7 +16,7 @@ import {
 import { PLAYER_EVENTS, PLAYER_STATES, MOVE_DIRECTIONS } from '@/constants/player-events.js'
 import { EventDispatcher, createEventDispatcher } from '@/systems/EventDispatcher.js'
 import { StateManager, createStateManager } from '@/systems/StateManager.js'
-import { EffectManager } from '@/systems/EffectManager.js'
+import { createEffectManager } from '@/systems/EffectManager.js'
 import { createMockGameObject, createMockEventSystems } from '@test/game-test-utils.js'
 
 describe('Player', () => {
@@ -65,12 +65,12 @@ describe('Player', () => {
     }
 
     // Create EffectManager using the same instances
-    mockGame.effectManager = new EffectManager(mockGame.eventDispatcher)
+    mockGame.effectManager = createEffectManager(mockGame.eventDispatcher)
 
     // Start the EffectManager so effects are processed
     mockGame.effectManager.start()
 
-    player = createPlayer(mockGame, 100, 300)
+    player = createPlayer(mockGame, { x: 100, y: 300 })
   })
 
   afterEach(() => {
@@ -302,7 +302,7 @@ describe('Player', () => {
     it('should clean up event listeners when destroyed', () => {
       // With functional architecture, cleanup is handled automatically
       // The player object doesn't need a destroy method
-      const newPlayer = createPlayer(mockGame, 100, 300)
+      const newPlayer = createPlayer(mockGame, { x: 100, y: 300 })
 
       // Functional objects don't need destroy methods
       expect(newPlayer).toBeDefined()
@@ -327,7 +327,7 @@ describe('Player', () => {
       eventSpy = vi.spyOn(mockEventSystems.eventDispatcher, 'emit')
       stateSpy = vi.spyOn(mockEventSystems.stateManager, 'setState')
       // Create new player with event-driven features
-      player = createPlayer(mockGame, 100, 300)
+      player = createPlayer(mockGame, { x: 100, y: 300 })
       // Clear initial PLAYER_STATE_INIT event
       eventSpy.mockClear()
     })
@@ -374,7 +374,7 @@ describe('Player', () => {
       player = transformPlayer(player)
 
       expect(stateSpy).toHaveBeenCalledWith('player.mode', player.mode)
-      expect(stateSpy).toHaveBeenCalledWith('player.modeIndex', player.currentModeIndex)
+      expect(stateSpy).toHaveBeenCalledWith('player.currentModeIndex', player.currentModeIndex)
     })
 
     it('should emit events when using legacy movement', () => {
@@ -403,7 +403,7 @@ describe('Player', () => {
 
       // Should throw errors as event systems are now required
       expect(() => {
-        createPlayer(mockGameNoEvents, 100, 300)
+        createPlayer(mockGameNoEvents, { x: 100, y: 300 })
       }).toThrow()
     })
   })
@@ -418,7 +418,7 @@ describe('Player', () => {
 
       // Spy on setState method
       const stateSpy = vi.spyOn(mockEventSystems.stateManager, 'setState')
-      const player = createPlayer(mockGame, 100, 300)
+      const player = createPlayer(mockGame, { x: 100, y: 300 })
 
       // In functional architecture, createPlayer just creates the object
       // State initialization happens through game operations, not automatically

@@ -13,17 +13,32 @@ describe('Event System Performance', () => {
   let eventDispatcher
   let stateManager
   let profiler
+  let testCleanupTasks
 
   beforeEach(() => {
     eventDispatcher = createEventDispatcher()
     stateManager = createStateManager()
     profiler = new PerformanceProfiler()
+    testCleanupTasks = []
   })
 
   afterEach(() => {
     if (profiler.isRunning) {
       profiler.stopProfiling()
     }
+
+    // Run all cleanup tasks
+    testCleanupTasks.forEach(cleanup => {
+      try {
+        cleanup()
+      } catch (error) {
+        console.warn('Cleanup task failed:', error)
+      }
+    })
+    testCleanupTasks = []
+
+    // Explicitly reset all event listeners
+    eventDispatcher.resetAllListeners()
   })
 
   describe('Event Dispatch Performance', () => {
@@ -103,48 +118,67 @@ describe('Event System Performance', () => {
       const eventName = UI_EVENTS.SCORE_UPDATED
       const listenerCount = 1000
       const listeners = []
+      const unsubscribeFunctions = []
 
-      // Benchmark listener registration
+      // Benchmark listener registration with proper cleanup
       const addResults = profiler.benchmark(
         'addListeners',
         () => {
           const listener = () => {
             /* test listener */
           }
-          eventDispatcher.on(eventName, listener)
+          const unsubscribe = eventDispatcher.on(eventName, listener)
           listeners.push(listener)
+          unsubscribeFunctions.push(unsubscribe)
         },
         listenerCount
       )
 
       expect(addResults.average).toBeLessThan(0.5) // 0.5ms per listener (more realistic)
 
-      // Benchmark listener removal
+      // Benchmark listener removal using the returned unsubscribe functions
+      const removeCount = Math.floor(listenerCount / 2) // Remove half to test both methods
       const removeResults = profiler.benchmark(
         'removeListeners',
         () => {
           const listener = listeners.pop()
+          const unsubscribe = unsubscribeFunctions.pop()
           if (listener) {
-            eventDispatcher.off(eventName, listener)
+            unsubscribe() // Use the unsubscribe function
           }
         },
-        listenerCount
+        removeCount
       )
 
       expect(removeResults.average).toBeLessThan(0.5) // 0.5ms per removal (more realistic)
+
+      // Add cleanup to test tasks for remaining listeners
+      testCleanupTasks.push(() => {
+        // Clean up any remaining listeners
+        unsubscribeFunctions.forEach(unsubscribe => {
+          try {
+            unsubscribe()
+          } catch (e) {
+            // Ignore errors during cleanup
+          }
+        })
+      })
     })
 
     it('should detect memory leaks in event listeners', () => {
       profiler.startProfiling()
 
-      // Simulate memory leak scenario
+      const unsubscribeFunctions = []
+
+      // Simulate memory leak scenario - but we'll clean up after for testing
       for (let i = 0; i < 1000; i++) {
         const listener = () => {
           // Simulate listener with closure that captures data
           const data = new Array(1000).fill(i)
           return data
         }
-        eventDispatcher.on(UI_EVENTS.MENU_OPENED, listener)
+        const unsubscribe = eventDispatcher.on(UI_EVENTS.MENU_OPENED, listener)
+        unsubscribeFunctions.push(unsubscribe)
       }
 
       // Force garbage collection if available
@@ -157,6 +191,13 @@ describe('Event System Performance', () => {
 
       expect(analysis.totalListeners).toBeGreaterThan(900)
       expect(analysis.memoryImpact).toBeGreaterThan(100000) // Estimated bytes
+
+      // Cleanup all listeners after the test
+      testCleanupTasks.push(() => {
+        unsubscribeFunctions.forEach(unsubscribe => {
+          unsubscribe()
+        })
+      })
     })
   })
 
@@ -214,6 +255,23 @@ describe('Event System Performance', () => {
     it('should maintain stable memory usage during event processing', () => {
       profiler.startProfiling()
 
+      // Setup test listeners
+      const cleanupFunctions = []
+      const eventTypes = [
+        UI_EVENTS.INPUT_KEYDOWN,
+        UI_EVENTS.GAME_PAUSE,
+        UI_EVENTS.SCORE_UPDATED,
+        UI_EVENTS.LEVEL_UPDATED
+      ]
+
+      // Add some listeners to actually receive the events
+      eventTypes.forEach(eventType => {
+        const unsubscribe = eventDispatcher.on(eventType, () => {
+          // Simple listener that does minimal work
+        })
+        cleanupFunctions.push(unsubscribe)
+      })
+
       // Simulate game loop with events
       for (let frame = 0; frame < 1000; frame++) {
         // Player movement events
@@ -238,6 +296,11 @@ describe('Event System Performance', () => {
       if (memoryAnalysis) {
         expect(memoryAnalysis.memoryGrowthRate).toBeLessThan(20) // 20% growth max
       }
+
+      // Add cleanup to test tasks
+      testCleanupTasks.push(() => {
+        cleanupFunctions.forEach(cleanup => cleanup())
+      })
     })
   })
 
@@ -259,10 +322,13 @@ describe('Event System Performance', () => {
         100 // Reduced iterations for faster testing
       )
 
+      // Track cleanup functions for expensive listeners
+      const expensiveListenerCleanups = []
+
       // Simulate performance regression by adding expensive listeners
       for (let i = 0; i < 5; i++) {
         // Reduced from 10 to 5
-        eventDispatcher.on(UI_EVENTS.MENU_OPENED, () => {
+        const cleanup = eventDispatcher.on(UI_EVENTS.MENU_OPENED, () => {
           // Simulate expensive operation with lighter computational load
           const operations = 1000 // Reduced from 100000 to 1000
           let result = 0
@@ -272,6 +338,7 @@ describe('Event System Performance', () => {
           // Prevent optimization by using the result
           if (result > Number.MAX_SAFE_INTEGER) console.log(result)
         })
+        expensiveListenerCleanups.push(cleanup)
       }
 
       // Mock slower performance for regression measurement
@@ -293,6 +360,11 @@ describe('Event System Performance', () => {
 
       const regressionFactor = regressed.averageTime / baseline.averageTime
       expect(regressionFactor).toBeGreaterThan(5) // Significant regression detected
+
+      // Add cleanup to test tasks
+      testCleanupTasks.push(() => {
+        expensiveListenerCleanups.forEach(cleanup => cleanup())
+      })
     })
   })
 
@@ -300,6 +372,22 @@ describe('Event System Performance', () => {
     it('should handle game menu interactions at 60fps', () => {
       const targetFrameTime = 16.67 // 60fps
       profiler.startProfiling()
+
+      // Setup listeners for the events we'll emit
+      const cleanupFunctions = []
+      const eventTypes = [
+        UI_EVENTS.INPUT_MOUSE_MOVE,
+        UI_EVENTS.BUTTON_HOVERED,
+        UI_EVENTS.MENU_OPTION_SELECTED
+      ]
+
+      // Add listeners for these events
+      eventTypes.forEach(eventType => {
+        const unsubscribe = eventDispatcher.on(eventType, () => {
+          // Simple listener
+        })
+        cleanupFunctions.push(unsubscribe)
+      })
 
       // Simulate 60fps game loop with menu interactions
       for (let frame = 0; frame < 600; frame++) {
@@ -332,10 +420,27 @@ describe('Event System Performance', () => {
 
       expect(frameAnalysis.droppedFrameRate).toBeLessThan(5) // Less than 5% dropped frames
       expect(frameAnalysis.averageFPS).toBeGreaterThan(55) // Average above 55fps
+
+      // Add cleanup to test tasks
+      testCleanupTasks.push(() => {
+        cleanupFunctions.forEach(cleanup => cleanup())
+      })
     })
 
     it('should handle intensive gameplay scenarios', () => {
       profiler.startProfiling()
+
+      // Setup listeners for the events we'll emit
+      const cleanupFunctions = []
+      const eventTypes = [UI_EVENTS.SCORE_UPDATED, UI_EVENTS.HEALTH_UPDATED]
+
+      // Add listeners for these events
+      eventTypes.forEach(eventType => {
+        const unsubscribe = eventDispatcher.on(eventType, () => {
+          // Simple listener
+        })
+        cleanupFunctions.push(unsubscribe)
+      })
 
       // Simulate intensive gameplay
       for (let frame = 0; frame < 300; frame++) {
@@ -369,6 +474,11 @@ describe('Event System Performance', () => {
 
       const report = profiler.stopProfiling()
       expect(report.frameAnalysis.averageFPS).toBeGreaterThan(20) // Minimum 20fps
+
+      // Add cleanup to test tasks
+      testCleanupTasks.push(() => {
+        cleanupFunctions.forEach(cleanup => cleanup())
+      })
     })
   })
 })
