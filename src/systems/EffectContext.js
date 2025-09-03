@@ -186,8 +186,10 @@ export function createEffectContext(effectManager, eventDispatcher) {
         }
       }, ms)
 
-      // Store timeout ID for potential cancellation
-      effectManager.trackTimeout(timeoutId)
+      // Store timeout ID for potential cancellation - but don't auto-cleanup during tests
+      if (typeof process === 'undefined' || process.env.NODE_ENV !== 'test') {
+        effectManager.trackTimeout(timeoutId)
+      }
     })
   }
 

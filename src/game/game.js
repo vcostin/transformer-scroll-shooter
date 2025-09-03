@@ -9,11 +9,11 @@ import { GAME_EVENTS } from '@/constants/game-events.js'
 import { BOSS_TYPES, BOSS_MESSAGES } from '@/constants/boss-constants.js'
 import { createAudioManager, playSound } from '@/systems/audio.js'
 import { createOptionsMenu } from '@/ui/options.js'
-import { Background } from '@/rendering/background.js'
-import ParallaxRenderer from '@/rendering/ParallaxRenderer.js'
+import { createBackground } from '@/rendering/background.js'
+import { createParallaxRenderer } from '@/rendering/ParallaxRenderer.js'
 import LEVEL1_PARALLAX from '../../docs/creative/specs/LEVEL1_PARALLAX.json'
-import { Explosion, PowerupEffect } from '@/rendering/effects.js'
-import { Powerup, PowerupSpawner } from '@/systems/powerups.js'
+import { createExplosion, createPowerupEffect } from '@/rendering/effects.js'
+import { PowerupSpawner, createPowerup } from '@/systems/powerups.js'
 import {
   createPlayer,
   updatePlayer,
@@ -331,7 +331,7 @@ export class Game {
   /** @type {Array} */
   effects
 
-  /** @type {Background|ParallaxRenderer|null} */
+  /** @type {Object|null} */
   background
 
   /** @type {Array} */
@@ -601,7 +601,7 @@ export class Game {
 
     // Initialize game objects
     this.player = createPlayer(this, { x: 100, y: this.height / 2 })
-    this.background = new Background(this)
+    this.background = createBackground(this)
 
     // Optionally swap to spec-driven Level 1 parallax when requested
     if (this.shouldUseLevelParallax()) {
@@ -611,7 +611,7 @@ export class Game {
         viewport: { width: this.width, height: this.height }
       }
       if (dir) options.direction = dir
-      this.background = new ParallaxRenderer(LEVEL1_PARALLAX, options)
+      this.background = createParallaxRenderer(LEVEL1_PARALLAX, options)
     }
 
     // Store global reference for debugging and development tools
@@ -1312,7 +1312,7 @@ export class Game {
 
   spawnPowerup() {
     const type = PowerupSpawner.getWeightedType()
-    const powerup = new Powerup(
+    const powerup = createPowerup(
       this,
       this.width + 50,
       Math.random() * (this.height - 100) + 50,
@@ -1560,7 +1560,7 @@ export class Game {
               Enemy.setHealth(this.stateManager, enemy.id, enemy.health)
             }
 
-            this.effects.push(new Explosion(this, enemy.x, enemy.y, 'small'))
+            this.effects.push(createExplosion(this, enemy.x, enemy.y, 'small'))
             playSound(this.audio, 'enemyHit')
 
             if (enemy.health <= 0) {
@@ -1629,7 +1629,7 @@ export class Game {
                 })
               }
 
-              this.effects.push(new Explosion(this, enemy.x, enemy.y, 'medium'))
+              this.effects.push(createExplosion(this, enemy.x, enemy.y, 'medium'))
               playSound(this.audio, 'explosion')
             }
 
@@ -1646,7 +1646,7 @@ export class Game {
         if (this.checkCollision(bullet, this.player)) {
           bullet.markedForDeletion = true
           this.player = takeDamagePlayer(this.player, bullet.damage || 25)
-          this.effects.push(new Explosion(this, this.player.x, this.player.y, 'small'))
+          this.effects.push(createExplosion(this, this.player.x, this.player.y, 'small'))
           playSound(this.audio, 'playerHit')
         }
       }
@@ -1657,7 +1657,7 @@ export class Game {
       if (this.checkCollision(this.player, powerup)) {
         // this.player.collectPowerup(powerup) // TODO: Implement functional powerup collection
         this.powerupsCollected++
-        this.effects.push(new PowerupEffect(this, powerup.x, powerup.y, powerup.color))
+        this.effects.push(createPowerupEffect(this, powerup.x, powerup.y, powerup.color))
         playSound(this.audio, 'powerup')
         powerup.markedForDeletion = true
 
@@ -1690,7 +1690,7 @@ export class Game {
         }
 
         this.effects.push(
-          new Explosion(
+          createExplosion(
             this,
             (this.player.x + enemy.x) / 2,
             (this.player.y + enemy.y) / 2,

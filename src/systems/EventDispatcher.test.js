@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createEventDispatcher } from '@/systems/EventDispatcher.js'
 
 describe('EventDispatcher', () => {
@@ -6,6 +6,11 @@ describe('EventDispatcher', () => {
 
   beforeEach(() => {
     dispatcher = createEventDispatcher()
+  })
+
+  afterEach(() => {
+    // Clean up all listeners after each test
+    dispatcher.resetAllListeners()
   })
 
   describe('Constructor', () => {

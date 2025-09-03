@@ -3,6 +3,30 @@
  * Handles particle effects, explosions, and other visual effects
  */
 
+/**
+ * Factory function to create an Explosion instance.
+ * @param {Object} game - Game instance
+ * @param {number} x - X position
+ * @param {number} y - Y position
+ * @param {string} size - Explosion size ('small', 'medium', 'large')
+ * @returns {Object} Explosion instance
+ */
+export function createExplosion(game, x, y, size = 'medium') {
+  return new Explosion(game, x, y, size)
+}
+
+/**
+ * Factory function to create a PowerupEffect instance.
+ * @param {Object} game - Game instance
+ * @param {number} x - X position
+ * @param {number} y - Y position
+ * @param {string} color - Effect color
+ * @returns {Object} PowerupEffect instance
+ */
+export function createPowerupEffect(game, x, y, color = '#00ff00') {
+  return new PowerupEffect(game, x, y, color)
+}
+
 export class Effect {
   constructor(game, x, y) {
     this.game = game

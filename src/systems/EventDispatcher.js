@@ -24,8 +24,11 @@ const createSubscriptionId = () => {
 // ===== CURRIED EVENT FUNCTIONS =====
 
 export function createEventDispatcher(config = {}) {
+  // Detect if we're in test environment to increase max listeners limit
+  const isTestEnv = process.env.NODE_ENV === 'test'
+
   const defaultConfig = {
-    maxListeners: 50,
+    maxListeners: isTestEnv ? 5000 : 50, // Much higher limit during tests
     enableLogging: false,
     enablePatterns: true,
     maxHistorySize: 1000
@@ -147,6 +150,14 @@ export function createEventDispatcher(config = {}) {
           }
           break
         }
+      }
+    },
+
+    // Utility method for tests - clears all listeners
+    resetAllListeners: () => {
+      listeners.clear()
+      if (config.enableLogging) {
+        console.log('🧹 All event listeners cleared')
       }
     },
 

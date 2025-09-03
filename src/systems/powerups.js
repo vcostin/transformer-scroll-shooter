@@ -3,6 +3,18 @@
  * Handles collectible power-ups and their effects
  */
 
+/**
+ * Factory function to create a Powerup instance.
+ * @param {Object} game - Game instance
+ * @param {number} x - X position
+ * @param {number} y - Y position
+ * @param {string} type - Powerup type
+ * @returns {Object} Powerup instance
+ */
+export function createPowerup(game, x, y, type) {
+  return new Powerup(game, x, y, type)
+}
+
 export class Powerup {
   constructor(game, x, y, type) {
     this.game = game
