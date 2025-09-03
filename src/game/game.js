@@ -22,7 +22,14 @@ import {
   shootPlayer,
   transformPlayer
 } from '@/entities/player.js'
-import { createEnemy, takeDamage as takeDamageEnemy, Enemy } from '@/entities/enemies/enemy.js'
+import {
+  createEnemy,
+  Enemy,
+  renderEnemy,
+  updateEnemyMovement,
+  updateEnemyAI
+} from '@/entities/enemies/enemy.js'
+import { createBullet, Bullet, renderBullet, updateBullet } from '@/entities/bullet.js'
 import { createEventDispatcher } from '@/systems/EventDispatcher.js'
 import { createStateManager } from '@/systems/StateManager.js'
 import { EffectManager } from '@/systems/EffectManager.js'
@@ -979,11 +986,21 @@ export class Game {
       this.powerupSpawnTimer = 0
     }
 
-    // Update game objects
-    this.updateEntities('enemies', this.enemies, deltaTime)
-    this.updateEntities('bullets', this.bullets, deltaTime)
-    this.updateEntities('powerups', this.powerups, deltaTime)
-    this.updateEntities('effects', this.effects, deltaTime)
+    // Update game objects (only if player is initialized)
+    if (this.player) {
+      // Sync bullets from StateManager to game.bullets array (throttled for performance)
+      this._bulletSyncTimer = (this._bulletSyncTimer || 0) + deltaTime
+      if (this._bulletSyncTimer >= 50) {
+        // Sync every 50ms instead of every frame
+        this.syncBulletsFromStateManager()
+        this._bulletSyncTimer = 0
+      }
+
+      this.updateEntities('enemies', this.enemies, deltaTime)
+      this.updateEntities('bullets', this.bullets, deltaTime)
+      this.updateEntities('powerups', this.powerups, deltaTime)
+      this.updateEntities('effects', this.effects, deltaTime)
+    }
 
     if (this.storyJournal) {
       // StoryJournal doesn't need delta time updates but we keep consistency
@@ -1028,8 +1045,65 @@ export class Game {
       count: entities.length
     })
 
-    // Update entities using the existing method
-    this.updateArray(entities, deltaTime)
+    // Update entities based on type
+    if (entityType === 'bullets') {
+      // Update bullets using Entity-State architecture
+      for (let i = entities.length - 1; i >= 0; i--) {
+        const bullet = entities[i]
+        if (bullet && bullet.id) {
+          updateBullet(this.stateManager, bullet.id, deltaTime, {
+            canvasWidth: this.width,
+            canvasHeight: this.height
+          })
+
+          // Update the bullet object in the array with latest state
+          const updatedState = Bullet.getBulletState(this.stateManager, bullet.id)
+          if (updatedState) {
+            entities[i] = { id: bullet.id, ...updatedState }
+          }
+
+          // Remove if marked for deletion
+          if (entities[i].markedForDeletion) {
+            // CRITICAL: Remove from StateManager to prevent memory leak
+            Bullet.remove(this.stateManager, entities[i].id)
+            entities.splice(i, 1)
+          }
+        }
+      }
+    } else if (entityType === 'enemies') {
+      // Update enemies using pure Entity-State architecture
+      const gameContext = {
+        player: this.player,
+        width: this.width,
+        height: this.height,
+        eventDispatcher: this.eventDispatcher,
+        effectManager: this.effectManager
+      }
+
+      for (let i = entities.length - 1; i >= 0; i--) {
+        const enemy = entities[i]
+        if (enemy && enemy.id) {
+          // Update enemy movement and AI using Entity-State functions
+          updateEnemyMovement(this.stateManager, enemy.id, deltaTime, gameContext)
+          updateEnemyAI(this.stateManager, enemy.id, deltaTime, gameContext)
+
+          // Refresh enemy state from StateManager
+          const enemyState = Enemy.getEnemyState(this.stateManager, enemy.id)
+          if (enemyState) {
+            Object.assign(enemy, enemyState)
+          }
+
+          // Remove if marked for deletion
+          if (enemy.markedForDeletion) {
+            Enemy.remove(this.stateManager, enemy.id)
+            entities.splice(i, 1)
+          }
+        }
+      }
+    } else {
+      // Use the existing method for powerups and effects
+      this.updateArray(entities, deltaTime)
+    }
   }
 
   render() {
@@ -1048,8 +1122,8 @@ export class Game {
     if (this.player) {
       renderPlayer(this.player, this.ctx)
     }
-    this.enemies.forEach(enemy => enemy.render(this.ctx))
-    this.bullets.forEach(bullet => bullet.render(this.ctx))
+    this.enemies.forEach(enemy => renderEnemy(enemy, this.ctx))
+    this.bullets.forEach(bullet => renderBullet(this.stateManager, bullet.id, this.ctx))
     this.powerups.forEach(powerup => powerup.render(this.ctx))
     this.effects.forEach(effect => effect.render(this.ctx))
 
@@ -1439,15 +1513,26 @@ export class Game {
     // Player bullets vs enemies
     this.bullets.forEach(bullet => {
       if (bullet.owner === 'player') {
-        this.enemies.forEach((enemy, enemyIndex) => {
+        this.enemies.forEach(enemy => {
+          // Skip enemies already marked for deletion to prevent double scoring
+          if (enemy.markedForDeletion) return
+
           if (this.checkCollision(bullet, enemy)) {
             bullet.markedForDeletion = true
-            this.enemies[enemyIndex] = takeDamageEnemy(enemy, bullet.damage || 25)
+
+            // Use Entity-State damage system instead of legacy function
+            Enemy.takeDamage(this.stateManager, enemy.id, bullet.damage || 25)
+            const updatedHealth = Enemy.getHealth(this.stateManager, enemy.id)
+
             this.effects.push(new Explosion(this, enemy.x, enemy.y, 'small'))
             playSound(this.audio, 'enemyHit')
 
-            if (this.enemies[enemyIndex].health <= 0) {
-              this.score += this.enemies[enemyIndex].points || 100
+            if (updatedHealth <= 0) {
+              // Mark enemy for deletion IMMEDIATELY to prevent double scoring
+              enemy.markedForDeletion = true
+
+              const points = Enemy.getPoints(this.stateManager, enemy.id) || 100
+              this.score += points
               this.enemiesKilled++
 
               // Check for level progression
@@ -1492,7 +1577,6 @@ export class Game {
 
               this.effects.push(new Explosion(this, enemy.x, enemy.y, 'medium'))
               playSound(this.audio, 'explosion')
-              enemy.markedForDeletion = true
             }
           }
         })
@@ -1528,10 +1612,13 @@ export class Game {
     })
 
     // Player vs enemies
-    this.enemies.forEach((enemy, enemyIndex) => {
+    this.enemies.forEach(enemy => {
       if (this.checkCollision(this.player, enemy)) {
         this.player = takeDamagePlayer(this.player, 50)
-        this.enemies[enemyIndex] = takeDamageEnemy(enemy, 50)
+
+        // Use Entity-State damage system
+        Enemy.takeDamage(this.stateManager, enemy.id, 50)
+
         this.effects.push(
           new Explosion(
             this,
@@ -1554,24 +1641,116 @@ export class Game {
     )
   }
 
+  /**
+   * Synchronize bullets from StateManager to game.bullets array
+   * This ensures bullets created by enemies via StateManager appear in the game
+   * Optimized to minimize per-frame overhead
+   */
+  syncBulletsFromStateManager() {
+    const bulletsState = this.stateManager.getState('bullets')
+    if (!bulletsState) return
+
+    const stateManagerBulletIds = Object.keys(bulletsState)
+
+    // Quick check: if counts match, likely no changes needed
+    const currentBulletCount = this.bullets.filter(b => b.id).length
+    if (currentBulletCount === stateManagerBulletIds.length) {
+      return // Skip expensive sync if counts match
+    }
+
+    // Get current bullets array IDs for comparison
+    const currentBulletIds = new Set(this.bullets.map(bullet => bullet.id).filter(id => id))
+
+    // Add new bullets from StateManager that aren't in bullets array
+    for (const bulletId of stateManagerBulletIds) {
+      if (!currentBulletIds.has(bulletId)) {
+        const bulletState = Bullet.getBulletState(this.stateManager, bulletId)
+        if (bulletState) {
+          // Add compatible bullet object to array
+          this.bullets.push({
+            id: bulletId,
+            ...bulletState
+          })
+        }
+      }
+    }
+
+    // Remove bullets from array that no longer exist in StateManager
+    const stateManagerBulletIdSet = new Set(stateManagerBulletIds)
+    this.bullets = this.bullets.filter(bullet => {
+      return !bullet.id || stateManagerBulletIdSet.has(bullet.id)
+    })
+  }
+
   cleanup() {
-    // Remove off-screen objects and marked for deletion
-    this.bullets = this.bullets.filter(
-      bullet =>
-        !bullet.markedForDeletion &&
-        bullet.x > -50 &&
-        bullet.x < this.width + 50 &&
-        bullet.y > -50 &&
-        bullet.y < this.height + 50
-    )
+    // Clean up StateManager for entities that may have been orphaned
+    // This ensures consistency between arrays and StateManager
 
-    this.enemies = this.enemies.filter(
-      enemy => !enemy.markedForDeletion && enemy.x > -100 && enemy.x < this.width + 100
-    )
+    // Clean up orphaned bullets in StateManager
+    const bulletIds = Bullet.getAllBulletIds(this.stateManager)
+    const validBulletIds = new Set(this.bullets.map(b => b.id).filter(id => id))
 
+    bulletIds.forEach(bulletId => {
+      if (!validBulletIds.has(bulletId)) {
+        // Remove orphaned bullet from StateManager
+        Bullet.remove(this.stateManager, bulletId)
+      }
+    })
+
+    // Clean up orphaned enemies in StateManager
+    const enemyIds = Enemy.getAllEnemyIds(this.stateManager)
+    const validEnemyIds = new Set(this.enemies.map(e => e.id).filter(id => id))
+
+    enemyIds.forEach(enemyId => {
+      if (!validEnemyIds.has(enemyId)) {
+        // Remove orphaned enemy from StateManager
+        Enemy.remove(this.stateManager, enemyId)
+      }
+    })
+
+    // Clean up arrays (keep existing powerup cleanup for compatibility)
     this.powerups = this.powerups.filter(
       powerup => !powerup.markedForDeletion && powerup.x > -100 && powerup.x < this.width + 100
     )
+  }
+
+  /**
+   * Debug method to monitor StateManager memory usage
+   * Call this from console: game.debugStateManager()
+   */
+  debugStateManager() {
+    const bullets = this.stateManager.getState('bullets') || {}
+    const enemies = this.stateManager.getState('enemies') || {}
+
+    console.log('=== StateManager Memory Debug ===')
+    console.log(`Bullets in StateManager: ${Object.keys(bullets).length}`)
+    console.log(`Bullets in array: ${this.bullets.length}`)
+    console.log(`Enemies in StateManager: ${Object.keys(enemies).length}`)
+    console.log(`Enemies in array: ${this.enemies.length}`)
+
+    // Show any orphaned entities
+    const bulletIds = Object.keys(bullets)
+    const validBulletIds = this.bullets.map(b => b.id).filter(id => id)
+    const orphanedBullets = bulletIds.filter(id => !validBulletIds.includes(id))
+
+    const enemyIds = Object.keys(enemies)
+    const validEnemyIds = this.enemies.map(e => e.id).filter(id => id)
+    const orphanedEnemies = enemyIds.filter(id => !validEnemyIds.includes(id))
+
+    if (orphanedBullets.length > 0) {
+      console.warn('Orphaned bullets in StateManager:', orphanedBullets)
+    }
+
+    if (orphanedEnemies.length > 0) {
+      console.warn('Orphaned enemies in StateManager:', orphanedEnemies)
+    }
+
+    return {
+      bullets: { stateManager: bulletIds.length, array: this.bullets.length },
+      enemies: { stateManager: enemyIds.length, array: this.enemies.length },
+      orphanedBullets: orphanedBullets.length,
+      orphanedEnemies: orphanedEnemies.length
+    }
   }
 
   updateUI() {
@@ -1612,6 +1791,9 @@ export class Game {
     this.eventDispatcher.emit(GAME_EVENTS.GAME_RESTART, {
       timestamp: Date.now()
     })
+
+    // Reset game state
+    this._bulletSyncTimer = 0
 
     this.score = 0
     this.gameOver = false
