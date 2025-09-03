@@ -286,24 +286,20 @@ describe('Game', () => {
         markedForDeletion: false
       }
 
-      // Create enemy
-      const enemy = {
-        x: 200,
-        y: 200,
-        width: 30,
-        height: 20,
-        health: 20,
-        points: 10,
-        markedForDeletion: false
-      }
+      // Create enemy using proper Entity-State architecture
+      game.spawnEnemy()
+      const enemy = game.enemies[0]
+
+      // Position enemy to collide with bullet
+      enemy.x = 200
+      enemy.y = 200
 
       game.bullets.push(bullet)
-      game.enemies.push(enemy)
 
       game.checkCollisions()
 
       expect(bullet.markedForDeletion).toBe(true)
-      // In functional architecture, enemy health is updated directly
+      // In functional architecture, enemy health is updated through StateManager
       expect(game.enemies[0].health).toBe(10) // 20 - 10 damage
     })
 

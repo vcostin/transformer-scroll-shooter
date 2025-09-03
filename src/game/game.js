@@ -447,6 +447,12 @@ export class Game {
     this.stateManager.setState('game.bossActive', false)
     this.stateManager.setState('game.bossSpawnedThisLevel', false)
 
+    // Store game systems for Entity-State architecture
+    this.stateManager.setState('game.eventDispatcher', this.eventDispatcher)
+    this.stateManager.setState('game.width', this.width)
+    this.stateManager.setState('game.height', this.height)
+    this.stateManager.setState('game.player', this.player)
+
     // Initialize story state
     this.stateManager.setState('story', createStoryState())
     this.stateManager.setState('game.powerupsCollected', 0)
@@ -1521,7 +1527,13 @@ export class Game {
             bullet.markedForDeletion = true
 
             // Use Entity-State damage system instead of legacy function
-            Enemy.takeDamage(this.stateManager, enemy.id, bullet.damage || 25)
+            Enemy.takeDamage(
+              this.stateManager,
+              enemy.id,
+              bullet.damage || 25,
+              this.eventDispatcher,
+              this
+            )
             const updatedHealth = Enemy.getHealth(this.stateManager, enemy.id)
 
             this.effects.push(new Explosion(this, enemy.x, enemy.y, 'small'))
@@ -1617,7 +1629,7 @@ export class Game {
         this.player = takeDamagePlayer(this.player, 50)
 
         // Use Entity-State damage system
-        Enemy.takeDamage(this.stateManager, enemy.id, 50)
+        Enemy.takeDamage(this.stateManager, enemy.id, 50, this.eventDispatcher, this)
 
         this.effects.push(
           new Explosion(

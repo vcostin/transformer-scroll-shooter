@@ -22,10 +22,7 @@ const MOVEMENT_SPEED_MULTIPLIER = 0.8
 const DRONE_SPAWN_PROBABILITY = 0.2
 const CONNECTION_BEAM_LENGTH = 100
 const CONNECTION_BEAM_OFFSET_Y = -50
-const PHASE2_POSITION_X_FACTOR = 0.75
-const PHASE2_POSITION_Y_FACTOR = 0.25
-const PHASE2_TARGET_Y_RANGE = 0.6
-const PHASE2_TARGET_Y_OFFSET = 0.2
+// Legacy constants removed - now handled in Entity-State updateRelayWardenMovement()
 
 /**
  * Enemy State Schema - Defines the structure in StateManager
@@ -147,9 +144,35 @@ export const Enemy = {
     stateManager.setState(`enemies.${enemyId}.health`, Math.max(0, Math.min(health, maxHealth)))
   },
 
-  takeDamage: (stateManager, enemyId, damage) => {
-    const currentHealth = Enemy.getHealth(stateManager, enemyId)
-    Enemy.setHealth(stateManager, enemyId, currentHealth - damage)
+  takeDamage: (stateManager, enemyId, damage, eventDispatcher, gameInstance) => {
+    // Apply damage directly for immediate effect
+    const oldHealth = Enemy.getHealth(stateManager, enemyId)
+    const newHealth = Math.max(0, oldHealth - damage)
+    Enemy.setHealth(stateManager, enemyId, newHealth)
+
+    // Update the compatibility object in game.enemies array
+    if (gameInstance && gameInstance.enemies) {
+      const enemyObj = gameInstance.enemies.find(e => e.id === enemyId)
+      if (enemyObj) {
+        enemyObj.health = newHealth
+      }
+    }
+
+    // Also emit damage event for effects system (if available)
+    if (eventDispatcher && typeof eventDispatcher.emit === 'function') {
+      eventDispatcher.emit(ENEMY_EVENTS.ENEMY_DAMAGED, {
+        enemyId: enemyId,
+        damage: damage
+      })
+    }
+
+    // Handle death directly
+    if (newHealth <= 0) {
+      const enemyState = Enemy.getEnemyState(stateManager, enemyId)
+      if (enemyState) {
+        dieEnemy(enemyState)
+      }
+    }
   },
 
   setShootTimer: (stateManager, enemyId, timer) => {
@@ -996,132 +1019,13 @@ export function spawnDroneAdd(enemy) {
   })
 }
 
-/**
- * Relay Warden boss behavior - implements two-phase mechanics
- * @param {Object} enemy - Enemy POJO state
- * @param {number} deltaTime - Time elapsed since last update
- * @param {number} moveSpeed - Calculated move speed
- * @param {Object} player - Player reference
- */
-export function updateRelayWardenBehavior(enemy, deltaTime, moveSpeed, player) {
-  if (enemy.health <= enemy.maxHealth * 0.5 && !enemy.phaseTransitionTriggered) {
-    enemy.phase = 2
-    enemy.phaseTransitionTriggered = true
-    enemy.nodeMode = true
-    enemy.x = enemy.game.width * PHASE2_POSITION_X_FACTOR
-    enemy.y = enemy.game.height * PHASE2_POSITION_Y_FACTOR
-  }
+// Legacy POJO function removed - Entity-State architecture uses updateRelayWardenMovement() instead
 
-  if (enemy.phase === 1) {
-    updatePhase1Behavior(enemy, deltaTime, moveSpeed, player)
-  } else {
-    updatePhase2Behavior(enemy, deltaTime, moveSpeed, player)
-  }
-}
+// Legacy POJO function removed - Entity-State architecture handles phase behavior in updateRelayWardenMovement()
 
-/**
- * Update Phase 1 behavior for Relay Warden
- * @param {Object} enemy - Enemy POJO state
- * @param {number} deltaTime - Time elapsed since last update
- * @param {number} moveSpeed - Calculated move speed
- * @param {Object} player - Player reference
- */
-export function updatePhase1Behavior(enemy, deltaTime, moveSpeed, player) {
-  enemy.x -= moveSpeed * 0.15
+// Legacy POJO function removed - Entity-State architecture handles phase behavior in updateRelayWardenMovement()
 
-  if (player) {
-    const centerY = enemy.game.height / 2 - enemy.height / 2
-    const dy = centerY - enemy.y
-    if (Math.abs(dy) > 30) {
-      enemy.y += Math.sign(dy) * moveSpeed * 0.2
-    }
-  }
-
-  enemy.sweepAngle += enemy.sweepDirection * deltaTime * 0.001
-  if (enemy.sweepAngle > Math.PI * 2) {
-    enemy.sweepAngle = 0
-  }
-
-  enemy.moveTimer += deltaTime
-  if (enemy.moveTimer > 3000) {
-    enemy.ringBeamActive = !enemy.ringBeamActive
-    enemy.moveTimer = 0
-  }
-}
-
-/**
- * Update Phase 2 behavior for Relay Warden
- * @param {Object} enemy - Enemy POJO state
- * @param {number} deltaTime - Time elapsed since last update
- * @param {number} moveSpeed - Calculated move speed
- * @param {Object} _player - Player reference (unused)
- */
-export function updatePhase2Behavior(enemy, deltaTime, moveSpeed, _player) {
-  enemy.moveTimer += deltaTime
-
-  if (enemy.moveTimer > 2000) {
-    enemy.targetY =
-      Math.random() * (enemy.game.height * PHASE2_TARGET_Y_RANGE) +
-      enemy.game.height * PHASE2_TARGET_Y_OFFSET
-    enemy.moveTimer = 0
-  }
-
-  if (enemy.targetY) {
-    const dy = enemy.targetY - enemy.y
-    if (Math.abs(dy) > 5) {
-      enemy.y += Math.sign(dy) * moveSpeed * 0.3
-    }
-  }
-
-  enemy.x -= moveSpeed * 0.1
-  enemy.vulnerabilityTimer += deltaTime
-  if (enemy.vulnerabilityTimer > 4000) {
-    enemy.vulnerabilityTimer = 0
-  }
-}
-
-/**
- * Apply damage to enemy
- * @param {Object} enemy - Enemy POJO state
- * @param {number} damage - Damage amount
- */
-export function takeDamage(enemy, damage) {
-  const oldHealth = enemy.health
-  enemy.health -= damage
-
-  if (enemy.eventDispatcher) {
-    enemy.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_DAMAGED, {
-      enemy: enemy,
-      damage: damage
-    })
-
-    enemy.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_HEALTH_CHANGED, {
-      enemy: enemy,
-      health: enemy.health,
-      maxHealth: enemy.maxHealth,
-      previousHealth: oldHealth,
-      damage: damage
-    })
-  }
-
-  if (
-    enemy.eventDispatcher &&
-    enemy.health <= enemy.maxHealth * CRITICAL_HEALTH_THRESHOLD &&
-    enemy.health > 0
-  ) {
-    enemy.eventDispatcher.emit(ENEMY_EVENTS.ENEMY_HEALTH_CRITICAL, {
-      enemy: enemy,
-      health: enemy.health,
-      maxHealth: enemy.maxHealth
-    })
-  }
-
-  if (enemy.health <= 0) {
-    dieEnemy(enemy)
-  }
-
-  return enemy
-}
+// Legacy POJO function removed - Entity-State architecture uses Enemy.takeDamage() and handleDamage() instead
 
 /**
  * Enemy death handling
@@ -1364,7 +1268,6 @@ export function handleDamage(stateManager, enemyId, data) {
   }
 
   if (newHealth <= 0) {
-    // TODO: Convert dieEnemy to Entity-State architecture
     const enemyState = Enemy.getEnemyState(stateManager, enemyId)
     dieEnemy(enemyState)
   }
