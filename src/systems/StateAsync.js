@@ -561,14 +561,7 @@ export function createStateAsync(options = {}, callbacks = {}) {
 
     // Expose stats for test compatibility
     get stats() {
-      return {
-        totalAsyncOperations: stats.totalAsyncOperations,
-        successfulOperations: stats.successfulOperations,
-        failedOperations: stats.failedOperations,
-        averageOperationTime: stats.averageOperationTime,
-        retries: stats.retries,
-        timeouts: stats.timeouts
-      }
+      return stats
     },
 
     // Expose activeOperations for test compatibility (should behave like a Map)

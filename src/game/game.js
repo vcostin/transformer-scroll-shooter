@@ -1141,7 +1141,11 @@ export class Game {
       renderPlayer(this.player, this.ctx)
     }
     this.enemies.forEach(enemy => renderEnemy(enemy, this.ctx))
-    this.bullets.forEach(bullet => renderBullet(this.stateManager, bullet.id, this.ctx))
+    this.bullets.forEach(bullet => {
+      if (bullet.id != null) {
+        renderBullet(this.stateManager, bullet.id, this.ctx)
+      }
+    })
     this.powerups.forEach(powerup => powerup.render(this.ctx))
     this.effects.forEach(effect => effect.render(this.ctx))
 
