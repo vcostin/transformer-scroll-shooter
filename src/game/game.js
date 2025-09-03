@@ -8,7 +8,7 @@ import { GAME_CONSTANTS } from '@/constants/game-constants.js'
 import { GAME_EVENTS } from '@/constants/game-events.js'
 import { BOSS_TYPES, BOSS_MESSAGES } from '@/constants/boss-constants.js'
 import { createAudioManager, playSound } from '@/systems/audio.js'
-import { OptionsMenu } from '@/ui/options.js'
+import { createOptionsMenu } from '@/ui/options.js'
 import { Background } from '@/rendering/background.js'
 import ParallaxRenderer from '@/rendering/ParallaxRenderer.js'
 import LEVEL1_PARALLAX from '../../docs/creative/specs/LEVEL1_PARALLAX.json'
@@ -120,7 +120,11 @@ function initializeGameSystems(game) {
   const gameWithSystems = { ...game, ...systems }
 
   // Initialize options with dependencies
-  systems.options = new OptionsMenu(gameWithSystems, systems.eventDispatcher, systems.stateManager)
+  systems.options = createOptionsMenu(
+    gameWithSystems,
+    systems.eventDispatcher,
+    systems.stateManager
+  )
 
   // Initialize UI systems with error handling
   let chapterTransition = null
@@ -400,7 +404,7 @@ export class Game {
   /** @type {Object} */
   effectManager
 
-  /** @type {OptionsMenu} */
+  /** @type {Object} */
   options
 
   // UI systems
