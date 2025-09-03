@@ -374,7 +374,7 @@ describe('Player', () => {
       player = transformPlayer(player)
 
       expect(stateSpy).toHaveBeenCalledWith('player.mode', player.mode)
-      expect(stateSpy).toHaveBeenCalledWith('player.modeIndex', player.currentModeIndex)
+      expect(stateSpy).toHaveBeenCalledWith('player.currentModeIndex', player.currentModeIndex)
     })
 
     it('should emit events when using legacy movement', () => {

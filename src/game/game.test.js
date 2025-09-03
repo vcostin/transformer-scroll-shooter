@@ -5,6 +5,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import Game from '@/game/game.js'
+import { Enemy } from '@/entities/enemies/enemy.js'
 
 describe('Game', () => {
   let game
@@ -293,6 +294,13 @@ describe('Game', () => {
       // Position enemy to collide with bullet
       enemy.x = 200
       enemy.y = 200
+
+      // CRITICAL: Set enemy health to 20 for test consistency
+      // (spawnEnemy creates random types with different health values)
+      enemy.health = 20
+      if (enemy.id) {
+        Enemy.setHealth(game.stateManager, enemy.id, 20)
+      }
 
       game.bullets.push(bullet)
 

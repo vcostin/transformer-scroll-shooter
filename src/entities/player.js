@@ -149,6 +149,36 @@ export const Player = {
     Player.setHealth(stateManager, currentHealth - damage)
   },
 
+  takeDamageWithEvents: (stateManager, eventDispatcher, damage) => {
+    const originalDamage = damage
+    let shieldDamage = 0
+    let actualDamage = damage
+
+    // Handle shield protection
+    const shield = stateManager.getState('player.shield') || 0
+    if (shield > 0) {
+      shieldDamage = Math.min(shield, damage)
+      actualDamage = damage - shieldDamage
+      stateManager.setState('player.shield', shield - shieldDamage)
+    }
+
+    // Apply health damage
+    if (actualDamage > 0) {
+      const currentHealth = Player.getHealth(stateManager)
+      Player.setHealth(stateManager, currentHealth - actualDamage)
+    }
+
+    // Emit damage event with test-compatible payload structure
+    eventDispatcher.emit(PLAYER_EVENTS.PLAYER_DAMAGED, {
+      payload: {
+        player: Player.getPlayerState(stateManager),
+        damage: actualDamage,
+        originalDamage: originalDamage,
+        shieldDamage: shieldDamage
+      }
+    })
+  },
+
   heal: (stateManager, amount) => {
     const currentHealth = Player.getHealth(stateManager)
     Player.setHealth(stateManager, currentHealth + amount)
@@ -171,27 +201,29 @@ export const Player = {
 
     // Handle movement
     if (input) {
-      Player.handleMovement(stateManager, deltaTime, input)
+      Player.handleMovement(stateManager, eventDispatcher, deltaTime, input)
     }
 
     // Update powerups
     Player.updatePowerups(stateManager, deltaTime)
 
-    // Emit update event
+    // Emit update event with test-compatible payload structure
     eventDispatcher.emit(PLAYER_EVENTS.PLAYER_UPDATED, {
-      position: Player.getPosition(stateManager),
-      health: Player.getHealth(stateManager),
-      mode: Player.getMode(stateManager)
+      payload: {
+        player: Player.getPlayerState(stateManager),
+        deltaTime: deltaTime
+      }
     })
   },
 
   /**
    * Handle player movement based on input
    * @param {Object} stateManager - StateManager instance
+   * @param {Object} eventDispatcher - EventDispatcher instance
    * @param {number} deltaTime - Time since last update
    * @param {Object} input - Input state object
    */
-  handleMovement: (stateManager, deltaTime, input) => {
+  handleMovement: (stateManager, eventDispatcher, deltaTime, input) => {
     const speed = Player.getSpeed(stateManager)
     const moveDistance = speed * (deltaTime / 1000)
 
@@ -214,6 +246,14 @@ export const Player = {
       const clampedY = Math.max(0, Math.min(600 - dimensions.height, position.y))
 
       Player.setPosition(stateManager, { x: clampedX, y: clampedY })
+
+      // Emit movement event with test-compatible payload structure
+      eventDispatcher.emit(PLAYER_EVENTS.PLAYER_MOVED, {
+        payload: {
+          player: Player.getPlayerState(stateManager),
+          deltaTime: deltaTime
+        }
+      })
     }
   },
 
@@ -239,11 +279,14 @@ export const Player = {
     // Apply new mode properties
     updatePlayerModeProperties(stateManager)
 
-    // Emit transformation event
+    // Emit transformation event with test-compatible payload structure
     eventDispatcher.emit(PLAYER_EVENTS.PLAYER_TRANSFORMED, {
-      from: modes[currentIndex],
-      to: nextMode,
-      modeIndex: nextIndex
+      payload: {
+        player: Player.getPlayerState(stateManager),
+        oldMode: modes[currentIndex],
+        newMode: nextMode,
+        modeIndex: nextIndex
+      }
     })
 
     return true
@@ -290,11 +333,17 @@ export const Player = {
     // Set cooldown
     stateManager.setState('player.shootCooldown', shootRate)
 
-    // Emit shoot event
+    // Emit shoot event with test-compatible payload structure
     eventDispatcher.emit(PLAYER_EVENTS.PLAYER_SHOT, {
-      position: { x: position.x + dimensions.width / 2, y: position.y },
-      bulletType,
-      mode: Player.getMode(stateManager)
+      payload: {
+        player: Player.getPlayerState(stateManager),
+        bullet: {
+          id: bulletId,
+          type: bulletType,
+          x: position.x + dimensions.width / 2,
+          y: position.y
+        }
+      }
     })
 
     return true
@@ -327,6 +376,34 @@ export const Player = {
     const shield = stateManager.getState('player.shield')
     if (shield > 0) {
       stateManager.setState('player.shield', Math.max(0, shield - deltaTime))
+    }
+  },
+
+  // === PLAYER MANAGEMENT ===
+
+  /**
+   * Get complete player state as object for compatibility
+   * @param {Object} stateManager - StateManager instance
+   * @returns {Object} Complete player state
+   */
+  getPlayerState: stateManager => {
+    const position = Player.getPosition(stateManager)
+    const dimensions = Player.getDimensions(stateManager)
+
+    return {
+      position,
+      ...dimensions,
+      health: Player.getHealth(stateManager),
+      maxHealth: Player.getMaxHealth(stateManager),
+      mode: Player.getMode(stateManager),
+      speed: Player.getSpeed(stateManager),
+      modes: stateManager.getState('player.modes'),
+      currentModeIndex: stateManager.getState('player.currentModeIndex'),
+      transformCooldown: stateManager.getState('player.transformCooldown'),
+      shootCooldown: stateManager.getState('player.shootCooldown'),
+      // Legacy compatibility properties
+      x: position.x,
+      y: position.y
     }
   },
 
@@ -532,7 +609,8 @@ export function createPlayer(game, position) {
     render: ctx => Player.render(game.stateManager, ctx),
     transform: () => Player.transform(game.stateManager, game.eventDispatcher),
     shoot: () => Player.shoot(game.stateManager, game.eventDispatcher, game),
-    takeDamage: damage => Player.takeDamage(game.stateManager, damage),
+    takeDamage: damage =>
+      Player.takeDamageWithEvents(game.stateManager, game.eventDispatcher, damage),
     heal: amount => Player.heal(game.stateManager, amount),
 
     // Expose getters for backward compatibility
@@ -642,7 +720,10 @@ export function shootPlayer(playerApi) {
 }
 
 export function takeDamagePlayer(playerApi, damage) {
-  if (playerApi && typeof playerApi.takeDamage === 'function') {
+  if (playerApi && playerApi.stateManager && playerApi.eventDispatcher) {
+    // Use the event-driven version
+    Player.takeDamageWithEvents(playerApi.stateManager, playerApi.eventDispatcher, damage)
+  } else if (playerApi && typeof playerApi.takeDamage === 'function') {
     playerApi.takeDamage(damage)
   } else if (playerApi && typeof playerApi.health === 'number') {
     // Fallback for mock objects - directly modify health
@@ -652,7 +733,7 @@ export function takeDamagePlayer(playerApi, damage) {
 }
 
 export function movePlayer(playerApi, deltaTime, input) {
-  // Handle movement using the stateless player update
+  // Handle movement using the stateless player update that emits PLAYER_MOVED
   if (playerApi && typeof playerApi.update === 'function') {
     playerApi.update(deltaTime, input)
   }
