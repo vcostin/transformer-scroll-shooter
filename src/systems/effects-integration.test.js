@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createEventDispatcher } from '@/systems/EventDispatcher.js'
-import { EffectManager } from '@/systems/EffectManager.js'
+import { createEffectManager } from '@/systems/EffectManager.js'
 import { createEffectContext } from '@/systems/EffectContext.js'
 
 describe('Side Effects Integration', () => {
@@ -12,7 +12,7 @@ describe('Side Effects Integration', () => {
     vi.useFakeTimers()
 
     eventDispatcher = createEventDispatcher()
-    effectManager = new EffectManager(eventDispatcher)
+    effectManager = createEffectManager(eventDispatcher)
   })
 
   afterEach(() => {

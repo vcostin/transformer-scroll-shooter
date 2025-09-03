@@ -10,7 +10,7 @@ import { vi } from 'vitest'
 import { Game } from '@/game/game.js'
 import { EventDispatcher } from '@/systems/EventDispatcher.js'
 import { createStateManager } from '@/systems/StateManager.js'
-import { EffectManager } from '@/systems/EffectManager.js'
+import { createEffectManager } from '@/systems/EffectManager.js'
 import { createMockCanvas, createMockCanvasContext } from '@test/mocks/canvas-mock.js'
 
 // Re-export canvas utilities for convenience
@@ -113,7 +113,7 @@ export function createMockGame(options = {}) {
  * @param {Object} [options.stateManager] - Custom state manager to use
  * @param {boolean} [options.includeEffectManager=true] - Whether to include an EffectManager
  * @param {boolean} [options.startEffectManager=true] - Whether to start the EffectManager
- * @param {EffectManager} [options.effectManager] - Custom EffectManager to use
+ * @param {Object} [options.effectManager] - Custom EffectManager to use
  * @returns {Object} Standardized mock game object
  *
  * @example
@@ -179,7 +179,7 @@ export function createMockGameObject(options = {}) {
 
   // Add EffectManager if requested or not explicitly disabled
   if (options.includeEffectManager !== false) {
-    mockGame.effectManager = options.effectManager || new EffectManager(mockEventDispatcher)
+    mockGame.effectManager = options.effectManager || createEffectManager(mockEventDispatcher)
     if (options.startEffectManager !== false) {
       mockGame.effectManager.start()
     }

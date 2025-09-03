@@ -11,7 +11,7 @@ import * as MathUtils from '@/utils/math.js'
 import { createPlayer } from '@/entities/player.js'
 import { EventDispatcher } from '@/systems/EventDispatcher.js'
 import { StateManager } from '@/systems/StateManager.js'
-import { EffectManager } from '@/systems/EffectManager.js'
+import { createEffectManager } from '@/systems/EffectManager.js'
 import { createMockGameObject } from '@test/game-test-utils.js'
 
 describe('Module Integration', () => {

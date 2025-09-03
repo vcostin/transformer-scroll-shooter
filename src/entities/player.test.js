@@ -16,7 +16,7 @@ import {
 import { PLAYER_EVENTS, PLAYER_STATES, MOVE_DIRECTIONS } from '@/constants/player-events.js'
 import { EventDispatcher, createEventDispatcher } from '@/systems/EventDispatcher.js'
 import { StateManager, createStateManager } from '@/systems/StateManager.js'
-import { EffectManager } from '@/systems/EffectManager.js'
+import { createEffectManager } from '@/systems/EffectManager.js'
 import { createMockGameObject, createMockEventSystems } from '@test/game-test-utils.js'
 
 describe('Player', () => {
@@ -65,7 +65,7 @@ describe('Player', () => {
     }
 
     // Create EffectManager using the same instances
-    mockGame.effectManager = new EffectManager(mockGame.eventDispatcher)
+    mockGame.effectManager = createEffectManager(mockGame.eventDispatcher)
 
     // Start the EffectManager so effects are processed
     mockGame.effectManager.start()

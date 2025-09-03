@@ -32,7 +32,7 @@ import {
 import { createBullet, Bullet, renderBullet, updateBullet } from '@/entities/bullet.js'
 import { createEventDispatcher } from '@/systems/EventDispatcher.js'
 import { createStateManager } from '@/systems/StateManager.js'
-import { EffectManager } from '@/systems/EffectManager.js'
+import { createEffectManager } from '@/systems/EffectManager.js'
 
 // Import story system
 import {
@@ -114,7 +114,7 @@ function initializeGameSystems(game) {
   }
 
   // Initialize effect manager with event dispatcher
-  systems.effectManager = new EffectManager(systems.eventDispatcher)
+  systems.effectManager = createEffectManager(systems.eventDispatcher)
 
   // Create a temporary game object with systems for OptionsMenu
   const gameWithSystems = { ...game, ...systems }
@@ -397,7 +397,7 @@ export class Game {
   /** @type {Object} */
   audio
 
-  /** @type {EffectManager} */
+  /** @type {Object} */
   effectManager
 
   /** @type {OptionsMenu} */

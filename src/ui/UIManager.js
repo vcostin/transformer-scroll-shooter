@@ -8,153 +8,132 @@ import MenuSystem from '@/ui/MenuSystem.js'
 import InputHandler from '@/ui/InputHandler.js'
 import DisplayManager from '@/ui/DisplayManager.js'
 
-export class UIManager {
-  constructor(game, eventDispatcher, stateManager) {
-    this.game = game
-    this.eventDispatcher = eventDispatcher
-    this.stateManager = stateManager
+/**
+ * Create a UIManager instance using factory function pattern
+ * @param {Object} game - Game instance
+ * @param {Object} eventDispatcher - Event dispatcher instance
+ * @param {Object} stateManager - State manager instance
+ * @returns {Object} UIManager instance
+ */
+export function createUIManager(game, eventDispatcher, stateManager) {
+  // UI components
+  let menuSystem = null
+  let inputHandler = null
+  let displayManager = null
 
-    // UI components
-    this.menuSystem = null
-    this.inputHandler = null
-    this.displayManager = null
-
-    // UI state
-    this.isInitialized = false
-    this.currentFocus = null
-    this.inputBuffer = []
-    this.lastInputTime = 0
-
-    // Initialize UI system
-    this.initialize()
-  }
-
-  /**
-   * Initialize UI manager
-   */
-  initialize() {
-    this.setupEventListeners()
-    this.initializeComponents()
-    this.setupSystemIntegration()
-    this.isInitialized = true
-
-    // Emit initialization event
-    this.eventDispatcher.emit(UI_EVENTS.UI_INITIALIZED, {
-      timestamp: Date.now()
-    })
-  }
+  // UI state
+  let isInitialized = false
+  let currentFocus = null
+  let inputBuffer = []
+  let lastInputTime = 0
 
   /**
    * Initialize UI components
    */
-  initializeComponents() {
+  function initializeComponents() {
     // Initialize menu system
-    this.menuSystem = new MenuSystem(this.game, this.eventDispatcher, this.stateManager)
+    menuSystem = new MenuSystem(game, eventDispatcher, stateManager)
 
     // Initialize input handler
-    this.inputHandler = new InputHandler(this.eventDispatcher, this.stateManager)
+    inputHandler = new InputHandler(eventDispatcher, stateManager)
 
     // Initialize display manager if canvas available
-    if (this.game && this.game.canvas) {
-      this.displayManager = new DisplayManager(
-        this.game.canvas,
-        this.eventDispatcher,
-        this.stateManager
-      )
+    if (game && game.canvas) {
+      displayManager = new DisplayManager(game.canvas, eventDispatcher, stateManager)
     } else {
-      this.displayManager = null
+      displayManager = null
     }
   }
 
   /**
    * Set up event listeners
    */
-  setupEventListeners() {
-    if (!this.eventDispatcher) return
+  function setupEventListeners() {
+    if (!eventDispatcher) return
 
     // Game state events
-    this.eventDispatcher.on(UI_EVENTS.GAME_STARTED, () => {
-      this.handleGameStarted()
+    eventDispatcher.on(UI_EVENTS.GAME_STARTED, () => {
+      handleGameStarted()
     })
 
-    this.eventDispatcher.on(UI_EVENTS.GAME_PAUSED, () => {
-      this.handleGamePaused()
+    eventDispatcher.on(UI_EVENTS.GAME_PAUSED, () => {
+      handleGamePaused()
     })
 
-    this.eventDispatcher.on(UI_EVENTS.GAME_RESUMED, () => {
-      this.handleGameResumed()
+    eventDispatcher.on(UI_EVENTS.GAME_RESUMED, () => {
+      handleGameResumed()
     })
 
-    this.eventDispatcher.on(UI_EVENTS.GAME_ENDED, () => {
-      this.handleGameEnded()
+    eventDispatcher.on(UI_EVENTS.GAME_ENDED, () => {
+      handleGameEnded()
     })
 
     // UI state events
-    this.eventDispatcher.on(UI_EVENTS.MENU_OPENED, data => {
-      this.handleMenuOpened(data)
+    eventDispatcher.on(UI_EVENTS.MENU_OPENED, data => {
+      handleMenuOpened(data)
     })
 
-    this.eventDispatcher.on(UI_EVENTS.MENU_CLOSED, data => {
-      this.handleMenuClosed(data)
+    eventDispatcher.on(UI_EVENTS.MENU_CLOSED, data => {
+      handleMenuClosed(data)
     })
 
-    this.eventDispatcher.on(UI_EVENTS.NOTIFICATION_CREATED, data => {
-      this.handleNotificationCreated(data)
+    eventDispatcher.on(UI_EVENTS.NOTIFICATION_CREATED, data => {
+      handleNotificationCreated(data)
     })
 
     // Input events
-    this.eventDispatcher.on(UI_EVENTS.INPUT_ACTION, data => {
-      this.handleInputAction(data)
+    eventDispatcher.on(UI_EVENTS.INPUT_ACTION, data => {
+      handleInputAction(data)
     })
 
     // Display events
-    this.eventDispatcher.on(UI_EVENTS.HUD_UPDATED, data => {
-      this.handleHUDUpdate(data)
+    eventDispatcher.on(UI_EVENTS.HUD_UPDATED, data => {
+      handleHUDUpdate(data)
     })
 
-    this.eventDispatcher.on(UI_EVENTS.DISPLAY_STATE_CHANGED, data => {
-      this.handleDisplayStateChanged(data)
+    eventDispatcher.on(UI_EVENTS.DISPLAY_STATE_CHANGED, data => {
+      handleDisplayStateChanged(data)
     })
   }
 
   /**
    * Set up system integration
    */
-  setupSystemIntegration() {
+  function setupSystemIntegration() {
     // Set up cross-component communication
-    this.setupMenuInputIntegration()
-    this.setupDisplayNotificationIntegration()
-    this.setupStateManagementIntegration()
+    setupMenuInputIntegration()
+    setupDisplayNotificationIntegration()
+    setupStateManagementIntegration()
   }
 
   /**
    * Set up menu and input integration
    */
-  setupMenuInputIntegration() {
+  function setupMenuInputIntegration() {
     // Handle menu navigation through input
-    this.eventDispatcher.on(UI_EVENTS.MENU_NAVIGATION, data => {
-      if (this.menuSystem) {
-        this.menuSystem.handleNavigation(data)
+    eventDispatcher.on(UI_EVENTS.MENU_NAVIGATION, data => {
+      if (menuSystem) {
+        menuSystem.handleNavigation(data)
       }
     })
 
     // Handle menu toggle requests
-    this.eventDispatcher.on(UI_EVENTS.MENU_TOGGLE_REQUESTED, data => {
-      if (this.menuSystem) {
-        this.menuSystem.toggleMenu(data.menuType)
+    eventDispatcher.on(UI_EVENTS.MENU_TOGGLE_REQUESTED, data => {
+      if (menuSystem) {
+        menuSystem.toggleMenu(data.menuType)
       }
     })
 
     // Handle menu open/close requests
-    this.eventDispatcher.on(UI_EVENTS.MENU_OPEN_REQUESTED, data => {
-      if (this.menuSystem) {
-        this.menuSystem.openMenu(data.menuType, data.options)
+    eventDispatcher.on(UI_EVENTS.MENU_OPEN_REQUESTED, data => {
+      if (menuSystem) {
+        menuSystem.openMenu(data.menuType, data.options)
       }
     })
 
-    this.eventDispatcher.on(UI_EVENTS.MENU_CLOSE_REQUESTED, data => {
-      if (this.menuSystem) {
-        this.menuSystem.closeMenu(data.menuType)
+    eventDispatcher.on(UI_EVENTS.MENU_CLOSE_REQUESTED, data => {
+      if (menuSystem) {
+        menuSystem.closeMenu(data.menuType)
       }
     })
   }
@@ -162,24 +141,24 @@ export class UIManager {
   /**
    * Set up display and notification integration
    */
-  setupDisplayNotificationIntegration() {
+  function setupDisplayNotificationIntegration() {
     // Handle display updates
-    this.eventDispatcher.on(UI_EVENTS.FPS_TOGGLED, () => {
-      if (this.displayManager) {
-        this.displayManager.showFPS = !this.displayManager.showFPS
+    eventDispatcher.on(UI_EVENTS.FPS_TOGGLED, () => {
+      if (displayManager) {
+        displayManager.showFPS = !displayManager.showFPS
       }
     })
 
-    this.eventDispatcher.on(UI_EVENTS.DEBUG_TOGGLED, () => {
-      if (this.displayManager) {
-        this.displayManager.showDebug = !this.displayManager.showDebug
+    eventDispatcher.on(UI_EVENTS.DEBUG_TOGGLED, () => {
+      if (displayManager) {
+        displayManager.showDebug = !displayManager.showDebug
       }
     })
 
     // Handle notification requests
-    this.eventDispatcher.on(UI_EVENTS.NOTIFICATION_REQUESTED, data => {
-      if (this.displayManager) {
-        this.displayManager.createNotification(data.message, data.type, data.duration)
+    eventDispatcher.on(UI_EVENTS.NOTIFICATION_REQUESTED, data => {
+      if (displayManager) {
+        displayManager.createNotification(data.message, data.type, data.duration)
       }
     })
   }
@@ -187,23 +166,23 @@ export class UIManager {
   /**
    * Set up state management integration
    */
-  setupStateManagementIntegration() {
+  function setupStateManagementIntegration() {
     // Subscribe to state changes
-    if (this.stateManager) {
-      this.stateManager.subscribe(UI_STATE_KEYS.MENU_OPEN, isOpen => {
-        this.handleMenuStateChange(isOpen)
+    if (stateManager) {
+      stateManager.subscribe(UI_STATE_KEYS.MENU_OPEN, isOpen => {
+        handleMenuStateChange(isOpen)
       })
 
-      this.stateManager.subscribe(UI_STATE_KEYS.GAME_PAUSED, isPaused => {
-        this.handlePauseStateChange(isPaused)
+      stateManager.subscribe(UI_STATE_KEYS.GAME_PAUSED, isPaused => {
+        handlePauseStateChange(isPaused)
       })
 
-      this.stateManager.subscribe(UI_STATE_KEYS.SHOW_FPS, showFPS => {
-        this.handleFPSDisplayChange(showFPS)
+      stateManager.subscribe(UI_STATE_KEYS.SHOW_FPS, showFPS => {
+        handleFPSDisplayChange(showFPS)
       })
 
-      this.stateManager.subscribe(UI_STATE_KEYS.SHOW_DEBUG, showDebug => {
-        this.handleDebugDisplayChange(showDebug)
+      stateManager.subscribe(UI_STATE_KEYS.SHOW_DEBUG, showDebug => {
+        handleDebugDisplayChange(showDebug)
       })
     }
   }
@@ -211,215 +190,215 @@ export class UIManager {
   /**
    * Handle game started
    */
-  handleGameStarted() {
-    if (this.displayManager) {
-      this.displayManager.resetDisplay()
-      this.displayManager.createNotification('Game Started!', 'success', 2000)
+  function handleGameStarted() {
+    if (displayManager) {
+      displayManager.resetDisplay()
+      displayManager.createNotification('Game Started!', 'success', 2000)
     }
   }
 
   /**
    * Handle game paused
    */
-  handleGamePaused() {
-    if (this.displayManager) {
-      this.displayManager.showPauseOverlay()
+  function handleGamePaused() {
+    if (displayManager) {
+      displayManager.showPauseOverlay()
     }
   }
 
   /**
    * Handle game resumed
    */
-  handleGameResumed() {
-    if (this.displayManager) {
-      this.displayManager.hidePauseOverlay()
+  function handleGameResumed() {
+    if (displayManager) {
+      displayManager.hidePauseOverlay()
     }
   }
 
   /**
    * Handle game ended
    */
-  handleGameEnded() {
-    if (this.displayManager) {
-      this.displayManager.createNotification('Game Over!', 'error', 3000)
+  function handleGameEnded() {
+    if (displayManager) {
+      displayManager.createNotification('Game Over!', 'error', 3000)
     }
   }
 
   /**
    * Handle menu opened
    */
-  handleMenuOpened(data) {
+  function handleMenuOpened(data) {
     // Emit state change events
-    this.eventDispatcher.emit(UI_EVENTS.STATE_CHANGED, {
+    eventDispatcher.emit(UI_EVENTS.STATE_CHANGED, {
       key: UI_STATE_KEYS.MENU_OPEN,
       value: true
     })
-    this.eventDispatcher.emit(UI_EVENTS.STATE_CHANGED, {
+    eventDispatcher.emit(UI_EVENTS.STATE_CHANGED, {
       key: UI_STATE_KEYS.MENU_TYPE,
       value: data.menuType
     })
 
     // Show notification
-    if (this.displayManager) {
-      this.displayManager.createNotification(`${data.menuType} menu opened`, 'info', 1000)
+    if (displayManager) {
+      displayManager.createNotification(`${data.menuType} menu opened`, 'info', 1000)
     }
   }
 
   /**
    * Handle menu closed
    */
-  handleMenuClosed(data) {
+  function handleMenuClosed(data) {
     // Emit state change events
-    this.eventDispatcher.emit(UI_EVENTS.STATE_CHANGED, {
+    eventDispatcher.emit(UI_EVENTS.STATE_CHANGED, {
       key: UI_STATE_KEYS.MENU_OPEN,
       value: false
     })
-    this.eventDispatcher.emit(UI_EVENTS.STATE_CHANGED, {
+    eventDispatcher.emit(UI_EVENTS.STATE_CHANGED, {
       key: UI_STATE_KEYS.MENU_TYPE,
       value: null
     })
 
     // Show notification
-    if (this.displayManager) {
-      this.displayManager.createNotification(`${data.menuType} menu closed`, 'info', 1000)
+    if (displayManager) {
+      displayManager.createNotification(`${data.menuType} menu closed`, 'info', 1000)
     }
   }
 
   /**
    * Handle notification created
    */
-  handleNotificationCreated(data) {
+  function handleNotificationCreated(data) {
     console.log('Notification created:', data)
   }
 
   /**
    * Handle input action
    */
-  handleInputAction(data) {
+  function handleInputAction(data) {
     // Log input for debugging
     console.log('Input action:', data)
 
     // Update last input time
-    this.lastInputTime = Date.now()
+    lastInputTime = Date.now()
   }
 
   /**
    * Handle HUD update
    */
-  handleHUDUpdate(data) {
+  function handleHUDUpdate(data) {
     // Update display manager
-    if (this.displayManager) {
-      this.displayManager.updateHUDElement(data.element, data.value)
+    if (displayManager) {
+      displayManager.updateHUDElement(data.element, data.value)
     }
   }
 
   /**
    * Handle display state changed
    */
-  handleDisplayStateChanged(data) {
+  function handleDisplayStateChanged(data) {
     console.log('Display state changed:', data)
   }
 
   /**
    * Handle menu state change
    */
-  handleMenuStateChange(isOpen) {
-    this.currentFocus = isOpen ? 'menu' : 'game'
+  function handleMenuStateChange(isOpen) {
+    currentFocus = isOpen ? 'menu' : 'game'
   }
 
   /**
    * Handle pause state change
    */
-  handlePauseStateChange(isPaused) {
+  function handlePauseStateChange(isPaused) {
     if (isPaused) {
-      this.handleGamePaused()
+      handleGamePaused()
     } else {
-      this.handleGameResumed()
+      handleGameResumed()
     }
   }
 
   /**
    * Handle FPS display change
    */
-  handleFPSDisplayChange(showFPS) {
-    if (this.displayManager) {
-      this.displayManager.showFPS = showFPS
+  function handleFPSDisplayChange(showFPS) {
+    if (displayManager) {
+      displayManager.showFPS = showFPS
     }
   }
 
   /**
    * Handle debug display change
    */
-  handleDebugDisplayChange(showDebug) {
-    if (this.displayManager) {
-      this.displayManager.showDebug = showDebug
+  function handleDebugDisplayChange(showDebug) {
+    if (displayManager) {
+      displayManager.showDebug = showDebug
     }
   }
 
   /**
    * Update UI system
    */
-  update(deltaTime) {
+  function update(deltaTime) {
     // Update display manager
-    if (this.displayManager) {
-      this.displayManager.render(deltaTime)
+    if (displayManager) {
+      displayManager.render(deltaTime)
     }
 
     // Update input buffer
-    this.updateInputBuffer()
+    updateInputBuffer()
 
     // Update component states
-    this.updateComponentStates()
+    updateComponentStates()
   }
 
   /**
    * Update input buffer
    */
-  updateInputBuffer() {
-    if (this.inputHandler) {
-      this.inputBuffer = this.inputHandler.getInputBuffer()
+  function updateInputBuffer() {
+    if (inputHandler) {
+      inputBuffer = inputHandler.getInputBuffer()
     }
   }
 
   /**
    * Update component states
    */
-  updateComponentStates() {
+  function updateComponentStates() {
     // Update menu system state
-    if (this.menuSystem) {
-      const menuState = this.menuSystem.getCurrentMenuState()
-      this.stateManager.setState(UI_STATE_KEYS.MENU_OPEN, menuState.isAnyMenuOpen)
-      this.stateManager.setState(UI_STATE_KEYS.MENU_TYPE, menuState.currentMenu)
+    if (menuSystem) {
+      const menuState = menuSystem.getCurrentMenuState()
+      stateManager.setState(UI_STATE_KEYS.MENU_OPEN, menuState.isAnyMenuOpen)
+      stateManager.setState(UI_STATE_KEYS.MENU_TYPE, menuState.currentMenu)
     }
 
     // Update display state
-    if (this.displayManager) {
-      const displayState = this.displayManager.getDisplayState()
-      this.stateManager.setState(UI_STATE_KEYS.SHOW_FPS, displayState.showFPS)
-      this.stateManager.setState(UI_STATE_KEYS.SHOW_DEBUG, displayState.showDebug)
+    if (displayManager) {
+      const displayState = displayManager.getDisplayState()
+      stateManager.setState(UI_STATE_KEYS.SHOW_FPS, displayState.showFPS)
+      stateManager.setState(UI_STATE_KEYS.SHOW_DEBUG, displayState.showDebug)
     }
   }
 
   /**
    * Get UI state
    */
-  getUIState() {
+  function getUIState() {
     return {
-      isInitialized: this.isInitialized,
-      currentFocus: this.currentFocus,
-      lastInputTime: this.lastInputTime,
-      menuState: this.menuSystem ? this.menuSystem.getCurrentMenuState() : null,
-      displayState: this.displayManager ? this.displayManager.getDisplayState() : null,
-      inputBuffer: this.inputBuffer.length
+      isInitialized,
+      currentFocus,
+      lastInputTime,
+      menuState: menuSystem ? menuSystem.getCurrentMenuState() : null,
+      displayState: displayManager ? displayManager.getDisplayState() : null,
+      inputBuffer: inputBuffer.length
     }
   }
 
   /**
    * Show notification
    */
-  showNotification(message, type = 'info', duration = 3000) {
-    if (this.displayManager) {
-      return this.displayManager.createNotification(message, type, duration)
+  function showNotification(message, type = 'info', duration = 3000) {
+    if (displayManager) {
+      return displayManager.createNotification(message, type, duration)
     }
     return null
   }
@@ -427,48 +406,48 @@ export class UIManager {
   /**
    * Update HUD element
    */
-  updateHUD(element, value) {
-    if (this.displayManager) {
-      this.displayManager.updateHUD(element, value)
+  function updateHUD(element, value) {
+    if (displayManager) {
+      displayManager.updateHUD(element, value)
     }
   }
 
   /**
    * Open menu
    */
-  openMenu(menuType, options = {}) {
-    if (this.menuSystem) {
-      this.menuSystem.openMenu(menuType, options)
+  function openMenu(menuType, options = {}) {
+    if (menuSystem) {
+      menuSystem.openMenu(menuType, options)
     }
   }
 
   /**
    * Close menu
    */
-  closeMenu(menuType) {
-    if (this.menuSystem) {
-      this.menuSystem.closeMenu(menuType)
+  function closeMenu(menuType) {
+    if (menuSystem) {
+      menuSystem.closeMenu(menuType)
     }
   }
 
   /**
    * Toggle menu
    */
-  toggleMenu(menuType) {
-    if (this.menuSystem) {
-      this.menuSystem.toggleMenu(menuType)
+  function toggleMenu(menuType) {
+    if (menuSystem) {
+      menuSystem.toggleMenu(menuType)
     }
   }
 
   /**
    * Get input state
    */
-  getInputState() {
-    if (this.inputHandler) {
+  function getInputState() {
+    if (inputHandler) {
       return {
-        keyMappings: this.inputHandler.getKeyMappings(),
-        mousePosition: this.inputHandler.getMousePosition(),
-        inputBuffer: this.inputHandler.getInputBuffer()
+        keyMappings: inputHandler.getKeyMappings(),
+        mousePosition: inputHandler.getMousePosition(),
+        inputBuffer: inputHandler.getInputBuffer()
       }
     }
     return null
@@ -477,18 +456,18 @@ export class UIManager {
   /**
    * Set key mapping
    */
-  setKeyMapping(key, action) {
-    if (this.inputHandler) {
-      this.inputHandler.setKeyMapping(key, action)
+  function setKeyMapping(key, action) {
+    if (inputHandler) {
+      inputHandler.setKeyMapping(key, action)
     }
   }
 
   /**
    * Check if action is active
    */
-  isActionActive(action) {
-    if (this.inputHandler) {
-      return this.inputHandler.isActionActive(action)
+  function isActionActive(action) {
+    if (inputHandler) {
+      return inputHandler.isActionActive(action)
     }
     return false
   }
@@ -496,29 +475,125 @@ export class UIManager {
   /**
    * Cleanup UI system
    */
-  cleanup() {
+  function cleanup() {
     // Cleanup components
-    if (this.menuSystem) {
-      this.menuSystem.cleanup()
+    if (menuSystem) {
+      menuSystem.cleanup()
     }
 
-    if (this.inputHandler) {
-      this.inputHandler.cleanup()
+    if (inputHandler) {
+      inputHandler.cleanup()
     }
 
-    if (this.displayManager) {
-      this.displayManager.cleanup()
+    if (displayManager) {
+      displayManager.cleanup()
     }
 
     // Clear state
-    this.isInitialized = false
-    this.currentFocus = null
-    this.inputBuffer.length = 0
+    isInitialized = false
+    currentFocus = null
+    inputBuffer.length = 0
 
     // Emit cleanup event
-    this.eventDispatcher.emit(UI_EVENTS.UI_CLEANUP, {
+    eventDispatcher.emit(UI_EVENTS.UI_CLEANUP, {
       timestamp: Date.now()
     })
+  }
+
+  /**
+   * Initialize UI manager
+   */
+  function initialize() {
+    setupEventListeners()
+    initializeComponents()
+    setupSystemIntegration()
+    isInitialized = true
+
+    // Emit initialization event
+    eventDispatcher.emit(UI_EVENTS.UI_INITIALIZED, {
+      timestamp: Date.now()
+    })
+  }
+
+  // Initialize UI system
+  initialize()
+
+  // Return public interface
+  return {
+    // State getters
+    get isInitialized() {
+      return isInitialized
+    },
+    get currentFocus() {
+      return currentFocus
+    },
+    get inputBuffer() {
+      return [...inputBuffer]
+    },
+    get lastInputTime() {
+      return lastInputTime
+    },
+
+    // Component getters (with setters for testing)
+    get menuSystem() {
+      return menuSystem
+    },
+    set menuSystem(value) {
+      menuSystem = value
+    },
+    get inputHandler() {
+      return inputHandler
+    },
+    set inputHandler(value) {
+      inputHandler = value
+    },
+    get displayManager() {
+      return displayManager
+    },
+    set displayManager(value) {
+      displayManager = value
+    },
+
+    // Public methods
+    initialize,
+    update,
+    getUIState,
+    showNotification,
+    updateHUD,
+    openMenu,
+    closeMenu,
+    toggleMenu,
+    getInputState,
+    setKeyMapping,
+    isActionActive,
+    cleanup,
+
+    // Event handlers (for testing)
+    handleGameStarted,
+    handleGamePaused,
+    handleGameResumed,
+    handleGameEnded,
+    handleMenuOpened,
+    handleMenuClosed,
+    handleNotificationCreated,
+    handleInputAction,
+    handleHUDUpdate,
+    handleDisplayStateChanged,
+    handleMenuStateChange,
+    handlePauseStateChange,
+    handleFPSDisplayChange,
+    handleDebugDisplayChange
+  }
+}
+
+// Legacy class wrapper for backward compatibility
+export class UIManager {
+  constructor(game, eventDispatcher, stateManager) {
+    // Delegate to factory function
+    const instance = createUIManager(game, eventDispatcher, stateManager)
+
+    // Copy all properties and methods to this instance
+    Object.assign(this, instance)
   }
 }
 
