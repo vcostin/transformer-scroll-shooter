@@ -1527,12 +1527,20 @@ export class Game {
     // Player bullets vs enemies
     this.bullets.forEach(bullet => {
       if (bullet.owner === 'player') {
-        this.enemies.forEach(enemy => {
+        // Use for loop to allow early break when bullet hits an enemy
+        for (let i = 0; i < this.enemies.length; i++) {
+          const enemy = this.enemies[i]
+
           // Skip enemies already marked for deletion to prevent double scoring
-          if (enemy.markedForDeletion) return
+          if (enemy.markedForDeletion) continue
 
           if (this.checkCollision(bullet, enemy)) {
             bullet.markedForDeletion = true
+
+            // Also mark bullet for deletion in StateManager if it has an ID
+            if (bullet.id) {
+              Bullet.markForDeletion(this.stateManager, bullet.id)
+            }
 
             // CRITICAL: Ensure enemy has proper health before damage calculation
             if (typeof enemy.health !== 'number') {
@@ -1620,8 +1628,11 @@ export class Game {
               this.effects.push(new Explosion(this, enemy.x, enemy.y, 'medium'))
               playSound(this.audio, 'explosion')
             }
+
+            // Exit loop early - bullet has hit an enemy and served its purpose
+            break
           }
-        })
+        }
       }
     })
 
