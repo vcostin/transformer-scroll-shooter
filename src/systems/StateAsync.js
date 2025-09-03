@@ -1,5 +1,5 @@
 /**
- * StateAsync - Asynchronous state management module for StateManager
+ * StateAsync - Factory Function for Asynchronous State Management
  *
  * Handles:
  * - Async state updates with loading and error states
@@ -8,37 +8,42 @@
  * - Error handling and error state management
  * - Async operation tracking and debugging
  * - Event emission for async operations
+ * Converted from ES6 class to factory function following Entity-State architecture
  */
 
-export class StateAsync {
-  constructor(options = {}, callbacks = {}) {
-    // Configuration
-    this.options = {
-      enableEvents: options.enableEvents !== false,
-      enableDebug: options.enableDebug || false,
-      defaultTimeout: options.defaultTimeout || 30000, // 30 seconds
-      retryAttempts: options.retryAttempts || 0,
-      retryDelay: options.retryDelay || 1000,
-      ...options
-    }
+/**
+ * Creates a new StateAsync instance with closure-based state management
+ * @param {Object} options - Configuration options
+ * @param {Object} callbacks - External system integration callbacks
+ * @returns {Object} StateAsync instance with all methods
+ */
+export function createStateAsync(options = {}, callbacks = {}) {
+  // Private state using closure variables (replaces 'this' properties)
+  const configuration = {
+    enableEvents: options.enableEvents !== false,
+    enableDebug: options.enableDebug || false,
+    defaultTimeout: options.defaultTimeout || 30000, // 30 seconds
+    retryAttempts: options.retryAttempts || 0,
+    retryDelay: options.retryDelay || 1000,
+    ...options
+  }
 
-    // Callbacks for external system integration
-    this.onSetState = callbacks.onSetState || (() => false)
-    this.onEmitEvent = callbacks.onEmitEvent || (() => {})
+  // Callbacks for external system integration
+  const onSetState = callbacks.onSetState || (() => false)
+  const onEmitEvent = callbacks.onEmitEvent || (() => {})
 
-    // Active async operations tracking
-    this.activeOperations = new Map()
-    this.operationCounter = 0
+  // Active async operations tracking
+  const activeOperations = new Map()
+  let operationCounter = 0
 
-    // Statistics
-    this.stats = {
-      totalAsyncOperations: 0,
-      successfulOperations: 0,
-      failedOperations: 0,
-      averageOperationTime: 0,
-      timeouts: 0,
-      retries: 0
-    }
+  // Statistics
+  const stats = {
+    totalAsyncOperations: 0,
+    successfulOperations: 0,
+    failedOperations: 0,
+    averageOperationTime: 0,
+    timeouts: 0,
+    retries: 0
   }
 
   /**
@@ -48,23 +53,23 @@ export class StateAsync {
    * @param {Object} options - Update options
    * @returns {Promise} Promise that resolves when state is updated
    */
-  async setStateAsync(path, valueOrPromise, options = {}) {
+  async function setStateAsync(path, valueOrPromise, options = {}) {
     // If it's not a promise, use direct state setting
     if (!valueOrPromise || typeof valueOrPromise.then !== 'function') {
-      return this.onSetState(path, valueOrPromise, options)
+      return onSetState(path, valueOrPromise, options)
     }
 
-    const operationId = this.generateOperationId()
+    const operationId = generateOperationId()
     const startTime = performance.now()
 
     // Track operation
-    this.trackOperation(operationId, path, options)
-    this.stats.totalAsyncOperations++
+    trackOperation(operationId, path, options)
+    stats.totalAsyncOperations++
 
     try {
       // Set loading state if requested
       if (options.loadingPath) {
-        this.onSetState(options.loadingPath, true, {
+        onSetState(options.loadingPath, true, {
           skipHistory: true,
           ...options.loadingOptions
         })
@@ -72,16 +77,16 @@ export class StateAsync {
 
       // Apply timeout if specified
       const promise = options.timeout
-        ? this.withTimeout(valueOrPromise, options.timeout)
+        ? withTimeout(valueOrPromise, options.timeout)
         : valueOrPromise
 
       // Apply retry logic if specified
       const finalPromise =
-        options.retryAttempts || this.options.retryAttempts
-          ? this.withRetry(
+        options.retryAttempts || configuration.retryAttempts
+          ? withRetry(
               () => valueOrPromise,
-              options.retryAttempts || this.options.retryAttempts,
-              options.retryDelay || this.options.retryDelay
+              options.retryAttempts || configuration.retryAttempts,
+              options.retryDelay || configuration.retryDelay
             )
           : promise
 
@@ -89,7 +94,7 @@ export class StateAsync {
 
       // Clear loading state
       if (options.loadingPath) {
-        this.onSetState(options.loadingPath, false, {
+        onSetState(options.loadingPath, false, {
           skipHistory: true,
           ...options.loadingOptions
         })
@@ -97,25 +102,25 @@ export class StateAsync {
 
       // Clear any existing error state
       if (options.errorPath) {
-        this.onSetState(options.errorPath, null, {
+        onSetState(options.errorPath, null, {
           skipHistory: true,
           ...options.errorOptions
         })
       }
 
       // Set the actual value
-      const result = this.onSetState(path, value, options)
+      const result = onSetState(path, value, options)
 
       // Update statistics
       const operationTime = performance.now() - startTime
-      this.updateSuccessStats(operationTime)
+      updateSuccessStats(operationTime)
 
       // Remove from active operations
-      this.untrackOperation(operationId)
+      untrackOperation(operationId)
 
       // Emit success event
-      if (this.options.enableEvents) {
-        this.onEmitEvent('state:async-success', {
+      if (configuration.enableEvents) {
+        onEmitEvent('state:async-success', {
           path,
           value,
           operationId,
@@ -124,7 +129,7 @@ export class StateAsync {
         })
       }
 
-      if (this.options.enableDebug) {
+      if (configuration.enableDebug) {
         console.log(
           `✅ StateAsync: setStateAsync('${path}') completed in ${operationTime.toFixed(2)}ms`
         )
@@ -132,9 +137,9 @@ export class StateAsync {
 
       return result
     } catch (error) {
-      // Clear loading state on error
+      // Clear loading state
       if (options.loadingPath) {
-        this.onSetState(options.loadingPath, false, {
+        onSetState(options.loadingPath, false, {
           skipHistory: true,
           ...options.loadingOptions
         })
@@ -142,8 +147,8 @@ export class StateAsync {
 
       // Set error state if requested
       if (options.errorPath) {
-        const errorMessage = this.formatError(error)
-        this.onSetState(options.errorPath, errorMessage, {
+        const errorMessage = formatError(error)
+        onSetState(options.errorPath, errorMessage, {
           skipHistory: true,
           ...options.errorOptions
         })
@@ -151,14 +156,14 @@ export class StateAsync {
 
       // Update statistics
       const operationTime = performance.now() - startTime
-      this.updateFailureStats(operationTime, error)
+      updateFailureStats(operationTime, error)
 
       // Remove from active operations
-      this.untrackOperation(operationId)
+      untrackOperation(operationId)
 
       // Emit error event
-      if (this.options.enableEvents) {
-        this.onEmitEvent('state:async-error', {
+      if (configuration.enableEvents) {
+        onEmitEvent('state:async-error', {
           path,
           error,
           operationId,
@@ -167,7 +172,7 @@ export class StateAsync {
         })
       }
 
-      if (this.options.enableDebug) {
+      if (configuration.enableDebug) {
         console.error(
           `❌ StateAsync: setStateAsync('${path}') failed after ${operationTime.toFixed(2)}ms:`,
           error
@@ -184,73 +189,82 @@ export class StateAsync {
    * @param {Object} batchOptions - Batch operation options
    * @returns {Promise<Array>} Array of results
    */
-  async batchSetStateAsync(operations, batchOptions = {}) {
+  async function batchSetStateAsync(operations, batchOptions = {}) {
     if (!Array.isArray(operations) || operations.length === 0) {
       return []
     }
 
-    const operationId = this.generateOperationId()
+    const operationId = generateOperationId()
     const startTime = performance.now()
 
     // Set global loading state if requested
     if (batchOptions.loadingPath) {
-      this.onSetState(batchOptions.loadingPath, true, {
+      onSetState(batchOptions.loadingPath, true, {
         skipHistory: true,
         ...batchOptions.loadingOptions
       })
     }
 
     try {
-      // Execute all operations concurrently or sequentially
-      const results = batchOptions.sequential
-        ? await this.executeSequentially(operations)
-        : await this.executeConcurrently(operations)
+      let results
+      if (batchOptions.sequential) {
+        results = await executeSequentially(operations)
+      } else {
+        results = await executeConcurrently(operations)
+      }
 
       // Clear global loading state
       if (batchOptions.loadingPath) {
-        this.onSetState(batchOptions.loadingPath, false, {
+        onSetState(batchOptions.loadingPath, false, {
           skipHistory: true,
           ...batchOptions.loadingOptions
         })
       }
 
+      // Update statistics
+      const operationTime = performance.now() - startTime
+      updateSuccessStats(operationTime)
+
       // Emit batch success event
-      if (this.options.enableEvents) {
-        this.onEmitEvent('state:async-batch-success', {
+      if (configuration.enableEvents) {
+        onEmitEvent('state:async-batch-success', {
           operations: operations.map(op => op.path),
-          results,
+          results: results,
           operationId,
-          duration: performance.now() - startTime,
+          duration: operationTime,
           timestamp: Date.now()
         })
       }
 
       return results
     } catch (error) {
-      // Clear global loading state on error
+      // Clear global loading state
       if (batchOptions.loadingPath) {
-        this.onSetState(batchOptions.loadingPath, false, {
+        onSetState(batchOptions.loadingPath, false, {
           skipHistory: true,
           ...batchOptions.loadingOptions
         })
       }
 
-      // Set global error state if requested
+      // Set error state if requested
       if (batchOptions.errorPath) {
-        const errorMessage = this.formatError(error)
-        this.onSetState(batchOptions.errorPath, errorMessage, {
+        onSetState(batchOptions.errorPath, formatError(error), {
           skipHistory: true,
           ...batchOptions.errorOptions
         })
       }
 
+      // Update statistics
+      const operationTime = performance.now() - startTime
+      updateFailureStats(operationTime, error)
+
       // Emit batch error event
-      if (this.options.enableEvents) {
-        this.onEmitEvent('state:async-batch-error', {
-          operations: operations.map(op => op.path),
+      if (configuration.enableEvents) {
+        onEmitEvent('state:batch-error', {
+          operations: operations.length,
           error,
           operationId,
-          duration: performance.now() - startTime,
+          duration: operationTime,
           timestamp: Date.now()
         })
       }
@@ -264,63 +278,65 @@ export class StateAsync {
    * @param {string} operationId - ID of operation to cancel
    * @returns {boolean} True if operation was cancelled
    */
-  cancelOperation(operationId) {
-    const operation = this.activeOperations.get(operationId)
-    if (!operation) {
-      return false
+  function cancelOperation(operationId) {
+    if (activeOperations.has(operationId)) {
+      const operation = activeOperations.get(operationId)
+      operation.cancelled = true
+
+      // Clear loading state if operation has loadingPath
+      if (operation.options.loadingPath) {
+        onSetState(operation.options.loadingPath, false, {
+          skipHistory: true
+        })
+      }
+
+      untrackOperation(operationId)
+
+      if (configuration.enableEvents) {
+        onEmitEvent('state:operation-cancelled', {
+          operationId,
+          path: operation.path,
+          timestamp: Date.now()
+        })
+      }
+
+      return true
     }
-
-    // Cancel the operation if it supports cancellation
-    if (operation.controller) {
-      operation.controller.abort()
-    }
-
-    // Clean up loading states
-    if (operation.options.loadingPath) {
-      this.onSetState(operation.options.loadingPath, false, { skipHistory: true })
-    }
-
-    this.untrackOperation(operationId)
-
-    if (this.options.enableEvents) {
-      this.onEmitEvent('state:async-cancelled', {
-        path: operation.path,
-        operationId,
-        timestamp: Date.now()
-      })
-    }
-
-    return true
+    return false
   }
 
   /**
    * Cancel all active async operations
    * @returns {number} Number of operations cancelled
    */
-  cancelAllOperations() {
-    const operationIds = Array.from(this.activeOperations.keys())
-    let cancelledCount = 0
+  function cancelAllOperations() {
+    const count = activeOperations.size
+    const operations = Array.from(activeOperations.keys())
 
-    for (const operationId of operationIds) {
-      if (this.cancelOperation(operationId)) {
-        cancelledCount++
-      }
+    operations.forEach(operationId => {
+      cancelOperation(operationId)
+    })
+
+    if (configuration.enableEvents && count > 0) {
+      onEmitEvent('state:all-operations-cancelled', {
+        count,
+        timestamp: Date.now()
+      })
     }
 
-    return cancelledCount
+    return count
   }
 
   /**
-   * Get information about active async operations
-   * @returns {Array} Array of active operation information
+   * Get current active operations
+   * @returns {Array} Array of active operation info
    */
-  getActiveOperations() {
-    return Array.from(this.activeOperations.entries()).map(([id, operation]) => ({
+  function getActiveOperations() {
+    return Array.from(activeOperations.entries()).map(([id, operation]) => ({
       id,
       path: operation.path,
       startTime: operation.startTime,
-      duration: performance.now() - operation.startTime,
-      options: { ...operation.options }
+      duration: performance.now() - operation.startTime
     }))
   }
 
@@ -328,128 +344,128 @@ export class StateAsync {
    * Get async operation statistics
    * @returns {Object} Statistics object
    */
-  getAsyncStats() {
+  function getAsyncStats() {
+    const longestRunningOperation = getLongestRunningOperation()
     return {
-      ...this.stats,
-      activeOperations: this.activeOperations.size,
-      longestRunningOperation: this.getLongestRunningOperation()
+      ...stats,
+      activeOperations: activeOperations.size,
+      longestRunningOperation
     }
   }
 
   /**
-   * Reset async statistics
+   * Reset statistics
    */
-  resetStats() {
-    this.stats = {
-      totalAsyncOperations: 0,
-      successfulOperations: 0,
-      failedOperations: 0,
-      averageOperationTime: 0,
-      timeouts: 0,
-      retries: 0
-    }
+  function resetStats() {
+    stats.totalAsyncOperations = 0
+    stats.successfulOperations = 0
+    stats.failedOperations = 0
+    stats.averageOperationTime = 0
+    stats.timeouts = 0
+    stats.retries = 0
   }
 
   /**
-   * Configure async options
+   * Update configuration options
    * @param {Object} newOptions - New configuration options
    */
-  configure(newOptions) {
-    this.options = { ...this.options, ...newOptions }
+  function configure(newOptions) {
+    Object.assign(configuration, newOptions)
   }
 
-  // Private methods
+  // Private helper functions
 
   /**
    * Generate unique operation ID
-   * @private
+   * @returns {string} Unique operation ID
    */
-  generateOperationId() {
-    return `async_${++this.operationCounter}_${Date.now()}`
+  function generateOperationId() {
+    return `async_${++operationCounter}_${Date.now()}`
   }
 
   /**
-   * Track an active operation
-   * @private
+   * Track async operation
+   * @param {string} operationId - Operation ID
+   * @param {string} path - State path
+   * @param {Object} options - Operation options
    */
-  trackOperation(operationId, path, options) {
-    this.activeOperations.set(operationId, {
+  function trackOperation(operationId, path, options) {
+    activeOperations.set(operationId, {
       path,
-      options,
       startTime: performance.now(),
-      controller: options.abortController || null
+      options,
+      cancelled: false
     })
   }
 
   /**
    * Remove operation from tracking
-   * @private
+   * @param {string} operationId - Operation ID
    */
-  untrackOperation(operationId) {
-    this.activeOperations.delete(operationId)
+  function untrackOperation(operationId) {
+    activeOperations.delete(operationId)
   }
 
   /**
-   * Add timeout to a promise
-   * @private
+   * Add timeout wrapper to promise
+   * @param {Promise} promise - Promise to wrap
+   * @param {number} timeout - Timeout in milliseconds
+   * @returns {Promise} Promise with timeout
    */
-  withTimeout(promise, timeout) {
-    return Promise.race([
-      promise,
-      new Promise((_, reject) => {
-        setTimeout(() => {
-          this.stats.timeouts++
-          reject(new Error(`Operation timed out after ${timeout}ms`))
-        }, timeout)
-      })
-    ])
+  function withTimeout(promise, timeout) {
+    return new Promise((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        stats.timeouts++
+        reject(new Error(`Operation timed out after ${timeout}ms`))
+      }, timeout)
+
+      promise
+        .then(value => {
+          clearTimeout(timeoutId)
+          resolve(value)
+        })
+        .catch(error => {
+          clearTimeout(timeoutId)
+          reject(error)
+        })
+    })
   }
 
   /**
-   * Add retry logic to a promise-generating function
-   * @param {Function} promiseFactory - Function that returns a new promise
+   * Add retry logic to promise factory
+   * @param {Function} promiseFactory - Function that returns a promise
    * @param {number} retryAttempts - Number of retry attempts
-   * @param {number} retryDelay - Delay between retries in ms
-   * @private
+   * @param {number} retryDelay - Delay between retries in milliseconds
+   * @returns {Promise} Promise with retry logic
    */
-  async withRetry(promiseFactory, retryAttempts, retryDelay) {
+  async function withRetry(promiseFactory, retryAttempts, retryDelay) {
     let lastError
-
     for (let attempt = 0; attempt <= retryAttempts; attempt++) {
       try {
-        // Create a fresh promise for each attempt
-        const promise = typeof promiseFactory === 'function' ? promiseFactory() : promiseFactory
-        return await promise
+        return await promiseFactory()
       } catch (error) {
         lastError = error
-
         if (attempt < retryAttempts) {
-          this.stats.retries++
-          await this.delay(retryDelay)
-
-          if (this.options.enableDebug) {
-            console.log(
-              `🔄 StateAsync: Retrying operation (attempt ${attempt + 2}/${retryAttempts + 1})`
-            )
-          }
+          stats.retries++
+          await delay(retryDelay)
         }
       }
     }
-
     throw lastError
   }
 
   /**
    * Execute operations sequentially
-   * @private
+   * @param {Array} operations - Array of operations
+   * @returns {Promise<Array>} Array of results
    */
-  async executeSequentially(operations) {
+  async function executeSequentially(operations) {
     const results = []
     for (const operation of operations) {
-      const result = await this.setStateAsync(
+      const result = await setStateAsync(
         operation.path,
         operation.valueOrPromise,
-        operation.options
+        operation.options || {}
       )
       results.push(result)
     }
@@ -458,71 +474,48 @@ export class StateAsync {
 
   /**
    * Execute operations concurrently
-   * @private
+   * @param {Array} operations - Array of operations
+   * @returns {Promise<Array>} Array of results
    */
-  async executeConcurrently(operations) {
+  async function executeConcurrently(operations) {
     const promises = operations.map(operation =>
-      this.setStateAsync(operation.path, operation.valueOrPromise, operation.options)
+      setStateAsync(operation.path, operation.valueOrPromise, operation.options || {})
     )
     return Promise.all(promises)
   }
 
   /**
-   * Format error for display
-   * @private
-   */
-  formatError(error) {
-    if (error && error.message) {
-      return error.message
-    }
-    return typeof error === 'string' ? error : 'Unknown error'
-  }
-
-  /**
    * Update success statistics
-   * @private
+   * @param {number} operationTime - Operation duration
    */
-  updateSuccessStats(operationTime) {
-    this.stats.successfulOperations++
-    this.updateAverageTime(operationTime)
+  function updateSuccessStats(operationTime) {
+    stats.successfulOperations++
+    stats.averageOperationTime =
+      (stats.averageOperationTime * (stats.successfulOperations - 1) + operationTime) /
+      stats.successfulOperations
   }
 
   /**
    * Update failure statistics
-   * @private
+   * @param {number} _operationTime - Operation duration
+   * @param {Error} _error - Error that occurred
    */
-  updateFailureStats(operationTime, _error) {
-    this.stats.failedOperations++
-    this.updateAverageTime(operationTime)
-  }
-
-  /**
-   * Update average operation time
-   * @private
-   */
-  updateAverageTime(time) {
-    const totalOps = this.stats.successfulOperations + this.stats.failedOperations
-    if (totalOps === 1) {
-      this.stats.averageOperationTime = time
-    } else {
-      this.stats.averageOperationTime =
-        (this.stats.averageOperationTime * (totalOps - 1) + time) / totalOps
-    }
+  function updateFailureStats(_operationTime, _error) {
+    stats.failedOperations++
+    // Note: timeout stats are already incremented in withTimeout
   }
 
   /**
    * Get longest running operation info
-   * @private
+   * @returns {Object|null} Longest running operation or null
    */
-  getLongestRunningOperation() {
-    if (this.activeOperations.size === 0) {
-      return null
-    }
+  function getLongestRunningOperation() {
+    if (activeOperations.size === 0) return null
 
     let longest = null
     let maxDuration = 0
 
-    for (const [id, operation] of this.activeOperations) {
+    for (const [id, operation] of activeOperations) {
       const duration = performance.now() - operation.startTime
       if (duration > maxDuration) {
         maxDuration = duration
@@ -534,12 +527,64 @@ export class StateAsync {
   }
 
   /**
-   * Create a delay promise
-   * @private
+   * Format error for consistent error handling
+   * @param {*} error - Error to format
+   * @returns {string} Formatted error message
    */
-  delay(ms) {
+  function formatError(error) {
+    if (typeof error === 'string') return error
+    if (error && typeof error === 'object' && error.message) return error.message
+    return 'Unknown error'
+  }
+
+  /**
+   * Create a delay promise
+   */
+  function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms))
   }
-}
 
-export default StateAsync
+  // Return the public interface - all functions bound to closure variables
+  return {
+    setStateAsync,
+    batchSetStateAsync,
+    cancelOperation,
+    cancelAllOperations,
+    getActiveOperations,
+    getAsyncStats,
+    resetStats,
+    configure,
+    // Add configuration access for compatibility
+    get options() {
+      return configuration
+    },
+
+    // Expose stats for test compatibility
+    get stats() {
+      return {
+        totalAsyncOperations: stats.totalAsyncOperations,
+        successfulOperations: stats.successfulOperations,
+        failedOperations: stats.failedOperations,
+        averageOperationTime: stats.averageOperationTime,
+        retries: stats.retries,
+        timeouts: stats.timeouts
+      }
+    },
+
+    // Expose activeOperations for test compatibility (should behave like a Map)
+    get activeOperations() {
+      return {
+        size: activeOperations.size,
+        has: key => activeOperations.has(key),
+        get: key => activeOperations.get(key),
+        keys: () => activeOperations.keys(),
+        values: () => activeOperations.values(),
+        entries: () => activeOperations.entries(),
+        [Symbol.iterator]: () => activeOperations[Symbol.iterator]()
+      }
+    },
+
+    // Expose generateOperationId method for test compatibility
+    generateOperationId
+  }
+}

@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { StateAsync } from '@/systems/StateAsync.js'
+import { createStateAsync } from '@/systems/StateAsync.js'
 
 describe('StateAsync', () => {
   let stateAsync
@@ -23,7 +23,7 @@ describe('StateAsync', () => {
     mockEmitEvent = vi.fn()
 
     // Create StateAsync instance
-    stateAsync = new StateAsync(
+    stateAsync = createStateAsync(
       {
         enableDebug: false,
         enableEvents: true
@@ -47,7 +47,7 @@ describe('StateAsync', () => {
     })
 
     it('should accept custom options', () => {
-      const customAsync = new StateAsync({
+      const customAsync = createStateAsync({
         defaultTimeout: 5000,
         retryAttempts: 3,
         retryDelay: 500
@@ -381,7 +381,7 @@ describe('StateAsync', () => {
 
       // Since we need to call the function each retry, we'll test the retry logic
       // by creating a custom implementation that tracks retries
-      const customAsync = new StateAsync(
+      const customAsync = createStateAsync(
         {
           retryAttempts: 2,
           retryDelay: 1
@@ -631,7 +631,7 @@ describe('StateAsync', () => {
     })
 
     it('should handle operations without callbacks', () => {
-      const standaloneAsync = new StateAsync()
+      const standaloneAsync = createStateAsync()
 
       // Should not throw
       expect(() => {
