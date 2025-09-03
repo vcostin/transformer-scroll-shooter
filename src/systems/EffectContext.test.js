@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { EffectContext } from '@/systems/EffectContext.js'
+import { createEffectContext } from '@/systems/EffectContext.js'
 
 describe('EffectContext', () => {
   let effectContext
@@ -20,7 +20,7 @@ describe('EffectContext', () => {
       once: vi.fn().mockReturnValue(() => {})
     }
 
-    effectContext = new EffectContext(mockEffectManager, mockEventDispatcher)
+    effectContext = createEffectContext(mockEffectManager, mockEventDispatcher)
   })
 
   afterEach(() => {

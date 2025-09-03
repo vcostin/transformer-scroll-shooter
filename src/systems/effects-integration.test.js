@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createEventDispatcher } from '@/systems/EventDispatcher.js'
 import { EffectManager } from '@/systems/EffectManager.js'
-import { EffectContext } from '@/systems/EffectContext.js'
+import { createEffectContext } from '@/systems/EffectContext.js'
 
 describe('Side Effects Integration', () => {
   let eventDispatcher
@@ -46,7 +46,7 @@ describe('Side Effects Integration', () => {
           payload: { data: 'test' },
           timestamp: expect.any(Number)
         }),
-        expect.any(EffectContext)
+        expect.any(Object)
       )
     })
 
@@ -69,7 +69,7 @@ describe('Side Effects Integration', () => {
           type: 'player:moved',
           payload: { x: 100, y: 200 }
         }),
-        expect.any(EffectContext)
+        expect.any(Object)
       )
     })
 
@@ -92,7 +92,7 @@ describe('Side Effects Integration', () => {
           type: 'enemy:spawned',
           payload: { type: 'basic' }
         }),
-        expect.any(EffectContext)
+        expect.any(Object)
       )
     })
   })
